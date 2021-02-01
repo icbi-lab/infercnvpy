@@ -26,11 +26,12 @@ requires = [
     'anndata>=0.7.3',
     'scanpy>=1.6.0',
     'pandas>=1',
-    'numpy',
+    'numpy>=1.20', # includes type annotations
     'tqdm>=4.42.0', # required for process_map
     # for getting the version
     'setuptools_scm',
     'pytoml',
+    'pyranges>=0.0.92',
     'pycairo>=1.20; sys_platform == "win32"',
 ]
 
