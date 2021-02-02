@@ -7,6 +7,148 @@ import scipy.sparse
 import re
 
 
+def infercnv(
+    adata: AnnData,
+    *,
+    reference_key: Union[str, None] = None,
+    reference_cat: Union[None, str, Sequence[str]] = None,
+    reference: Union[np.ndarray, None] = None,
+    lfc_clip: float = 3,
+    window_size: int = 100,
+    step: int = 10,
+    dynamic_threshold: Union[float, None] = 1.5,
+    median_filter: Union[int, None] = 5,
+    chunksize: int = 5000,
+    inplace: bool = True,
+    key_added: str = "cnv",
+) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
+    """
+    Infer Copy Number Variation (CNV) by averaging gene expression over genomic
+    regions.
+
+    This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
+    but more computationally efficient. It mostly follows the computation steps
+    outlined `here <https://github.com/broadinstitute/inferCNV/wiki/Running-InferCNV>`_,
+    with minor differences (see below).
+
+    Input data:
+    -----------
+    adata should already be filtered for low-quality cells. adata.X needs to be
+    normalized and log-transformed. The method should be
+    fairly robust to different normalization methods (`normalize_total`, scran, etc.).
+
+    The method requires a "reference" value to which the expression of genomic
+    regions is compared. If your dataset contains different cell types and includes
+    both tumor and normal cells, the average of all cells can be used as reference.
+    This is the default.
+
+    If you already know which cells are "normal", you can provide a column
+    from adata.obs to `reference_key` that contains the annotation. `reference_cat`
+    specifies one or multiple values in `reference_key` that refer to normal cells.
+
+    Alternatively, you can specify a numpy array with average gene expression values
+    (for instance, derived from a different dataset), to `reference` which will be used
+    as reference instead. This array needs to align to the `var` axis of adata.
+
+    Computation steps
+    -----------------
+    1. Subtract the reference gene expression from all cells. Since the data is in log
+       space, this effectively computes the log fold change
+    2. Clip the fold changes at -`lfc_cap` and +`lfc_cap`.
+    3. Smooth the gene expression by genomic position. Computes the average over a
+       running window of length `window_size`. Compute only every nth window
+       to save time & space, where n = `step`.
+    4. Center the smoothed gene expression by cell, but subtracting the
+       calculating and subtracting the median for each cell.
+    5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
+       where STDDEV is the standard deviation of the smoothed gene expression
+    6. Smooth the final result using a median filter.
+
+
+    Parameters
+    ----------
+    adata
+        annotated data matrix
+    reference_key
+        Column name in adata.obs that contains tumor/normal annotations.
+        If this is set to None, the average of all cells is used as reference.
+    reference_cat
+        One or multiple values in `adata.obs[reference_key]` that annotate
+        normal cells.
+    reference
+        Directly supply an array of average normal gene expression. Overrides
+        `reference_key` and `reference_cat`.
+    lfc_clip
+        Clip log fold changes at this value
+    window_size
+        size of the running window
+    step
+        only compute every nth running window where n = `step`. Set to 1 to compute
+        all windows.
+    dynamic_threshold
+        Values `< dynamic threshold * STDDEV` will be set to 0, where STDDEV is
+        the stadard deviation of the smoothed gene expression. Set to `None` to disable
+        this step.
+    median_filter
+        Size of running window to perform median filtering. We recommend setting this
+        to something in the order of `window_size / step / 2`. Set to `None`
+        to disable this step. Disabling the median filter can speed up the
+        function significantly.
+    chunksize
+        Process dataset in chunks of cells. This allows to run infercnv on
+        datasets with many cells, where the dense matrix would not fit into memory.
+    inplace
+        If True, save the results in adata.obsm, otherwise return the CNV matrix.
+    key_added
+        Key under which the cnv matrix will be stored in adata if `inplace=True`.
+        Will store the matrix in `adata.obs["X_{key_added}"] and additional information
+        in `adata.uns[key_added]`.
+
+    Returns
+    -------
+    Depending on inplace, either return the smoothed and denoised gene expression
+    matrix sorted by genomic position, or add it to adata.
+    """
+
+    if scipy.sparse.issparse(adata.X):
+        adata.X = adata.X.tocsr()
+
+    if not adata.var_names.is_unique:
+        raise ValueError("Ensure your var_names are unique!")
+    if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
+        raise ValueError(
+            "Genomic positions not found. There need to be `chromosome`, `start`, and "
+            "`end` columns in `adata.var`. "
+        )
+    reference = _get_reference(adata, reference_key, reference_cat, reference)
+
+    var = adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
+
+    chr_pos, chunks = zip(
+        *[
+            _infercnv_chunk(
+                adata.X[i : i + chunksize, :],
+                var,
+                reference,
+                lfc_clip,
+                window_size,
+                step,
+                dynamic_threshold,
+                median_filter,
+            )
+            for i in range(0, adata.shape[0], chunksize)
+        ]
+    )
+    res = scipy.sparse.vstack(chunks)
+
+    if inplace:
+        adata.obsm[f"X_{key_added}"] = res
+        adata.uns[key_added] = {"chr_pos": chr_pos[0]}
+
+    else:
+        return chr_pos[0], res
+
+
 def _natural_sort(l: Sequence):
     """Natural sort without third party libraries.
 
@@ -104,6 +246,10 @@ def _get_reference(
             if isinstance(reference_cat, str):
                 reference_cat = [reference_cat]
             reference_expr = adata.X[adata.obs[reference_key].isin(reference_cat), :]
+            if not reference_expr.shape[0]:
+                raise ValueError(
+                    "No reference cells were selected. Check `reference_key` and `reference_cat`. "
+                )
 
         reference = np.mean(reference_expr, axis=0)
 
@@ -113,75 +259,27 @@ def _get_reference(
     return reference
 
 
-def infercnv(
-    adata: AnnData,
-    *,
-    reference_key: Union[str, None] = None,
-    reference_cat: Union[None, str, Sequence[str]] = None,
-    reference: Union[np.ndarray, None] = None,
-    lfc_cap: float = 3,
-    window_size: int = 100,
-    step: int = 10,
-    dynamic_threshold: Union[float, None] = 1.5,
-    median_filter: Union[int, None] = 5,
-    chunksize: int = 5000,
-    inplace: bool = True,
-    key_added: str = "cnv",
-) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
+def _infercnv_chunk(
+    tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold, median_filter
+):
+    """The actual infercnv work is happening here.
+
+    Process chunks of serveral thousand genes independently since this
+    leads to (temporary) densification of the matrix.
+
+    Parameters see `infercnv`.
     """
-    Infer Copy Number Variation (CNV) by averaging gene expression over genomic
-    regions.
-
-    adata should already be filtered for low-quality cells. adata.X needs to be
-    normalized and log-transformed. The method should be
-    fairly robust to different normalization methods (`normalize_total`, scran, etc.).
-
-    The method requires a "reference" value to which the expression of genomic
-    regions is compared. If your dataset contains different cell types and includes
-    both tumor and normal cells, the average of all cells can be used as reference.
-    This is the default.
-
-    If you already know which cells are "normal", you can provide a column
-    from adata.obs to `reference_key` that contains the annotation. `reference_cat`
-    specifies one or multiple values in `reference_key` that refer to normal cells.
-
-    Alternatively, you can specify a numpy array with average gene expression values
-    (for instance, derived from a different dataset), to `reference` which will be used
-    as reference instead.
-
-
-    Parameters
-    ----------
-    adata
-        annotated data matrix
-    reference
-
-    reference_key
-        Column name in adata.obs that contains tumor/normal annotations.
-        If this is set to None, the average of all cells is used as reference.
-    reference_cat
-        One or multiple values in `adata.obs[reference_key]` that annotate
-        normal cells.
-
-
-    """
-    if not adata.var_names.is_unique:
-        raise ValueError("Ensure your var_names are unique!")
-    if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
-        raise ValueError(
-            "Genomic positions not found. There need to be `chromosome`, `start`, and "
-            "`end` columns in `adata.var`. "
-        )
-
-    reference = _get_reference(adata, reference_key, reference_cat, reference)
-
-    # Step 1 - compute log fold change
-    x_centered = adata.X - reference
+    # Step 1 - compute log fold change. This densifies the matrix.
+    # TODO by computing a running t statistics, this could potentially improved
+    # to only include significant differences.
+    x_centered = tmp_x - reference
+    if isinstance(x_centered, np.matrix):
+        x_centered = x_centered.A
     # Step 2 - clip log fold changes
     x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
     # Step 3 - smooth by genomic position
     chr_pos, x_smoothed = _running_mean_by_chromosome(
-        x_clipped, adata.var, window_size=window_size, step=step
+        x_clipped, var, window_size=window_size, step=step
     )
     # Step 4 - center by cell
     x_cell_centered = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
@@ -202,9 +300,4 @@ def infercnv(
 
     x_res = scipy.sparse.csr_matrix(x_res)
 
-    if inplace:
-        adata.obsm[f"X_{key_added}"] = x_res
-        adata.uns[key_added] = {"chr_pos": chr_pos}
-
-    else:
-        return chr_pos, x_res
+    return chr_pos, x_res
