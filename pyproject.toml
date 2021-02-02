@@ -31,8 +31,9 @@ requires = [
     # for getting the version
     'setuptools_scm',
     'pytoml',
-    'pyranges>=0.0.92',
+    'gtfparse>=1.2.1',
     'pycairo>=1.20; sys_platform == "win32"',
+    'fastcluster',
 ]
 
 [tool.flit.metadata.requires-extra]
