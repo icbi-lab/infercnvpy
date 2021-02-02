@@ -20,6 +20,7 @@ def infercnv(
     median_filter: Union[int, None] = 5,
     chunksize: int = 5000,
     inplace: bool = True,
+    layer: None,
     key_added: str = "cnv",
 ) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
     """
@@ -99,6 +100,8 @@ def infercnv(
         datasets with many cells, where the dense matrix would not fit into memory.
     inplace
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
+    layer
+        Layer from adata to use. If `None`, use `X`.
     key_added
         Key under which the cnv matrix will be stored in adata if `inplace=True`.
         Will store the matrix in `adata.obs["X_{key_added}"] and additional information
@@ -109,9 +112,10 @@ def infercnv(
     Depending on inplace, either return the smoothed and denoised gene expression
     matrix sorted by genomic position, or add it to adata.
     """
+    expr = adata.X if layer is None else adata.layers[layer]
 
-    if scipy.sparse.issparse(adata.X):
-        adata.X = adata.X.tocsr()
+    if scipy.sparse.issparse(expr):
+        expr = expr.tocsr()
 
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")
@@ -127,7 +131,7 @@ def infercnv(
     chr_pos, chunks = zip(
         *[
             _infercnv_chunk(
-                adata.X[i : i + chunksize, :],
+                expr[i : i + chunksize, :],
                 var,
                 reference,
                 lfc_clip,
