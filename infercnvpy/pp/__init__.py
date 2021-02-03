@@ -1,10 +1,15 @@
+from anndata import AnnData
 import scanpy as sc
 from scanpy import logging
 from .. import tl
 
 
 def neighbors(
-    adata, use_rep="cnv_pca", key_added="cnv_neighbors", inplace=True, **kwargs
+    adata: AnnData,
+    use_rep: str = "cnv_pca",
+    key_added: str = "cnv_neighbors",
+    inplace: bool = True,
+    **kwargs,
 ):
     """Compute the neighborhood graph based on the result from
     :func:`infercnvpy.tl.infercnv.
@@ -29,12 +34,12 @@ def neighbors(
     Depending on the value of inplace, updates anndata or returns the distance
     and connectivity matrices.
     """
-    if use_rep not in adata.obsm and use_rep == "cnv_pca":
+    if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
         logging.warning(
             "X_cnv_pca not found in adata.obsm. Computing PCA with default parameters"
         )  # type: ignore
         tl.pca(adata)
 
     return sc.pp.neighbors(
-        adata, use_rep=use_rep, key_added=key_added, copy=not inplace, **kwargs
+        adata, use_rep=f"X_{use_rep}", key_added=key_added, copy=not inplace, **kwargs
     )
