@@ -27,7 +27,7 @@ def neighbors(
         If `True`, store the neighborhood graph in adata, otherwise return
         the distance and connectivity matrices.
     **kwargs
-        Arguments passed to :func:`sc.pp.neighbors`.
+        Arguments passed to :func:`scanpy.pp.neighbors`.
 
     Returns
     -------

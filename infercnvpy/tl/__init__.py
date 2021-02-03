@@ -78,7 +78,7 @@ def umap(
     inplace: bool = True,
     **kwargs,
 ):
-    """Compute the UMAP on the result of :func:`infercnv.tl.infercnv`.
+    """Compute the UMAP on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.tl.umap`
 
@@ -87,7 +87,7 @@ def umap(
     adata
         annotated data matrix
     neighbors_key
-        Key under which the result of :func:`infercnv.pp.neighbors` is stored
+        Key under which the result of :func:`infercnvpy.pp.neighbors` is stored
         in adata
     key_added
         Key under which the result UMAP will be stored in adata.obsm
@@ -111,7 +111,7 @@ def tsne(
     inplace: bool = True,
     **kwargs,
 ):
-    """Compute the t-SNE on the result of :func:`infercnv.tl.infercnv`.
+    """Compute the t-SNE on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.tl.tsne`
 
@@ -120,7 +120,7 @@ def tsne(
     adata
         annotated data matrix
     use_rep
-        Key under which the result of :func:`infercnv.tl.pca` is stored
+        Key under which the result of :func:`infercnvpy.tl.pca` is stored
         in adata
     key_added
         Key under which the result of t-SNE will be stored in adata.obsm

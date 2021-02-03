@@ -32,7 +32,7 @@ def cnv_score(
         the result of :func:`infercnvpy.tl.leiden`, but could also be
         other clusters, e.g. obtained from transcriptomics data.
     use_rep
-        Key under which the result of :func:`infercnv.tl.infercnv` is stored
+        Key under which the result of :func:`infercnvpy.tl.infercnv` is stored
         in adata.
     key_added
         Key under which the score will be stored in `adata.obs`.

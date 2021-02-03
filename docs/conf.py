@@ -29,7 +29,7 @@ api_rel_dir = "_static/api"
 
 nitpicky = True  # Warn about broken links
 needs_sphinx = "2.0"  # Nicer param docs
-bibtex_bibfiles = ["bibliography.bib"]
+bibtex_bibfiles = ["references.bib"]
 
 
 extensions = [
