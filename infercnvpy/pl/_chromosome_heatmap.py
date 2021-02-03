@@ -12,7 +12,7 @@ def chromosome_heatmap(
     *,
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
-    cmap: Union[str, Colormap] = "vlag",
+    cmap: Union[str, Colormap] = "bwr",
     figsize: Tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,

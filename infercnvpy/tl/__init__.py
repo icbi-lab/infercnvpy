@@ -1,5 +1,5 @@
 from typing import Union
-from ._infercnv import infercnv
+from ._infercnv import infercnv, cnv_score
 import numpy as np
 from anndata import AnnData
 import scanpy as sc
