@@ -20,7 +20,7 @@ def infercnv(
     median_filter: Union[int, None] = 5,
     chunksize: int = 5000,
     inplace: bool = True,
-    layer: None,
+    layer: Union[str, None] = None,
     key_added: str = "cnv",
 ) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
     """
@@ -215,7 +215,9 @@ def _running_mean_by_chromosome(
         A numpy array with the smoothed gene expression, ordered by chromosome
         and genomic position
     """
-    chromosomes = _natural_sort(var["chromosome"].unique())
+    chromosomes = _natural_sort(
+        [x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"]
+    )
 
     def _running_mean_for_chromosome(chr):
         genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
@@ -226,7 +228,9 @@ def _running_mean_by_chromosome(
 
     chr_start_pos = {
         chr: i
-        for chr, i in zip(chromosomes, np.cumsum([x.shape[1] for x in running_means]))
+        for chr, i in zip(
+            chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])
+        )
     }
 
     return chr_start_pos, np.hstack(running_means)
