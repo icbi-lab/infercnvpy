@@ -6,8 +6,24 @@ import scanpy as sc
 from scanpy import logging
 
 
-def leiden(adata, *args, **kwargs):
-    pass
+def leiden(
+    adata: AnnData,
+    neighbors_key: str = "cnv_neighbors",
+    key_added: str = "cnv_leiden",
+    inplace: bool = True,
+    **kwargs,
+):
+    """Perform leiden clustering on the CNV neighborhood graph.
+
+    Thin wrapper around :func:`scanpy.tl.leiden`.
+    """
+    return sc.tl.leiden(
+        adata,
+        neighbors_key=neighbors_key,
+        key_added=key_added,
+        copy=not inplace,
+        **kwargs,
+    )
 
 
 def pca(

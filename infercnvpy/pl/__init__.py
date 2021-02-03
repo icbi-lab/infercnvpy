@@ -1,5 +1,6 @@
 import scanpy as sc
 from anndata import AnnData
+from ._chromosome_heatmap import chromosome_heatmap
 
 
 def umap(adata, **kwargs):
@@ -16,7 +17,3 @@ def tsne(adata, **kwargs):
     Thin wrapper around :func:`scanpy.pl.embedding`.
     """
     return sc.pl.embedding(adata, "cnv_tsne", **kwargs)
-
-
-def chromosome_heatmap(adata):
-    pass
