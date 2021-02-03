@@ -8,7 +8,7 @@ requires = [
 build-backend = 'flit_core.buildapi'
 
 [tool.flit.metadata]
-module = 'scirpy'
+module = 'infercnvpy'
 author = 'Gregor Sturm'
 author-email = 'gregor.sturm@i-med.ac.at'
 home-page = 'https://github.com/grst/infercnvpy'
@@ -19,7 +19,6 @@ classifiers = [
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     'Programming Language :: Python :: 3',
-    'Programming Language :: R'
 ]
 requires-python = '>= 3.8'
 requires = [
@@ -33,7 +32,7 @@ requires = [
     'pytoml',
     'gtfparse>=1.2.1',
     'pycairo>=1.20; sys_platform == "win32"',
-    'fastcluster',
+    'leidenalg',
 ]
 
 [tool.flit.metadata.requires-extra]
@@ -47,7 +46,6 @@ doc = [
     'scanpydoc>=0.5',
     'sphinx_rtd_theme>=0.4,<0.5',
     # for tutorial
-    'leidenalg',
     'nbsphinx>=0.6.0',
     'jupytext',
     'sphinxcontrib-bibtex>=1.0.0',

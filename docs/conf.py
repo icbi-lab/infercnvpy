@@ -9,14 +9,14 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE / "extensions"))
 
-from scirpy import __author__, __version__
+from infercnvpy import __author__, __version__
 
 # ignore Future warnings (which are caused by dependencies)
 warnings.filterwarnings("ignore", category=RemovedInSphinx40Warning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # General information
-project = "scirpy"
+project = "infercnvpy"
 author = __author__
 copyright = f"{datetime.now():%Y}, {author}."
 version = __version__
@@ -29,6 +29,7 @@ api_rel_dir = "_static/api"
 
 nitpicky = True  # Warn about broken links
 needs_sphinx = "2.0"  # Nicer param docs
+bibtex_bibfiles = ["bibliography.bib"]
 
 
 extensions = [
@@ -100,12 +101,11 @@ html_static_path = ["_static"]
 pygments_style = "sphinx"
 html_context = dict(
     display_github=True,  # Integrate GitHub
-    github_user="icbi-lab",  # Username
+    github_user="grst",  # Username
     github_repo=project,  # Repo name
     github_version="master",  # Version
     conf_py_path="/docs/",  # Path in the checkout to the docs root
 )
-html_logo = "img/scirpy_logo_bright.png"
 html_theme_options = dict(navigation_depth=4, logo_only=True)
 
 

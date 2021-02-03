@@ -5,4 +5,4 @@ Tutorials
    :maxdepth: 1
    :caption: Contents:
 
-   tutorials/tutorial.md
+   tutorials/tutorial_3k.md
