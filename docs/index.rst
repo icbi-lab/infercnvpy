@@ -4,5 +4,6 @@
    :hidden:
 
    tutorials
+   infercnv
    api
    zzz_bibliography

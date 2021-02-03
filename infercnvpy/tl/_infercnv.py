@@ -83,43 +83,10 @@ def infercnv(
     regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
-    but more computationally efficient. It mostly follows the computation steps
-    outlined `here <https://github.com/broadinstitute/inferCNV/wiki/Running-InferCNV>`_,
-    with minor differences (see below).
+    but more computationally efficient. The method is described in more detail
+    in on the :ref:`infercnv-method` page.
 
-    Input data:
-    -----------
-    adata should already be filtered for low-quality cells. adata.X needs to be
-    normalized and log-transformed. The method should be
-    fairly robust to different normalization methods (`normalize_total`, scran, etc.).
-
-    The method requires a "reference" value to which the expression of genomic
-    regions is compared. If your dataset contains different cell types and includes
-    both tumor and normal cells, the average of all cells can be used as reference.
-    This is the default.
-
-    If you already know which cells are "normal", you can provide a column
-    from adata.obs to `reference_key` that contains the annotation. `reference_cat`
-    specifies one or multiple values in `reference_key` that refer to normal cells.
-
-    Alternatively, you can specify a numpy array with average gene expression values
-    (for instance, derived from a different dataset), to `reference` which will be used
-    as reference instead. This array needs to align to the `var` axis of adata.
-
-    Computation steps
-    -----------------
-    1. Subtract the reference gene expression from all cells. Since the data is in log
-       space, this effectively computes the log fold change
-    2. Clip the fold changes at -`lfc_cap` and +`lfc_cap`.
-    3. Smooth the gene expression by genomic position. Computes the average over a
-       running window of length `window_size`. Compute only every nth window
-       to save time & space, where n = `step`.
-    4. Center the smoothed gene expression by cell, but subtracting the
-       calculating and subtracting the median for each cell.
-    5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
-       where STDDEV is the standard deviation of the smoothed gene expression
-    6. Smooth the final result using a median filter.
-
+    There, you can also find instructions on how to :ref:`prepare input data <input-data>`.
 
     Parameters
     ----------
