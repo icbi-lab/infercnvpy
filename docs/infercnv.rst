@@ -12,16 +12,19 @@ it is a lot more computationally efficient.
 
 Computation steps
 -----------------
+
+The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
+
 1. Subtract the reference gene expression from all cells. Since the data is in log
    space, this effectively computes the log fold change
-2. Clip the fold changes at -`lfc_cap` and +`lfc_cap`.
+2. Clip the fold changes at `-lfc_cap` and `+lfc_cap`.
 3. Smooth the gene expression by genomic position. Computes the average over a
    running window of length `window_size`. Compute only every nth window
    to save time & space, where n = `step`.
 4. Center the smoothed gene expression by cell, but subtracting the
-    calculating and subtracting the median for each cell.
+   calculating and subtracting the median for each cell.
 5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
-    where STDDEV is the standard deviation of the smoothed gene expression
+   where STDDEV is the standard deviation of the smoothed gene expression
 6. Smooth the final result using a median filter.
 
 .. _input-data:
