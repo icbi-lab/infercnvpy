@@ -54,9 +54,7 @@ jobs:
           pip install .[doc,test]
       - name: run sphinx
         run: |
-          cd docs && \
-            make html SPHINXOPTS="-W --keep-going && \
-            touch _build/html/.nojekyll"
+          cd docs && make html SPHINXOPTS="-W --keep-going && touch _build/html/.nojekyll"
       - name: Get target folder for page deploy from github ref
         if: ( matrix.os == 'ubuntu-latest' ) &&  ( matrix.python-version == '3.8' )
         run: |
