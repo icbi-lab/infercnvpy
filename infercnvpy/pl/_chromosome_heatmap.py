@@ -141,7 +141,7 @@ def chromosome_matrixplot(
     # heatmap cannot really handle it if there's just one observation
     # per row. Scanpy matrixplot is not an option, since it plots each
     # gene individually.
-    groups = adata.obs["cell_type"].unique()
+    groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
     tmp_adata = sc.AnnData(
@@ -149,7 +149,7 @@ def chromosome_matrixplot(
             [
                 np.repeat(
                     np.mean(
-                        adata.obsm["X_cnv"][adata.obs["cell_type"] == group, :], axis=0
+                        adata.obsm["X_cnv"][adata.obs[groupby] == group, :], axis=0
                     ),
                     10,
                     axis=0,
