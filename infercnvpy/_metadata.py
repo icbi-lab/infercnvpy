@@ -30,7 +30,7 @@ try:
     __email__ = metadata["author-email"]
 
 except (ImportError, LookupError, FileNotFoundError):
-    from ._compat import pkg_metadata
+    from importlib.metadata import metadata as pkg_metadata
 
     metadata = pkg_metadata(here.name)
     __version__ = metadata["Version"]
