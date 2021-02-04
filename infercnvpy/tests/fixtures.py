@@ -1,12 +1,10 @@
 import pytest
-from . import TESTDATA
-import scanpy as sc
-import scipy.sparse
+import infercnvpy as cnv
 
 
 @pytest.fixture(params=["array", "csr", "csc"])
 def adata_oligodendroma(request):
-    adata = sc.read_h5ad(TESTDATA / "adata_oligodendroma.h5ad")
+    adata = cnv.datasets.oligodendroglioma()
 
     if request.param == "array":
         adata.X = adata.X.toarray()
