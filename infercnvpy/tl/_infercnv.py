@@ -134,11 +134,6 @@ def infercnv(
     Depending on inplace, either return the smoothed and denoised gene expression
     matrix sorted by genomic position, or add it to adata.
     """
-    expr = adata.X if layer is None else adata.layers[layer]
-
-    if scipy.sparse.issparse(expr):
-        expr = expr.tocsr()
-
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
@@ -146,9 +141,22 @@ def infercnv(
             "Genomic positions not found. There need to be `chromosome`, `start`, and "
             "`end` columns in `adata.var`. "
         )
-    reference = _get_reference(adata, reference_key, reference_cat, reference)
 
-    var = adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
+    var_mask = adata.var["chromosome"].isnull()
+    if np.sum(var_mask):
+        logging.warning(
+            f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. "
+        )
+    tmp_adata = adata[:, ~var_mask]
+
+    expr = tmp_adata.X if layer is None else tmp_adata.layers[layer]
+
+    if scipy.sparse.issparse(expr):
+        expr = expr.tocsr()
+
+    reference = _get_reference(tmp_adata, reference_key, reference_cat, reference)
+
+    var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
 
     chr_pos, chunks = zip(
         *[
@@ -300,8 +308,6 @@ def _infercnv_chunk(
     Parameters see `infercnv`.
     """
     # Step 1 - compute log fold change. This densifies the matrix.
-    # TODO by computing a running t statistics, this could potentially improved
-    # to only include significant differences.
     x_centered = tmp_x - reference
     if isinstance(x_centered, np.matrix):
         x_centered = x_centered.A
