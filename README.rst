@@ -32,6 +32,10 @@ but plays nicely with `scanpy <https://scanpy.readthedocs.io/en/stable/index.htm
 
 Getting started
 ^^^^^^^^^^^^^^^
+
+**WARNING: This package is still experimental. The results have not been validated,
+except in that they look similar, but not identical, to the results of InferCNV.**
+
 Please refer to the `documentation <https://grst.github.io/infercnvpy>`_. In particular, the
 
 - `Tutorial <https://grst.github.io/infercnvpy/tutorials/tutorial_3k.html>`_, and the

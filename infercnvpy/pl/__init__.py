@@ -1,6 +1,6 @@
 import scanpy as sc
 from anndata import AnnData
-from ._chromosome_heatmap import chromosome_heatmap
+from ._chromosome_heatmap import chromosome_heatmap, chromosome_matrixplot
 
 
 def umap(adata, **kwargs):

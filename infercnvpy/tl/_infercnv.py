@@ -217,7 +217,7 @@ def _running_mean(
     r = np.arange(1, n)
     pyramid = np.minimum(r, r[::-1])
     smoothed_x = np.apply_along_axis(
-        lambda row: np.convolve(row, pyramid, mode="valid"), axis=1, arr=x
+        lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x
     ) / np.sum(pyramid)
     return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
