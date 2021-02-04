@@ -202,7 +202,7 @@ def _running_mean(
     x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10
 ) -> np.ndarray:
     """
-    Compute the running mean along rows of an array.
+    Compute a pyramidially weighted running mean.
 
     Densifies the matrix. Use `step` and `chunksize` to save memory.
 
@@ -214,11 +214,12 @@ def _running_mean(
         only compute running windows ever `step` columns, e.g. if step is 10
         0:100, 10:110, 20:120 etc. Saves memory.
     """
-    return scipy.ndimage.uniform_filter1d(x, size=n, axis=1)[
-        :,
-        # remove edges. Should be n/2, but for some reason this still leads to an artifact at the left side.
-        np.arange(n, x.shape[1] - n, step),
-    ]
+    r = np.arange(1, n)
+    pyramid = np.minimum(r, r[::-1])
+    smoothed_x = np.apply_along_axis(
+        lambda row: np.convolve(row, pyramid, mode="valid"), axis=1, arr=x
+    ) / np.sum(pyramid)
+    return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
 
 def _running_mean_by_chromosome(
