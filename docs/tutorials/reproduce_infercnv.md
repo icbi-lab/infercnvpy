@@ -52,7 +52,13 @@ In order to reproduce the results as exactely as possible, we use a `window_size
 
 ```python
 %%time
-cnv.tl.infercnv(adata, reference_key="cell_type", reference_cat=["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"], window_size=100, step=1)
+cnv.tl.infercnv(
+    adata, 
+    reference_key="cell_type", 
+    reference_cat=["Oligodendrocytes (non-malignant)", "Microglia/Macrophage"], 
+    window_size=100,
+    step=1,
+)
 ```
 
 ```python

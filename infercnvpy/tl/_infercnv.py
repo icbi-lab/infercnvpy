@@ -5,6 +5,7 @@ from anndata import AnnData
 import scipy.ndimage
 import scipy.sparse
 import re
+from .._util import _ensure_array
 
 
 def cnv_score(
@@ -72,6 +73,7 @@ def infercnv(
     window_size: int = 100,
     step: int = 10,
     dynamic_threshold: Union[float, None] = 1.5,
+    exclude_chromosomes: Union[Sequence[str], None] = ("chrX", "chrY"),
     chunksize: int = 5000,
     inplace: bool = True,
     layer: Union[str, None] = None,
@@ -111,6 +113,8 @@ def infercnv(
         Values `< dynamic threshold * STDDEV` will be set to 0, where STDDEV is
         the stadard deviation of the smoothed gene expression. Set to `None` to disable
         this step.
+    exclude_chromosomes
+        List of chromosomes to exclude. The default is to exclude genosomes.
     chunksize
         Process dataset in chunks of cells. This allows to run infercnv on
         datasets with many cells, where the dense matrix would not fit into memory.
@@ -140,7 +144,9 @@ def infercnv(
     if np.sum(var_mask):
         logging.warning(
             f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. "
-        )
+        )  # type: ignore
+    if exclude_chromosomes is not None:
+        var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
     tmp_adata = adata[:, ~var_mask]
 
     expr = tmp_adata.X if layer is None else tmp_adata.layers[layer]
@@ -266,26 +272,43 @@ def _get_reference(
     reference_cat: Union[None, str, Sequence[str]],
     reference: Union[np.ndarray, None],
 ) -> np.ndarray:
-    """Parameter validation extraction of reference gene expression"""
+    """Parameter validation extraction of reference gene expression.
+
+    If multiple reference categories are given, compute the mean per
+    category.
+
+    Returns a 2D array with reference categories in rows, cells in columns.
+    If there's just one category, it's still a 2D array.
+    """
     if reference is None:
         if reference_key is None or reference_cat is None:
             logging.warning(
                 "Using mean of all cells as reference. For better results, "
                 "provide either `reference`, or both `reference_key` and `reference_cat`. "
             )  # type: ignore
-            reference_expr = adata.X
+            reference = np.mean(adata.X, axis=0)
+
         else:
+            obs_col = adata.obs[reference_key]
             if isinstance(reference_cat, str):
                 reference_cat = [reference_cat]
-            reference_expr = adata.X[adata.obs[reference_key].isin(reference_cat), :]
-            if not reference_expr.shape[0]:
+            reference_cat = np.array(reference_cat)
+            reference_cat_in_obs = np.isin(reference_cat, obs_col)
+            if not np.all(reference_cat_in_obs):
                 raise ValueError(
-                    "No reference cells were selected. Check `reference_key` and `reference_cat`. "
+                    "The following reference categories were not found in "
+                    "adata.obs[reference_key]: "
+                    f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-        reference = np.mean(reference_expr, axis=0)
+            reference = np.vstack(
+                [np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat]
+            )
 
-    if reference.size != adata.shape[1]:
+    if reference.ndim == 1:
+        reference = reference[np.newaxis, :]
+
+    if reference.shape[1] != adata.shape[1]:
         raise ValueError("Reference must match the number of genes in AnnData. ")
 
     return reference
@@ -302,9 +325,21 @@ def _infercnv_chunk(
     Parameters see `infercnv`.
     """
     # Step 1 - compute log fold change. This densifies the matrix.
-    x_centered = tmp_x - reference
-    if isinstance(x_centered, np.matrix):
-        x_centered = x_centered.A
+    # Per default, use "bounded" difference calculation, if multiple references
+    # are available. This mitigates cell-type specific biases (HLA, IGHG, ...)
+    if reference.shape[0] == 1:
+        x_centered = tmp_x - reference[0, :]
+    else:
+        ref_min = np.min(reference, axis=0)
+        ref_max = np.max(reference, axis=0)
+        # entries that are between the two "bounds" are considered having a logFC of 0.
+        x_centered = np.zeros(tmp_x.shape, dtype=tmp_x.dtype)
+        above_max = tmp_x > ref_max
+        below_min = tmp_x < ref_min
+        x_centered[above_max] = _ensure_array(tmp_x - ref_max)[above_max]
+        x_centered[below_min] = _ensure_array(tmp_x - ref_min)[below_min]
+
+    x_centered = _ensure_array(x_centered)
     # Step 2 - clip log fold changes
     x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
     # Step 3 - smooth by genomic position
