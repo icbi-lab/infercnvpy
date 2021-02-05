@@ -19,12 +19,14 @@ The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
    space, this effectively computes the log fold change. If references for
    multiple categories are available (i.e. multiple values are specified to
    `reference_cat`), the log fold change is "bounded":
+
       * compute the mean gene expression for each category separately
       * Values that are within the minimum and the maximum of the mean of all
         references, receive a log fold change of 0, since they are not considered
         different from the background.
       * From values smaller than the minimum of the mean of all references, subtract that minimum.
       * From values larger than the maximum of the mean of all references, subtract that maximum.
+
    This procedure avoids calling false positive CNV due to cell-type specific
    expression of clustered gene regions (e.g. Immunoglobulin or HLA genes in different
    immune cell types).
