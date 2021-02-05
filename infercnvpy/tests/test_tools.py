@@ -28,3 +28,4 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.umap(adata_oligodendroma, color=["cnv_score", "cnv_leiden"], show=False)
     cnv.pl.tsne(adata_oligodendroma, color=["cnv_score", "cnv_leiden"], show=False)
     cnv.pl.chromosome_heatmap(adata_oligodendroma, show=False)
+    cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)

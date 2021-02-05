@@ -88,7 +88,7 @@ def chromosome_heatmap(
         return return_ax_dic
 
 
-def chromosome_matrixplot(
+def chromosome_heatmap_summary(
     adata: AnnData,
     *,
     groupby: str = "cnv_leiden",

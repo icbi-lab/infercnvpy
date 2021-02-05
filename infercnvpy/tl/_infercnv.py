@@ -72,7 +72,6 @@ def infercnv(
     window_size: int = 100,
     step: int = 10,
     dynamic_threshold: Union[float, None] = 1.5,
-    median_filter: Union[int, None] = 5,
     chunksize: int = 5000,
     inplace: bool = True,
     layer: Union[str, None] = None,
@@ -112,11 +111,6 @@ def infercnv(
         Values `< dynamic threshold * STDDEV` will be set to 0, where STDDEV is
         the stadard deviation of the smoothed gene expression. Set to `None` to disable
         this step.
-    median_filter
-        Size of running window to perform median filtering. We recommend setting this
-        to something in the order of `window_size / step / 2`. Set to `None`
-        to disable this step. Disabling the median filter can speed up the
-        function significantly.
     chunksize
         Process dataset in chunks of cells. This allows to run infercnv on
         datasets with many cells, where the dense matrix would not fit into memory.
@@ -168,7 +162,6 @@ def infercnv(
                 window_size,
                 step,
                 dynamic_threshold,
-                median_filter,
             )
             for i in range(0, adata.shape[0], chunksize)
         ]
@@ -299,7 +292,7 @@ def _get_reference(
 
 
 def _infercnv_chunk(
-    tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold, median_filter
+    tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold
 ):
     """The actual infercnv work is happening here.
 
@@ -327,13 +320,6 @@ def _infercnv_chunk(
     if dynamic_threshold is not None:
         noise_thres = dynamic_threshold * np.std(x_res)
         x_res[np.abs(x_res) < noise_thres] = 0
-    # step 6 - median filter
-    if median_filter is not None:
-        x_res = np.apply_along_axis(
-            lambda row: scipy.ndimage.median_filter(row, size=median_filter),
-            axis=1,
-            arr=x_res,
-        )
 
     x_res = scipy.sparse.csr_matrix(x_res)
 

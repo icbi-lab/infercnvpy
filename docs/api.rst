@@ -88,7 +88,7 @@ InferCNV
    :toctree: ./generated
 
    chromosome_heatmap
-   chromosome_matrixplot
+   chromosome_heatmap_summary
 
 Embeddings
 ^^^^^^^^^^
