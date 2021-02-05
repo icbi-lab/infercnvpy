@@ -5,7 +5,10 @@ from anndata import AnnData
 import scipy.ndimage
 import scipy.sparse
 import re
-from .._util import _ensure_array
+from .._util import _ensure_array, tqdm
+from tqdm.contrib.concurrent import process_map
+import itertools
+from multiprocessing import cpu_count
 
 
 def cnv_score(
@@ -75,6 +78,7 @@ def infercnv(
     dynamic_threshold: Union[float, None] = 1.5,
     exclude_chromosomes: Union[Sequence[str], None] = ("chrX", "chrY"),
     chunksize: int = 5000,
+    n_jobs: Union[int, None] = None,
     inplace: bool = True,
     layer: Union[str, None] = None,
     key_added: str = "cnv",
@@ -118,6 +122,9 @@ def infercnv(
     chunksize
         Process dataset in chunks of cells. This allows to run infercnv on
         datasets with many cells, where the dense matrix would not fit into memory.
+    n_jobs
+        Number of jobs for parallel processing. Default: use all cores.
+        Data will be submitted to workers in chunks, see `chunksize`.
     inplace
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
     layer
@@ -159,18 +166,18 @@ def infercnv(
     var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
 
     chr_pos, chunks = zip(
-        *[
-            _infercnv_chunk(
-                expr[i : i + chunksize, :],
-                var,
-                reference,
-                lfc_clip,
-                window_size,
-                step,
-                dynamic_threshold,
-            )
-            for i in range(0, adata.shape[0], chunksize)
-        ]
+        *process_map(
+            _infercnv_chunk,
+            [expr[i : i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
+            itertools.repeat(var),
+            itertools.repeat(reference),
+            itertools.repeat(lfc_clip),
+            itertools.repeat(window_size),
+            itertools.repeat(step),
+            itertools.repeat(dynamic_threshold),
+            tqdm_class=tqdm,
+            max_workers=cpu_count() if n_jobs is None else n_jobs,
+        )
     )
     res = scipy.sparse.vstack(chunks)
 
