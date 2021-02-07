@@ -47,11 +47,20 @@ sc.logging.print_header()
     must be normalized and log-transformed. For more information, see
     :ref:`input-data`. 
     
+    Also, the genomic positions need to be stored in `adata.var`. The 
+    columns `chromosome`, `start`, and `end` hold the chromosome and 
+    the start and end positions on that chromosome for each gene, 
+    respectively. 
+    
+    Infercnvpy provides the :func:`infercnvpy.io.genomic_position_from_gtf` function
+    to read these information from a GTF file and add them to `adata.var`. 
+    
 The example dataset is already appropriately preprocessed. 
 <!-- #endraw -->
 
 ```python
 adata = cnv.datasets.maynard2020_3k()
+adata.var.loc[:, ["ensg", "chromosome", "start", "end"]].head()
 ```
 
 Let's first inspect the UMAP plot based on the transcriptomics data:
@@ -68,6 +77,9 @@ by chromosome and genomic position and compares the average gene expression over
 region to a reference. The original inferCNV method uses a window size of 100, 
 but larger window sizes can make sense, depending on the number of 
 genes in your dataset. 
+
+:func:`~infercnvpy.tl.infercnv` adds a `cell x genomic_region` matrix to 
+`adata.obsm["X_cnv"]`. 
 
 For more information about the method check out :ref:`infercnv-method`. 
 
@@ -135,6 +147,7 @@ Based on these clusters, we can annotate tumor and normal cells.
 
 .. autosummary::
    :toctree: ../generated
+   :noindex:
    
    infercnvpy.tl.pca
    infercnvpy.pp.neighbors
@@ -149,10 +162,10 @@ cnv.pp.neighbors(adata)
 cnv.tl.leiden(adata)
 ```
 
-After running leiden clustering, we plot the chromosome heatmap 
+After running leiden clustering, we can plot the chromosome heatmap 
 by CNV clusters. We can observe that, as opposted to the clusters 
 at the bottom, the clusters at the top have essentially no differentially expressed genomic regions. 
-The differentially expressed regions are likely due to copy number variation and those 
+The differentially expressed regions are likely due to copy number variation and the respective 
 clusters likely represent tumor cells. 
 
 ```python
@@ -161,16 +174,12 @@ cnv.pl.chromosome_heatmap(adata, groupby="cnv_leiden", dendrogram=True)
 
 ### UMAP plot of CNV profiles
 
-
+<!-- #raw raw_mimetype="text/restructuredtext" -->
 We can visualize the same clusters as a UMAP plot. Additionally, 
-we developed a summary score that quantifies the amount of copy
+:func:`infercnvpy.tl.cnv_score` computes a summary score that quantifies the amount of copy
 number variation per cluster. It is simply defined as the
 mean of the absolute values of the CNV matrix for each cluster. 
-
-.. autosummary::
-   :toctree: ../generated
-   
-   infercnvpy.tl.cnv_score
+<!-- #endraw -->
 
 ```python
 cnv.tl.umap(adata)
@@ -202,10 +211,19 @@ Again, we can see that there are subclusters of epithelial cells that belong
 to a distinct CNV cluster, and that these clusters tend to have the 
 highest CNV score. 
 
+```python
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
+    2, 2, figsize=(12, 11), gridspec_kw=dict(wspace=0.5)
+)
+ax4.axis("off")
+sc.pl.umap(adata, color="cnv_leiden", ax=ax1, show=False)
+sc.pl.umap(adata, color="cnv_score", ax=ax2, show=False)
+sc.pl.umap(adata, color="cell_type", ax=ax3)
+```
 
 ### Classifying tumor cells
 
-Based on these observations, we can now assign cell as either "tumor" or "normal". 
+Based on these observations, we can now assign cell to either "tumor" or "normal". 
 To this end, we add a new column `cnv_status` to `adata.obs`. 
 
 ```python
@@ -216,12 +234,12 @@ adata.obs.loc[
 ```
 
 ```python
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw=dict(wspace=0.5))
 cnv.pl.umap(adata, color="cnv_status", ax=ax1, show=False)
 sc.pl.umap(adata, color="cnv_status", ax=ax2)
 ```
 
-Now, we can also plot the CNV heatmap for tumor and normal cells separately: 
+Now, we can plot the CNV heatmap for tumor and normal cells separately: 
 
 ```python
 cnv.pl.chromosome_heatmap(adata[adata.obs["cnv_status"] == "tumor", :])

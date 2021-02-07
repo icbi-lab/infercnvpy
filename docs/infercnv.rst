@@ -3,7 +3,7 @@
 The inferCNV method
 ===================
 
-This methodology in this package is essentially a python reimplementation of
+Essentially, this package is a Python reimplementation of
 `infercnv <https://github.com/broadinstitute/inferCNV/>`_. It mostly follows the computation steps
 outlined `here <https://github.com/broadinstitute/inferCNV/wiki/Running-InferCNV>`_,
 with minor modifications. The computation steps are outlined below.
@@ -20,24 +20,24 @@ The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
    multiple categories are available (i.e. multiple values are specified to
    `reference_cat`), the log fold change is "bounded":
 
-      * compute the mean gene expression for each category separately
+      * Compute the mean gene expression for each category separately.
       * Values that are within the minimum and the maximum of the mean of all
         references, receive a log fold change of 0, since they are not considered
         different from the background.
       * From values smaller than the minimum of the mean of all references, subtract that minimum.
       * From values larger than the maximum of the mean of all references, subtract that maximum.
 
-   This procedure avoids calling false positive CNV due to cell-type specific
-   expression of clustered gene regions (e.g. Immunoglobulin or HLA genes in different
+   This procedure avoids calling false positive CNV regions due to cell-type specific
+   expression of clustered gene regions (e.g. Immunoglobulin- or HLA genes in different
    immune cell types).
 2. Clip the fold changes at `-lfc_cap` and `+lfc_cap`.
 3. Smooth the gene expression by genomic position. Computes the average over a
    running window of length `window_size`. Compute only every nth window
    to save time & space, where n = `step`.
-4. Center the smoothed gene expression by cell, but subtracting the
-   calculating and subtracting the median for each cell.
+4. Center the smoothed gene expression by cell, by subtracting the median of each cell
+   from each cell.
 5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
-   where STDDEV is the standard deviation of the smoothed gene expression
+   where `STDDEV` is the standard deviation of the smoothed gene expression
 6. Smooth the final result using a median filter.
 
 .. _input-data:

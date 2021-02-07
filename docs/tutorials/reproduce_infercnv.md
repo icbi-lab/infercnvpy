@@ -9,15 +9,14 @@ jupyter:
       jupytext_version: 1.5.0.rc1
 ---
 
-# Reproduce the heatmap from inverCNV
+# Reproduce the heatmap from inferCNV
 
-This document demonstrates how the [example heatmap](https://github.com/broadinstitute/inferCNV/wiki#demo-example-figure) from the original
+This document demonstrates to reproduce how the [example heatmap](https://github.com/broadinstitute/inferCNV/wiki#demo-example-figure) from the original
 R inverCNV implementation. It is based on a small, 183-cell example dataset of malignant and non-malignant cells from Oligodendroglioma derived from [Tirosh et al. (2016)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5465819/). 
 
 ```python
 import infercnvpy as cnv
 import scanpy as sc
-import numpy as np
 ```
 
 ## Prepare and inspect dataset
@@ -48,7 +47,7 @@ sc.pl.umap(adata, color="cell_type")
 In this case we know which cells are non-malignant. For best results, it is recommended to use
 the non-malignant cells as a background. We can provide this information using `reference_key` and `reference_cat`. 
 
-In order to reproduce the results as exactely as possible, we use a `window_size` of 50, a `step` of 1. 
+In order to reproduce the results as exactely as possible, we use a `window_size` of 100 and a `step` of 1. 
 
 ```python
 %%time
