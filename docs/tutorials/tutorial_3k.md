@@ -168,7 +168,7 @@ number variation per cluster. It is simply defined as the
 mean of the absolute values of the CNV matrix for each cluster. 
 
 .. autosummary::
-   :toctree: ./generated
+   :toctree: ../generated
    
    infercnvpy.tl.cnv_score
 
