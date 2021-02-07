@@ -54,8 +54,8 @@ doc = [
     'ipykernel',
 ]
 
-# [tool.flit.metadata.urls]
-# Documentation = 'https://icbi-lab.github.io/scirpy/'
+[tool.flit.metadata.urls]
+Documentation = 'https://icbi-lab.github.io/infercnvpy/'
 
 [tool.pytest.ini_options]
 minversion = 6.0
