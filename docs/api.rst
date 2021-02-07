@@ -107,5 +107,7 @@ Datasets: `datasets`
 .. autosummary::
    :toctree: ./generated
 
+   maynard2020_3k
+
 
 

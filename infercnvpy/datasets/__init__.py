@@ -10,7 +10,7 @@ from scanpy.readwrite import read
 def oligodendroglioma() -> AnnData:
     """The original inferCNV example dataset.
 
-    Derived from :cite:t:`Tirosh2016`.
+    Derived from :cite:`Tirosh2016`.
     """
     with pkg_resources.path(data, "oligodendroglioma.h5ad") as p:
         return sc.read_h5ad(p)
@@ -18,7 +18,7 @@ def oligodendroglioma() -> AnnData:
 
 def maynard2020_3k() -> AnnData:
     """\
-    Return the dataset from :cite:t:`Maynard2020` as AnnData object, downsampled
+    Return the dataset from :cite:`Maynard2020` as AnnData object, downsampled
     to 3000 cells.
 
     In brief, this data set was processed as follows:
