@@ -108,6 +108,7 @@ Datasets: `datasets`
    :toctree: ./generated
 
    maynard2020_3k
+   oligodendroglioma
 
 
 
