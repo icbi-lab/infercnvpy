@@ -34,7 +34,7 @@ def maynard2020_3k() -> AnnData:
     The `scVI` latent representation is stored in `adata.obsm["X_scVI"]`.
     A UMAP for the 3000 cells is precomputed.
     """
-    url = "https://github.com/grst/infercnvpy/releases/download/d0.1.0/maynard2020_3k.h5ad"
+    url = "https://github.com/icbi-lab/infercnvpy/releases/download/d0.1.0/maynard2020_3k.h5ad"
     filename = settings.datasetdir / "maynard2020_3k.h5ad"
     adata = read(filename, backup_url=url)
     return adata

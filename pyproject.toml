@@ -11,7 +11,7 @@ build-backend = 'flit_core.buildapi'
 module = 'infercnvpy'
 author = 'Gregor Sturm'
 author-email = 'gregor.sturm@i-med.ac.at'
-home-page = 'https://github.com/grst/infercnvpy'
+home-page = 'https://github.com/icbi-lab/infercnvpy'
 description-file = "README.rst"
 classifiers = [
     'License :: OSI Approved :: BSD License',

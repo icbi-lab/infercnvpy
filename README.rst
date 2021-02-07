@@ -2,12 +2,12 @@ infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell 
 ====================================================================================================
 |tests| |docs| |pypi| |black|
 
-.. |tests| image:: https://github.com/grst/infercnvpy/workflows/tests/badge.svg
-    :target: https://github.com/grst/infercnvpy/actions?query=workflow%3Atests
+.. |tests| image:: https://github.com/icbi-lab/infercnvpy/workflows/tests/badge.svg
+    :target: https://github.com/icbi-lab/infercnvpy/actions?query=workflow%3Atests
     :alt: Build Status
 
-.. |docs| image::  https://github.com/grst/infercnvpy/workflows/docs/badge.svg
-    :target: https://grst.github.io/infercnvpy
+.. |docs| image::  https://github.com/icbi-lab/infercnvpy/workflows/docs/badge.svg
+    :target: https://icbi-lab.github.io/infercnvpy
     :alt: Documentation Status
 
 .. |pypi| image:: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
@@ -38,10 +38,10 @@ except in that they look similar, but not identical, to the results of InferCNV.
 
 We are happy about feedback and welcome contributions!**
 
-Please refer to the `documentation <https://grst.github.io/infercnvpy>`_. In particular, the
+Please refer to the `documentation <https://icbi-lab.github.io/infercnvpy>`_. In particular, the
 
-- `Tutorial <https://grst.github.io/infercnvpy/tutorials/tutorial_3k.html>`_, and the
-- `API documentation <https://grst.github.io/infercnvpy/api.html>`_.
+- `Tutorial <https://icbi-lab.github.io/infercnvpy/tutorials/tutorial_3k.html>`_, and the
+- `API documentation <https://icbi-lab.github.io/infercnvpy/api.html>`_.
 
 
 Installation
@@ -69,7 +69,7 @@ There are several alternative options to install infercnvpy:
 
 .. code-block::
 
-    pip install git+https://github.com/grst/infercnvpy.git@master
+    pip install git+https://github.com/icbi-lab/infercnvpy.git@master
 
 
 .. 4) Run it in a container using `Docker <https://www.docker.com/>`_ or `Podman <https://podman.io/>`_:
@@ -83,11 +83,11 @@ There are several alternative options to install infercnvpy:
 
 Release notes
 ^^^^^^^^^^^^^
-See the `release section <https://github.com/grst/infercnvpy/releases>`_.
+See the `release section <https://github.com/icbi-lab/infercnvpy/releases>`_.
 
 Contact
 ^^^^^^^
-Please use the `issue tracker <https://github.com/grst/infercnvpy/issues>`_.
+Please use the `issue tracker <https://github.com/icbi-lab/infercnvpy/issues>`_.
 
 Citation
 ^^^^^^^^
