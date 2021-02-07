@@ -146,9 +146,7 @@ Based on these clusters, we can annotate tumor and normal cells.
    :noindex:
 
 .. autosummary::
-   :toctree: ../generated
-   :noindex:
-   
+       
    infercnvpy.tl.pca
    infercnvpy.pp.neighbors
    infercnvpy.tl.leiden
