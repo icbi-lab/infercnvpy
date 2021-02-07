@@ -34,7 +34,9 @@ Getting started
 ^^^^^^^^^^^^^^^
 
 **WARNING: This package is still experimental. The results have not been validated,
-except in that they look similar, but not identical, to the results of InferCNV.**
+except in that they look similar, but not identical, to the results of InferCNV.
+
+We are happy about feedback and welcome contributions!**
 
 Please refer to the `documentation <https://grst.github.io/infercnvpy>`_. In particular, the
 
