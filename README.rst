@@ -29,14 +29,17 @@ but plays nicely with `scanpy <https://scanpy.readthedocs.io/en/stable/index.htm
 .. image:: img/infercnv_heatmap.png
     :align: center
     :alt: The main result of infercnv
+    
+    
+**WARNING**:
+    
+**This package is still experimental. The results have not been validated,
+except in that they look similar, but not identical, to the results of InferCNV.**
+
+**We are happy about feedback and welcome contributions!**
 
 Getting started
 ^^^^^^^^^^^^^^^
-
-**WARNING: This package is still experimental. The results have not been validated,
-except in that they look similar, but not identical, to the results of InferCNV.
-
-We are happy about feedback and welcome contributions!**
 
 Please refer to the `documentation <https://icbi-lab.github.io/infercnvpy>`_. In particular, the
 
