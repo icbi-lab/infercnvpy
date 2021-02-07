@@ -167,8 +167,6 @@ we developed a summary score that quantifies the amount of copy
 number variation per cluster. It is simply defined as the
 mean of the absolute values of the CNV matrix for each cluster. 
 
-.. module:: infercnvpy
-
 .. autosummary::
    :toctree: ./generated
    
