@@ -227,7 +227,7 @@ To this end, we add a new column `cnv_status` to `adata.obs`.
 ```python
 adata.obs["cnv_status"] = "normal"
 adata.obs.loc[
-    adata.obs["cnv_leiden"].isin(["13", "9", "15", "5", "11", "10", "16"]), "cnv_status"
+    adata.obs["cnv_leiden"].isin(["10", "13", "15", "5", "11", "16", "12"]), "cnv_status"
 ] = "tumor"
 ```
 
