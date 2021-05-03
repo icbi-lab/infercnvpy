@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/_infercnv.py#L14-L66
+
+infercnvpy.tl.cnv\_score
+========================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: cnv_score

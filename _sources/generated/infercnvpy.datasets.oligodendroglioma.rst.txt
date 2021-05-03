@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/datasets/__init__.py#L10-L16
+
+infercnvpy.datasets.oligodendroglioma
+=====================================
+
+.. currentmodule:: infercnvpy.datasets
+
+.. autofunction:: oligodendroglioma

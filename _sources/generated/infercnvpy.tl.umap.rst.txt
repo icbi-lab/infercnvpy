@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/__init__.py#L74-L104
+
+infercnvpy.tl.umap
+==================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: umap

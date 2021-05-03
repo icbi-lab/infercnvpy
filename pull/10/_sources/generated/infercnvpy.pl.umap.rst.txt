@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/pl/__init__.py#L6-L11
+
+infercnvpy.pl.umap
+==================
+
+.. currentmodule:: infercnvpy.pl
+
+.. autofunction:: umap
