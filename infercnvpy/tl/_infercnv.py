@@ -109,7 +109,7 @@ def infercnv(
     lfc_clip
         Clip log fold changes at this value
     window_size
-        size of the running window
+        size of the running window (number of genes in to include in the window)
     step
         only compute every nth running window where n = `step`. Set to 1 to compute
         all windows.
