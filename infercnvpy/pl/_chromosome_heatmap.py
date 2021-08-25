@@ -56,7 +56,12 @@ def chromosome_heatmap(
             "'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?"
         )
     tmp_adata = AnnData(X=adata.obsm["X_cnv"], obs=adata.obs)
-    chr_pos = list(adata.uns[use_rep]["chr_pos"].values())
+
+    # re-sort, as saving & loading anndata destroys the order
+    chr_pos_dict = dict(
+        sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1])
+    )
+    chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
     norm = TwoSlopeNorm(0, vmin=np.min(tmp_adata.X), vmax=np.max(tmp_adata.X))
@@ -72,7 +77,7 @@ def chromosome_heatmap(
         cmap=cmap,
         show_gene_labels=False,
         var_group_positions=var_group_positions,
-        var_group_labels=list(adata.uns["cnv"]["chr_pos"].keys()),
+        var_group_labels=list(chr_pos_dict.keys()),
         norm=norm,
         show=False,
         **kwargs
@@ -159,7 +164,11 @@ def chromosome_heatmap_summary(
         ),
         obs=tmp_obs,
     )
-    chr_pos = list(adata.uns[use_rep]["chr_pos"].values())
+
+    chr_pos_dict = dict(
+        sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1])
+    )
+    chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
     norm = TwoSlopeNorm(0, vmin=np.min(tmp_adata.X), vmax=np.max(tmp_adata.X))
@@ -175,7 +184,7 @@ def chromosome_heatmap_summary(
         cmap=cmap,
         show_gene_labels=False,
         var_group_positions=var_group_positions,
-        var_group_labels=list(adata.uns["cnv"]["chr_pos"].keys()),
+        var_group_labels=list(chr_pos_dict.keys()),
         norm=norm,
         show=False,
         **kwargs
