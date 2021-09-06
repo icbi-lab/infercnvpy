@@ -6,6 +6,7 @@ from typing import Dict, Union, Tuple, Optional
 import numpy as np
 from scanpy.plotting._utils import savefig_or_show
 import pandas as pd
+from scipy.sparse import issparse
 
 
 def chromosome_heatmap(
@@ -17,7 +18,7 @@ def chromosome_heatmap(
     figsize: Tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
-    **kwargs
+    **kwargs,
 ) -> Optional[Dict[str, matplotlib.axes.Axes]]:
     """
     Plot a heatmap of smoothed gene expression by chromosome.
@@ -80,7 +81,7 @@ def chromosome_heatmap(
         var_group_labels=list(chr_pos_dict.keys()),
         norm=norm,
         show=False,
-        **kwargs
+        **kwargs,
     )
 
     return_ax_dic["heatmap_ax"].vlines(
@@ -102,7 +103,7 @@ def chromosome_heatmap_summary(
     figsize: Tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
-    **kwargs
+    **kwargs,
 ) -> Optional[Dict[str, matplotlib.axes.Axes]]:
     """
     Plot a heatmap of average of the smoothed gene expression by chromosome per
@@ -142,25 +143,26 @@ def chromosome_heatmap_summary(
             "'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?"
         )
 
-    # TODO this dirty hack repeats reach row 10 times, since scanpy
+    # TODO this dirty hack repeats each row 10 times, since scanpy
     # heatmap cannot really handle it if there's just one observation
     # per row. Scanpy matrixplot is not an option, since it plots each
     # gene individually.
     groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
+
+    def _get_group_mean(group):
+        group_mean = np.mean(
+            adata.obsm[f"X_{use_rep}"][adata.obs[groupby] == group, :], axis=0
+        )
+        if len(group_mean.shape) == 1:
+            # derived from an array instead of sparse matrix -> 1 dim instead of 2
+            group_mean = group_mean[np.newaxis, :]
+        return group_mean
+
     tmp_adata = sc.AnnData(
         X=np.vstack(
-            [
-                np.repeat(
-                    np.mean(
-                        adata.obsm["X_cnv"][adata.obs[groupby] == group, :], axis=0
-                    ),
-                    10,
-                    axis=0,
-                )
-                for group in groups
-            ]
+            [np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]
         ),
         obs=tmp_obs,
     )
@@ -187,7 +189,7 @@ def chromosome_heatmap_summary(
         var_group_labels=list(chr_pos_dict.keys()),
         norm=norm,
         show=False,
-        **kwargs
+        **kwargs,
     )
 
     return_ax_dic["heatmap_ax"].vlines(
