@@ -131,7 +131,7 @@ def infercnv(
         Layer from adata to use. If `None`, use `X`.
     key_added
         Key under which the cnv matrix will be stored in adata if `inplace=True`.
-        Will store the matrix in `adata.obs["X_{key_added}"] and additional information
+        Will store the matrix in `adata.obsm["X_{key_added}"] and additional information
         in `adata.uns[key_added]`.
 
     Returns
