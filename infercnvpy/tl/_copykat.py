@@ -33,7 +33,7 @@ def copykat(
     adata
         annotated data matrix
     key_added
-        Key under which the copyKAT scores will be stored in `adata.obs`.
+        Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
 
