@@ -3,6 +3,7 @@ import infercnvpy as cnv
 from infercnvpy.tl._infercnv import _get_reference
 import pytest
 import numpy as np
+import scanpy as sc
 import numpy.testing as npt
 
 
@@ -51,6 +52,7 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
 
 
 def test_copykat(adata_oligodendroma):
+    sc.pp.subsample(adata_oligodendroma, n_obs=50)
     cnv.tl.copykat(adata_oligodendroma)
 
 
