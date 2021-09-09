@@ -84,17 +84,17 @@ There are several alternative options to install infercnvpy:
 .. where `tag` is one of `these tags <https://quay.io/repository/biocontainers/infercnvpy?tab=tags>`_.
 
 
-To (optionally) run the `copyKAT` algorithm, you need a working R installation
+To (optionally) run the :code:`copyKAT` algorithm, you need a working R installation
 and the `copykat <https://github.com/navinlabcode/copykat#step-1-installation>`_ package
 installed. Usually, if `R` is in your `PATH`, `rpy2 <https://rpy2.github.io/>`_ automatically
 detects your R installation. If you get an error message while importing `infercnvpy`,
 try setting the `R_HOME` environment variable before importing infercnvpy:
 
-   .. code-block:: python
+.. code-block:: python
 
-    import os
-    os.environ["R_HOME"] = "/usr/lib/R"
-    import infercnvpy
+   import os
+   os.environ["R_HOME"] = "/usr/lib/R"
+   import infercnvpy
 
 
 Release notes
