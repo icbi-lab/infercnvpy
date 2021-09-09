@@ -1,14 +1,18 @@
-import infercnvpy as cnv
-import numpy as np
+from typing import Optional
 import pandas as pd
-import scipy
 from scipy.sparse import issparse
 from anndata import AnnData
 from scanpy import logging
+import os
+from multiprocessing import cpu_count
 
 
 def copykat(
-    adata: AnnData, key_added: str = "copyKAT", inplace: bool = True, layer: str = None
+    adata: AnnData,
+    key_added: str = "copyKAT",
+    inplace: bool = True,
+    layer: str = None,
+    n_jobs: Optional[int] = None,
 ) -> pd.DataFrame:
     """Inference of genomic copy number and subclonal structure.
 
@@ -40,12 +44,22 @@ def copykat(
         Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
+    n_jobs
+        Number of cores to use for copyKAT analysis. Per default, uses all cores
+        available on the system. Multithreading does not work on Windows and this
+        value will be ignored.
 
     Returns
     -------
     Depending on the value of `inplace`, either returns `None` or a vector
     with scores.
     """
+
+    if n_jobs is None:
+        n_jobs = cpu_count()
+    if os.name != "posix":
+        n_jobs = 1
+
     try:
         from rpy2.robjects.packages import importr
         from rpy2.robjects import pandas2ri, numpy2ri
@@ -75,12 +89,12 @@ def copykat(
 
     logging.info("Running copyKAT")
     ro.r(
-        """
+        f"""
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
         copyKAT_run <- copykat(rawmat = expr_r, id.type = "S", ngene.chr = 5, win.size = 25,
                                 KS.cut = 0.1, sam.name = "test", distance = "euclidean", norm.cell.names = "",
-                                n.cores = 12, output.seg = FALSE)
+                                n.cores = {n_jobs}, output.seg = FALSE)
         copyKAT_result <- copyKAT_run$CNAmat
         colnames(copyKAT_result) <- c('chrom', 'chrompos', 'abspos', cell_IDs)
         """
