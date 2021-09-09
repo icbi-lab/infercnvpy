@@ -50,6 +50,10 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     )
 
 
+def test_copykat(adata_oligodendroma):
+    cnv.tl.copykat(adata_oligodendroma)
+
+
 def test_workflow(adata_oligodendroma):
     cnv.tl.infercnv(adata_oligodendroma)
     cnv.tl.pca(adata_oligodendroma)
