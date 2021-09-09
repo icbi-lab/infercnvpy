@@ -55,6 +55,7 @@ InferCNV
    :toctree: ./generated
 
    infercnv
+   copykat
    cnv_score
 
 Embeddings

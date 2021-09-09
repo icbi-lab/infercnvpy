@@ -36,9 +36,13 @@ requires = [
 ]
 
 [tool.flit.metadata.requires-extra]
+copykat = [
+    'rpy2'
+]
 test = [
     'pytest',
-    'black'
+    'black',
+    'pre-commit',
 ]
 doc = [
     'sphinx>=3.0.1,<3.1',
