@@ -33,7 +33,7 @@ def copykat(
     adata
         annotated data matrix
     key_added
-        Key under which the copyKAT scores will be stored in `adata.obs`.
+        Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
 
@@ -87,7 +87,7 @@ def copykat(
     ):
         copyKAT_result = ro.conversion.rpy2py(ro.globalenv["copyKAT_result"])
 
-    adata.uns["copyKAT"] = {
+    adata.uns[key_added] = {
         "chr_pos": {
             f"chr{chrom}": int(pos)
             for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
