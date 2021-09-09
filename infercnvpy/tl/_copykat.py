@@ -14,7 +14,7 @@ def copyKAT(
 )-> pd.DataFrame:
     """Inference of genomic copy number and subclonal structure.
 
-    Runs CopyKAT (Copynumber Karyotyping of Tumors) based on integrative 
+    Runs CopyKAT (Copynumber Karyotyping of Tumors) based on sing integrative 
     Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution 
     in single cells to separate tumor cells from normal cells, and tumor 
     subclones using high-throughput sc-RNAseq data.
@@ -26,7 +26,7 @@ def copyKAT(
 
     You can find more info on GitHub: https://github.com/navinlabcode/copykat
 
-    DOI: https://doi.org/10.1038/s41587-020-00795-2
+    :cite:`Gao2021`
 
     Parameters
     ----------
