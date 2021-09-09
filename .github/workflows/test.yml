@@ -16,6 +16,10 @@ jobs:
         R: ['release' ]
         os: [ubuntu-latest, macos-latest, windows-latest]
 
+    env:
+      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - uses: actions/checkout@v2
         with:

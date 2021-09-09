@@ -12,19 +12,25 @@ def copykat(
 ) -> pd.DataFrame:
     """Inference of genomic copy number and subclonal structure.
 
-    Runs CopyKAT (Copynumber Karyotyping of Tumors) based on sing integrative
+    Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
     Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
     in single cells to separate tumor cells from normal cells, and tumor
     subclones using high-throughput sc-RNAseq data.
 
-    Note: The matrix values are often the count of unique molecular identifier (UMI)
-    from nowadays high througput single cell RNAseq data. The early generation of
-    scRNAseq data may be summarized as TPM values or total read counts,
-    which should also work.
+    Note on input data from the original authors:
+
+        The matrix values are often the count of unique molecular identifier (UMI)
+        from nowadays high througput single cell RNAseq data. The early generation of
+        scRNAseq data may be summarized as TPM values or total read counts,
+        which should also work.
+
+    This means that unlike for :func:`infercnvpy.tl.infercnv` the input data
+    should not be log-transformed.
+
+    CopyKAT also does NOT require running :func:`infercnvpy.io.genomic_position_from_gtf`,
+    it infers the genomic position from the gene symbols in `adata.var_names`.
 
     You can find more info on GitHub: https://github.com/navinlabcode/copykat
-
-    :cite:`Gao2021`
 
     Parameters
     ----------
@@ -72,8 +78,8 @@ def copykat(
         """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
-        copyKAT_run <- copykat(rawmat = expr_r, id.type = "S", ngene.chr = 5, win.size = 25, 
-                                KS.cut = 0.1, sam.name = "test", distance = "euclidean", norm.cell.names = "", 
+        copyKAT_run <- copykat(rawmat = expr_r, id.type = "S", ngene.chr = 5, win.size = 25,
+                                KS.cut = 0.1, sam.name = "test", distance = "euclidean", norm.cell.names = "",
                                 n.cores = 12, output.seg = FALSE)
         copyKAT_result <- copyKAT_run$CNAmat
         colnames(copyKAT_result) <- c('chrom', 'chrompos', 'abspos', cell_IDs)
