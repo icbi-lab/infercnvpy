@@ -86,9 +86,9 @@ There are several alternative options to install infercnvpy:
 
 To (optionally) run the :code:`copyKAT` algorithm, you need a working R installation
 and the `copykat <https://github.com/navinlabcode/copykat#step-1-installation>`_ package
-installed. Usually, if `R` is in your `PATH`, `rpy2 <https://rpy2.github.io/>`_ automatically
-detects your R installation. If you get an error message while importing `infercnvpy`,
-try setting the `R_HOME` environment variable before importing infercnvpy:
+installed. Usually, if :code:`R` is in your :code:`PATH`, `rpy2 <https://rpy2.github.io/>`_ automatically
+detects your R installation. If you get an error message while importing :code:`infercnvpy`,
+try setting the :code:`R_HOME` environment variable before importing infercnvpy:
 
 .. code-block:: python
 
