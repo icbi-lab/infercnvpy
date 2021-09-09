@@ -6,22 +6,20 @@ from scipy.sparse import issparse
 from anndata import AnnData
 from scanpy import logging
 
+
 def copykat(
-    adata: AnnData,
-    key_added: str = "copyKAT",
-    inplace: bool = True,
-    layer: str = None
-)-> pd.DataFrame:
+    adata: AnnData, key_added: str = "copyKAT", inplace: bool = True, layer: str = None
+) -> pd.DataFrame:
     """Inference of genomic copy number and subclonal structure.
 
-    Runs CopyKAT (Copynumber Karyotyping of Tumors) based on sing integrative 
-    Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution 
-    in single cells to separate tumor cells from normal cells, and tumor 
+    Runs CopyKAT (Copynumber Karyotyping of Tumors) based on sing integrative
+    Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
+    in single cells to separate tumor cells from normal cells, and tumor
     subclones using high-throughput sc-RNAseq data.
-    
-    Note: The matrix values are often the count of unique molecular identifier (UMI) 
-    from nowadays high througput single cell RNAseq data. The early generation of 
-    scRNAseq data may be summarized as TPM values or total read counts, 
+
+    Note: The matrix values are often the count of unique molecular identifier (UMI)
+    from nowadays high througput single cell RNAseq data. The early generation of
+    scRNAseq data may be summarized as TPM values or total read counts,
     which should also work.
 
     You can find more info on GitHub: https://github.com/navinlabcode/copykat
@@ -57,7 +55,7 @@ def copykat(
             "copyKAT requires a valid R installation with the following packages: "
             "copykat"
         )
-    
+
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
         expr = adata.X if layer is None else tmp_adata.layers[layer]
@@ -68,7 +66,7 @@ def copykat(
         ro.globalenv["expr_r"] = ro.conversion.py2rpy(expr)
     ro.globalenv["gene_names"] = ro.conversion.py2rpy(list(adata.var.index))
     ro.globalenv["cell_IDs"] = ro.conversion.py2rpy(list(adata.obs.index))
-    
+
     logging.info("Running copyKAT")
     ro.r(
         """
@@ -90,7 +88,9 @@ def copykat(
     chrom_pos = {
         "chr_pos": {
             f"chr{chrom}": int(pos)
-            for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
+            for pos, chrom in copyKAT_result.loc[:, ["chrom"]]
+            .drop_duplicates()
+            .itertuples()
         }
     }
 
