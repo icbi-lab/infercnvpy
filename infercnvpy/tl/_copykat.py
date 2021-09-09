@@ -6,7 +6,7 @@ from scipy.sparse import issparse
 from anndata import AnnData
 from scanpy import logging, AnnData
 
-def copyKAT(
+def copykat(
     adata: AnnData,
     key_added: str = "copyKAT",
     inplace: bool = True,

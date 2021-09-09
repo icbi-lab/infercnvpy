@@ -1,6 +1,6 @@
 from typing import Union
 from ._infercnv import infercnv, cnv_score
-from ._copykat import copyKAT
+from ._copykat import copykat
 import numpy as np
 from anndata import AnnData
 import scanpy as sc
