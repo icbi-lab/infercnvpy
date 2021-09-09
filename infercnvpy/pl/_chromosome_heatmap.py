@@ -56,7 +56,7 @@ def chromosome_heatmap(
         raise ValueError(
             "'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?"
         )
-    tmp_adata = AnnData(X=adata.obsm["X_cnv"], obs=adata.obs)
+    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs)
 
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(
