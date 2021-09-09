@@ -4,7 +4,7 @@ import pandas as pd
 import scipy
 from scipy.sparse import issparse
 from anndata import AnnData
-from scanpy import logging, AnnData
+from scanpy import logging
 
 def copykat(
     adata: AnnData,
@@ -87,7 +87,7 @@ def copykat(
     ):
         copyKAT_result = ro.conversion.rpy2py(ro.globalenv["copyKAT_result"])
 
-    adata.uns[key_added] = {
+    chrom_pos = {
         "chr_pos": {
             f"chr{chrom}": int(pos)
             for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
@@ -101,6 +101,7 @@ def copykat(
     new_cpkat_trans = new_cpkat.T
 
     if inplace:
-        adata.obs["X_%s" % key_added] = new_cpkat_trans
+        adata.uns[key_added] = chrom_pos
+        adata.obsm["X_%s" % key_added] = new_cpkat_trans
     else:
         return new_cpkat_trans
