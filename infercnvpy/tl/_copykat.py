@@ -8,6 +8,12 @@ from scanpy import logging
 
 def copykat(
     adata: AnnData,
+    cores: int = 1,
+    gene_ids: str = "S",
+    segmentation_cut: float = 0.1,
+    distance: str = "euclidean",
+    s_name: str = "copykat_result",
+    min_genes_chr: int = 5,
     key_added: str = "copyKAT",
     inplace: bool = True,
     layer: str = None
@@ -68,15 +74,21 @@ def copykat(
         ro.globalenv["expr_r"] = ro.conversion.py2rpy(expr)
     ro.globalenv["gene_names"] = ro.conversion.py2rpy(list(adata.var.index))
     ro.globalenv["cell_IDs"] = ro.conversion.py2rpy(list(adata.obs.index))
-    
+    ro.globalenv["cores"] = ro.conversion.py2rpy(cores)
+    ro.globalenv["gene_ids"] = ro.conversion.py2rpy(gene_ids)
+    ro.globalenv["segmentation_cut"] = ro.conversion.py2rpy(segmentation_cut)
+    ro.globalenv["distance"] = ro.conversion.py2rpy(distance)
+    ro.globalenv["s_name"] = ro.conversion.py2rpy(s_name)
+    ro.globalenv["min_gene_chr"] = ro.conversion.py2rpy(min_genes_chr)
+
     logging.info("Running copyKAT")
     ro.r(
         """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
-        copyKAT_run <- copykat(rawmat = expr_r, id.type = "S", ngene.chr = 5, win.size = 25, 
-                                KS.cut = 0.1, sam.name = "test", distance = "euclidean", norm.cell.names = "", 
-                                n.cores = 12, output.seg = FALSE)
+        copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25, 
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = "", 
+                                n.cores = cores, output.seg = FALSE)
         copyKAT_result <- copyKAT_run$CNAmat
         colnames(copyKAT_result) <- c('chrom', 'chrompos', 'abspos', cell_IDs)
         """
