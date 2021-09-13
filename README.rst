@@ -29,10 +29,10 @@ but plays nicely with `scanpy <https://scanpy.readthedocs.io/en/stable/index.htm
 .. image:: img/infercnv_heatmap.png
     :align: center
     :alt: The main result of infercnv
-    
-    
+
+
 **WARNING**:
-    
+
 **This package is still experimental. The results have not been validated,
 except in that they look similar, but not identical, to the results of InferCNV.**
 
@@ -82,6 +82,19 @@ There are several alternative options to install infercnvpy:
 ..     docker pull quay.io/biocontainers/infercnvpy:<tag>
 
 .. where `tag` is one of `these tags <https://quay.io/repository/biocontainers/infercnvpy?tab=tags>`_.
+
+
+To (optionally) run the :code:`copyKAT` algorithm, you need a working R installation
+and the `copykat <https://github.com/navinlabcode/copykat#step-1-installation>`_ package
+installed. Usually, if :code:`R` is in your :code:`PATH`, `rpy2 <https://rpy2.github.io/>`_ automatically
+detects your R installation. If you get an error message while importing :code:`infercnvpy`,
+try setting the :code:`R_HOME` environment variable before importing infercnvpy:
+
+.. code-block:: python
+
+   import os
+   os.environ["R_HOME"] = "/usr/lib/R"
+   import infercnvpy
 
 
 Release notes
