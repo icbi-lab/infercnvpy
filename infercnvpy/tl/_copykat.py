@@ -14,7 +14,7 @@ def copykat(
     distance: str = "euclidean",
     s_name: str = "copykat_result",
     min_genes_chr: int = 5,
-    key_added: str = "copyKAT",
+    key_added: str = "cnv",
     inplace: bool = True,
     layer: str = None,
     n_jobs: Optional[int] = None,
