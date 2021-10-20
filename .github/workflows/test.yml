@@ -58,7 +58,7 @@ jobs:
 
       - name: Install R dependencies
         run: |
-          Rscript -e "install.packages('remotes')" -e "remotes::install_github('navinlabcode/copykat')"
+          Rscript -e "install.packages(c('remotes', 'stringr'))" -e "remotes::install_github('navinlabcode/copykat')"
 
       - name: Check black formatting
         run: |
