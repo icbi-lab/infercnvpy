@@ -85,11 +85,11 @@ def copykat(
 
     try:
         copyKAT = importr("copykat")
-        tidyverse = importr("tidyverse")
+        tidyverse = importr("stringr")
     except ImportError:
         raise ImportError(
             "copyKAT requires a valid R installation with the following packages: "
-            "copykat, tidyverse"
+            "copykat, stringr"
         )
 
     logging.info("Preparing R objects")
