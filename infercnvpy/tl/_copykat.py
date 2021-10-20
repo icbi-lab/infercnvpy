@@ -85,10 +85,11 @@ def copykat(
 
     try:
         copyKAT = importr("copykat")
+        tidyverse = importr("tidyverse")
     except ImportError:
         raise ImportError(
             "copyKAT requires a valid R installation with the following packages: "
-            "copykat"
+            "copykat, tidyverse"
         )
 
     logging.info("Preparing R objects")
@@ -117,7 +118,7 @@ def copykat(
                                 KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = "", 
                                 n.cores = n_jobs, output.seg = FALSE)
         copyKAT_result <- copyKAT_run$CNAmat
-        colnames(copyKAT_result) <- c('chrom', 'chrompos', 'abspos', cell_IDs)
+        colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\.", "-")
         """
     )
 
