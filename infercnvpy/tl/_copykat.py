@@ -18,7 +18,8 @@ def copykat(
     inplace: bool = True,
     layer: str = None,
     n_jobs: Optional[int] = None,
-) -> pd.DataFrame:
+    norm_cell_names: str = '',
+) -> (pd.DataFrame,pd.Series):
     """Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
@@ -59,6 +60,8 @@ def copykat(
         sample (output file) name.
     min_genes_chr
         minimal number of genes per chromosome for cell filtering.
+    norm_cell_names:
+        cell barcodes (`adata.obs.index`) indicate normal cells
     n_jobs
         Number of cores to use for copyKAT analysis. Per default, uses all cores
         available on the system. Multithreading does not work on Windows and this
@@ -66,8 +69,7 @@ def copykat(
 
     Returns
     -------
-    Depending on the value of `inplace`, either returns `None` or a vector
-    with scores.
+    Depending on the value of `inplace`, either returns `None` or a tuple (`CNV Matrix`,`CopyKat prediction`)
     """
 
     if n_jobs is None:
@@ -108,17 +110,26 @@ def copykat(
     ro.globalenv["distance"] = ro.conversion.py2rpy(distance)
     ro.globalenv["s_name"] = ro.conversion.py2rpy(s_name)
     ro.globalenv["min_gene_chr"] = ro.conversion.py2rpy(min_genes_chr)
+    ro.globalenv["norm_cell_names"] = ro.conversion.py2rpy(norm_cell_names)
 
     logging.info("Running copyKAT")
     ro.r(
-        f"""
+        """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
         copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25, 
-                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = "", 
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, 
                                 n.cores = n_jobs, output.seg = FALSE)
-        copyKAT_result <- copyKAT_run$CNAmat
+        copyKAT_result <- data.frame(copyKAT_run$CNAmat)
         colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\.", "-")
+        copyKAT_pred <- data.frame(copyKAT_run$prediction)
+        if(dim(copyKAT_result)[2] != length(cell_IDs)){
+            missing_cells <- setdiff(cell_IDs,colnames(copyKAT_result))
+            na_mtrx <- data.frame(matrix(ncol=length(missing_cells),nrow=nrow(copyKAT_result)))
+            new_colnames <- c(colnames(copyKAT_result),missing_cells)
+            copyKAT_result <- cbind(copyKAT_result,na_mtrx)
+            colnames(copyKAT_result) <- new_colnames
+        }
         """
     )
 
@@ -126,6 +137,7 @@ def copykat(
         ro.default_converter + numpy2ri.converter + pandas2ri.converter
     ):
         copyKAT_result = ro.conversion.rpy2py(ro.globalenv["copyKAT_result"])
+        copyKAT_pred = ro.conversion.rpy2py(ro.globalenv["copyKAT_pred"])
 
     chrom_pos = {
         "chr_pos": {
@@ -137,13 +149,16 @@ def copykat(
     }
 
     # Drop cols
-    new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1).values
-
+    new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
+    # align cells
+    new_cpkat = new_cpkat.loc[:,adata.obs.index]
+    copyKAT_pred = adata.obs.merge(copyKAT_pred,left_index=True,right_index=True,how='left')['copykat.pred']
     # transpose
-    new_cpkat_trans = new_cpkat.T
+    new_cpkat_trans = new_cpkat.T.values
 
     if inplace:
         adata.uns[key_added] = chrom_pos
         adata.obsm["X_%s" % key_added] = new_cpkat_trans
+        adata.obs[key_added] = copyKAT_pred
     else:
-        return new_cpkat_trans
+        return new_cpkat_trans, copyKAT_pred
