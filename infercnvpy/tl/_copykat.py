@@ -18,8 +18,8 @@ def copykat(
     inplace: bool = True,
     layer: str = None,
     n_jobs: Optional[int] = None,
-    norm_cell_names: str = '',
-) -> (pd.DataFrame,pd.Series):
+    norm_cell_names: str = "",
+) -> (pd.DataFrame, pd.Series):
     """Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
@@ -151,8 +151,10 @@ def copykat(
     # Drop cols
     new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
     # align cells
-    new_cpkat = new_cpkat.loc[:,adata.obs.index]
-    copyKAT_pred = adata.obs.merge(copyKAT_pred,left_index=True,right_index=True,how='left')['copykat.pred']
+    new_cpkat = new_cpkat.loc[:, adata.obs.index]
+    copyKAT_pred = adata.obs.merge(
+        copyKAT_pred, left_index=True, right_index=True, how="left"
+    )["copykat.pred"]
     # transpose
     new_cpkat_trans = new_cpkat.T.values
 
