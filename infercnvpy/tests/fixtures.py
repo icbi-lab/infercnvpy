@@ -48,3 +48,34 @@ def adata_mock(request):
     adata = sc.AnnData(X=X, obs=obs)
 
     return adata
+
+
+@pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])
+def adata_ithgex(request):
+    return sc.AnnData(
+        X=request.param(
+            np.array(
+                [
+                    [1, 1, 1, 1, 1, 1, 2, 3],
+                    [2, 2, 2, 2, 2, 2, 8, 0],
+                    [3, 3, 3, 3, 3, 10, 3, 7],
+                ]
+            ).T
+        ),
+        obsm={
+            "X_cnv": request.param(
+                np.array(
+                    [
+                        [1, 1, 1, 2, 2, 1, 1, 1],
+                        [2, 2, 2, 1, 1, 2, 2, 2],
+                        [4, 4, 4, 2, 2, 3, 3, 3],
+                        [2, 2, 2, 4, 4, 4, 4, 4],
+                    ]
+                ).T
+            )
+        },
+        obs=pd.DataFrame(index=["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"]).assign(
+            group=list("AAAAABBB"),
+        ),
+        var=pd.DataFrame(index=["x", "y", "z"]),
+    )

@@ -11,61 +11,6 @@ import itertools
 from multiprocessing import cpu_count
 
 
-def cnv_score(
-    adata: AnnData,
-    *,
-    obs_key: str = "cnv_leiden",
-    use_rep: str = "cnv",
-    key_added: str = "cnv_score",
-    inplace: bool = True,
-):
-    """Assign each cnv cluster a CNV score.
-
-    Clusters with a high score are likely affected by copy number abberations.
-    Based on this score, cells can be divided into tumor/normal cells.
-
-    Ths score is currently simply defined as the mean of result of
-    :func:`infercnvpy.tl.infercnv` for each cluster.
-
-    Parameters
-    ----------
-    adata
-        annotated data matrix
-    obs_key
-        Key under which the clustering is stored in adata.obs. Usually
-        the result of :func:`infercnvpy.tl.leiden`, but could also be
-        other clusters, e.g. obtained from transcriptomics data.
-    use_rep
-        Key under which the result of :func:`infercnvpy.tl.infercnv` is stored
-        in adata.
-    key_added
-        Key under which the score will be stored in `adata.obs`.
-    inplace
-        If True, store the result in adata, otherwise return it.
-
-    Returns
-    -------
-    Depending on the value of `inplace`, either returns `None` or a vector
-    with scores.
-    """
-    if obs_key not in adata.obs.columns and obs_key == "cnv_leiden":
-        raise ValueError(
-            "`cnv_leiden` not found in `adata.obs`. Did you run `tl.leiden`?"
-        )
-    cluster_score = {
-        cluster: np.mean(
-            np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[obs_key] == cluster, :])
-        )
-        for cluster in adata.obs[obs_key].unique()
-    }
-    score_array = np.array([cluster_score[c] for c in adata.obs[obs_key]])
-
-    if inplace:
-        adata.obs[key_added] = score_array
-    else:
-        return score_array
-
-
 def infercnv(
     adata: AnnData,
     *,
