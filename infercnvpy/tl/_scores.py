@@ -22,8 +22,8 @@ def cnv_score(
     Clusters with a high score are likely affected by copy number abberations.
     Based on this score, cells can be divided into tumor/normal cells.
 
-    Ths score is currently simply defined as the mean of result of
-    :func:`infercnvpy.tl.infercnv` for each cluster.
+    Ths score is currently simply defined as the mean of the absolute values of the
+    CNV scores in each cluster.
 
     Parameters
     ----------
