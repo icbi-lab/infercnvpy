@@ -56,7 +56,16 @@ InferCNV
 
    infercnv
    copykat
+
+CNV scores
+^^^^^^^^^^
+
+.. autosummary::
+   :toctree: ./generated
+
    cnv_score
+   ithcna
+   ithgex
 
 Embeddings
 ^^^^^^^^^^
