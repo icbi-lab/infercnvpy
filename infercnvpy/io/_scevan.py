@@ -56,7 +56,7 @@ def read_scevan(
         Load the separate subclone segmentation, if available.
     subset
         If `True` (the default), subset anndata to the cells that have not been filtered
-        out by the SCEVAN analysis. Otherwise the CNV matrix may contain `nan`s and
+        out by the SCEVAN analysis. Otherwise the CNV matrix may contain `nan`-values and
         downstream analysis such as PCA will not work.
     key_added
         Used as prefix for the columns added to `adata.obs` and will add the CNV matrix
