@@ -50,7 +50,7 @@ doc = [
     'scanpydoc[typehints]>=0.7.5',
     'docutils<0.18',
     # for tutorial
-    'nbsphinx>=0.6.0',
+    'nbsphinx>=0.6.0,!=0.8.8', # https://github.com/spatialaudio/nbsphinx/issues/620, should be patched in >=0.8.9
     'jupytext',
     'sphinxcontrib-bibtex>=1.0.0',
     'pycairo',
