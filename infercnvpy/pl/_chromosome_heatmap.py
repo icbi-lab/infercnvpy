@@ -65,7 +65,8 @@ def chromosome_heatmap(
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
-    norm = TwoSlopeNorm(0, vmin=np.min(tmp_adata.X), vmax=np.max(tmp_adata.X))
+    tmp_data = tmp_adata.X.data if issparse(tmp_adata.X) else tmp_adata.X
+    norm = TwoSlopeNorm(0, vmin=np.nanmin(tmp_data), vmax=np.nanmax(tmp_data))
 
     # add chromosome annotations
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))

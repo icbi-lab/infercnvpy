@@ -22,6 +22,7 @@ Input/Output: `io`
    :toctree: ./generated
 
    genomic_position_from_gtf
+   read_scevan
 
 
 Preprocessing: `pp`
