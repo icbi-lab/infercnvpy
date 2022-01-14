@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 from datetime import datetime
 import jupytext
-from sphinx.deprecation import RemovedInSphinx40Warning
 import warnings
 
 HERE = Path(__file__).parent
@@ -12,7 +11,6 @@ sys.path.insert(0, str(HERE / "extensions"))
 from infercnvpy import __author__, __version__
 
 # ignore Future warnings (which are caused by dependencies)
-warnings.filterwarnings("ignore", category=RemovedInSphinx40Warning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # General information
@@ -38,9 +36,9 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "sphinx_autodoc_typehints",
     "sphinxcontrib.bibtex",
     "nbsphinx",
+    "sphinx_autodoc_typehints",
     "scanpydoc",
     *[p.stem for p in (HERE / "extensions").glob("*.py")],
 ]
@@ -63,20 +61,21 @@ todo_include_todos = False
 intersphinx_mapping = dict(
     scanpy=("https://scanpy.readthedocs.io/en/stable/", None),
     anndata=("https://anndata.readthedocs.io/en/stable/", None),
-    h5py=("http://docs.h5py.org/en/stable/", None),
+    h5py=("https://docs.h5py.org/en/stable/", None),
     cycler=("https://matplotlib.org/cycler/", None),
     ipython=("https://ipython.readthedocs.io/en/stable/", None),
     leidenalg=("https://leidenalg.readthedocs.io/en/latest/", None),
     matplotlib=("https://matplotlib.org/", None),
-    numpy=("https://docs.scipy.org/doc/numpy/", None),
+    numpy=("https://numpy.org/doc/stable/", None),
     pandas=("https://pandas.pydata.org/pandas-docs/stable/", None),
     python=("https://docs.python.org/3", None),
     scipy=("https://docs.scipy.org/doc/scipy/reference/", None),
     seaborn=("https://seaborn.pydata.org/", None),
     sklearn=("https://scikit-learn.org/stable/", None),
-    networkx=("https://networkx.github.io/documentation/networkx-1.10/", None),
+    networkx=("https://networkx.org/documentation/networkx-1.10/", None),
 )
 
+typehints_defaults = None
 
 # -- nbsphinx Tutorials ----------------------------------------------------------------
 
@@ -112,14 +111,6 @@ html_theme_options = dict(navigation_depth=4, logo_only=True)
 def setup(app):
     pass
 
-
-# -- Supress 'reference target not found' errors ---------------------------------------
-
-# See https://github.com/agronholm/sphinx-autodoc-typehints/issues/38 for more details.
-qualname_overrides = {
-    "scipy.sparse.coo.coo_matrix": "scipy.sparse.coo_matrix",
-    "pandas.core.arrays.categorical.Categorical": "pandas.Categorical",
-}
 
 nitpick_ignore = [
     ("py:class", "igraph.Graph"),
