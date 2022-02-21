@@ -156,7 +156,7 @@ def ithcna(
     groupby: str,
     *,
     use_rep: str = "X_cnv",
-    key_added: str = "ithgex",
+    key_added: str = "ithcna",
     inplace: bool = True,
 ) -> Optional[Mapping[str, float]]:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
