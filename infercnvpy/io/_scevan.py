@@ -115,7 +115,7 @@ def read_scevan(
     if subset:
         adata._inplace_subset_obs(scevan_res.index.values)
 
-    adata.obsm[f"X_{key_added}"] = scevan_res.reindex(adata.obs_names)
+    adata.obsm[f"X_{key_added}"] = scevan_res.reindex(adata.obs_names).values
     if scevan_subclone_res is not None:
         adata.obsm[f"X_{key_added}"].loc[
             scevan_subclone_res.index, :
