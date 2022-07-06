@@ -1,0 +1,6 @@
+{
+  "python.testing.pytestArgs": ["infercnvpy"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "editor.formatOnSave": true
+}

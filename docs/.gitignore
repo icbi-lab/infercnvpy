@@ -1,7 +1,0 @@
-_build
-infercnvpy.*.rst
-tutorials/*-Copy*
-tutorials/data
-tutorials/*.ipynb
-generated
-__latexindent*
