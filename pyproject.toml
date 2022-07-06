@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Gregor Sturm", email = "gregor.sturm@i-med.ac.at"},
+    {name = "Gregor Sturm"},
 ]
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Source = "https://github.com/icbi-lab/infercnvpy"
