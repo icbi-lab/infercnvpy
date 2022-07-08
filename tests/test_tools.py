@@ -1,10 +1,10 @@
-from .fixtures import adata_oligodendroma, adata_mock
+import numpy as np
+import numpy.testing as npt
+import pytest
+import scanpy as sc
+
 import infercnvpy as cnv
 from infercnvpy.tl._infercnv import _get_reference
-import pytest
-import numpy as np
-import scanpy as sc
-import numpy.testing as npt
 
 
 def test_get_reference_key_and_cat(adata_mock):
@@ -46,9 +46,7 @@ def test_get_reference_given_reference(adata_mock):
     ],
 )
 def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
-    cnv.tl.infercnv(
-        adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat
-    )
+    cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
 
 def test_copykat(adata_oligodendroma):
