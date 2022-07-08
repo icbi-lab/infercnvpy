@@ -9,6 +9,7 @@ import sys
 from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
+import jupytext
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "extensions"))
@@ -66,11 +67,30 @@ napoleon_use_rtype = True  # having a separate entry generally helps readability
 napoleon_use_param = True
 
 intersphinx_mapping = {
+    "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
     "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
+    "h5py": ("https://docs.h5py.org/en/stable/", None),
+    "cycler": ("https://matplotlib.org/cycler/", None),
+    "ipython": ("https://ipython.readthedocs.io/en/stable/", None),
+    "leidenalg": ("https://leidenalg.readthedocs.io/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "python": ("https://docs.python.org/3", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "seaborn": ("https://seaborn.pydata.org/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "networkx": ("https://networkx.org/documentation/networkx-1.10/", None),
 }
 
-nbsphinx_execute = "never"
+nbsphinx_custom_formats = {
+    ".md": lambda s: jupytext.reads(s, ".md"),
+}
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg'}",
+    "--InlineBackend.rc={'figure.dpi': 96}",
+]
+nbsphinx_timeout = 300
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -91,7 +111,9 @@ pygments_style = "sphinx"
 nitpick_ignore = [
     # If building the documentation fails because of a missing link that is outside your control,
     # you can add an exception to this list.
-    #     ("py:class", "igraph.Graph"),
+    ("py:class", "igraph.Graph"),
+    ("py:class", "igraph.Layout"),
+    ("py:class", "igraph.layout.Layout"),
 ]
 
 
