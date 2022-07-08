@@ -1,3 +1,4 @@
+from .fixtures import adata_infercnv
 import infercnvpy as cnv
 
 

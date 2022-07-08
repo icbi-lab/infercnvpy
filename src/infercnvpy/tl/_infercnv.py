@@ -1,16 +1,14 @@
-import itertools
-import re
-from multiprocessing import cpu_count
-from typing import Sequence, Tuple, Union
-
+from typing import Tuple, Union, Sequence
 import numpy as np
+from scanpy import logging
+from anndata import AnnData
 import scipy.ndimage
 import scipy.sparse
-from anndata import AnnData
-from scanpy import logging
-from tqdm.contrib.concurrent import process_map
-
+import re
 from .._util import _ensure_array, tqdm
+from tqdm.contrib.concurrent import process_map
+import itertools
+from multiprocessing import cpu_count
 
 
 def infercnv(
@@ -90,7 +88,8 @@ def infercnv(
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
         raise ValueError(
-            "Genomic positions not found. There need to be `chromosome`, `start`, and " "`end` columns in `adata.var`. "
+            "Genomic positions not found. There need to be `chromosome`, `start`, and "
+            "`end` columns in `adata.var`. "
         )
 
     var_mask = adata.var["chromosome"].isnull()
@@ -114,7 +113,7 @@ def infercnv(
     chr_pos, chunks = zip(
         *process_map(
             _infercnv_chunk,
-            [expr[i: i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
+            [expr[i : i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
             itertools.repeat(var),
             itertools.repeat(reference),
             itertools.repeat(lfc_clip),
@@ -150,7 +149,9 @@ def _natural_sort(l: Sequence):
     return sorted(l, key=alphanum_key)
 
 
-def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10) -> np.ndarray:
+def _running_mean(
+    x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10
+) -> np.ndarray:
     """
     Compute a pyramidially weighted running mean.
 
@@ -166,13 +167,15 @@ def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step
     """
     r = np.arange(1, n)
     pyramid = np.minimum(r, r[::-1])
-    smoothed_x = np.apply_along_axis(lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x) / np.sum(
-        pyramid
-    )
+    smoothed_x = np.apply_along_axis(
+        lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x
+    ) / np.sum(pyramid)
     return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
 
-def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.ndarray]:
+def _running_mean_by_chromosome(
+    expr, var, window_size, step
+) -> Tuple[dict, np.ndarray]:
     """Compute the running mean for each chromosome independently. Stack
     the resulting arrays ordered by chromosome.
 
@@ -194,7 +197,9 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.
         A numpy array with the smoothed gene expression, ordered by chromosome
         and genomic position
     """
-    chromosomes = _natural_sort([x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
+    chromosomes = _natural_sort(
+        [x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"]
+    )
 
     def _running_mean_for_chromosome(chr):
         genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
@@ -203,7 +208,12 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.
 
     running_means = [_running_mean_for_chromosome(chr) for chr in chromosomes]
 
-    chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
+    chr_start_pos = {
+        chr: i
+        for chr, i in zip(
+            chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])
+        )
+    }
 
     return chr_start_pos, np.hstack(running_means)
 
@@ -243,7 +253,9 @@ def _get_reference(
                     f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-            reference = np.vstack([np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat])
+            reference = np.vstack(
+                [np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat]
+            )
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
@@ -254,7 +266,9 @@ def _get_reference(
     return reference
 
 
-def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold):
+def _infercnv_chunk(
+    tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold
+):
     """The actual infercnv work is happening here.
 
     Process chunks of serveral thousand genes independently since this
@@ -281,7 +295,9 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
     # Step 2 - clip log fold changes
     x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
     # Step 3 - smooth by genomic position
-    chr_pos, x_smoothed = _running_mean_by_chromosome(x_clipped, var, window_size=window_size, step=step)
+    chr_pos, x_smoothed = _running_mean_by_chromosome(
+        x_clipped, var, window_size=window_size, step=step
+    )
     # Step 4 - center by cell
     x_cell_centered = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
 

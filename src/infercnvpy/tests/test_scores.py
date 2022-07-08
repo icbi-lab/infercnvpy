@@ -1,5 +1,5 @@
+from .fixtures import adata_ithgex
 import pytest
-
 import infercnvpy as cnv
 
 

@@ -1,7 +1,6 @@
-import scanpy as sc
 from anndata import AnnData
+import scanpy as sc
 from scanpy import logging
-
 from .. import tl
 
 
@@ -36,7 +35,11 @@ def neighbors(
     and connectivity matrices.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
-        logging.warning("X_cnv_pca not found in adata.obsm. Computing PCA with default parameters")  # type: ignore
+        logging.warning(
+            "X_cnv_pca not found in adata.obsm. Computing PCA with default parameters"
+        )  # type: ignore
         tl.pca(adata)
 
-    return sc.pp.neighbors(adata, use_rep=f"X_{use_rep}", key_added=key_added, copy=not inplace, **kwargs)
+    return sc.pp.neighbors(
+        adata, use_rep=f"X_{use_rep}", key_added=key_added, copy=not inplace, **kwargs
+    )

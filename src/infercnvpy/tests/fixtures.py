@@ -1,10 +1,9 @@
-import numpy as np
-import pandas as pd
 import pytest
-import scanpy as sc
-import scipy.sparse as sp
-
 import infercnvpy as cnv
+import scanpy as sc
+import numpy as np
+import scipy.sparse as sp
+import pandas as pd
 
 
 @pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])

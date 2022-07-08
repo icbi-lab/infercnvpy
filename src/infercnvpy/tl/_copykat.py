@@ -1,11 +1,10 @@
-import os
-from multiprocessing import cpu_count
 from typing import Optional
-
 import pandas as pd
+from scipy.sparse import issparse
 from anndata import AnnData
 from scanpy import logging
-from scipy.sparse import issparse
+import os
+from multiprocessing import cpu_count
 
 
 def copykat(
@@ -79,18 +78,21 @@ def copykat(
         n_jobs = 1
 
     try:
-        from rpy2 import robjects as ro
-        from rpy2.robjects import numpy2ri, pandas2ri
-        from rpy2.robjects.conversion import localconverter
         from rpy2.robjects.packages import importr
+        from rpy2.robjects import pandas2ri, numpy2ri
+        from rpy2.robjects.conversion import localconverter
+        from rpy2 import robjects as ro
     except ImportError:
         raise ImportError("copyKAT requires rpy2 to be installed. ")
 
     try:
-        importr("copykat")
-        importr("stringr")
+        copyKAT = importr("copykat")
+        tidyverse = importr("stringr")
     except ImportError:
-        raise ImportError("copyKAT requires a valid R installation with the following packages: " "copykat, stringr")
+        raise ImportError(
+            "copyKAT requires a valid R installation with the following packages: "
+            "copykat, stringr"
+        )
 
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
@@ -115,11 +117,11 @@ def copykat(
         """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
-        copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
-                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
+        copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25, 
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, 
                                 n.cores = n_jobs, output.seg = FALSE)
         copyKAT_result <- data.frame(copyKAT_run$CNAmat)
-        colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\\.", "-")
+        colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\.", "-")
         copyKAT_pred <- data.frame(copyKAT_run$prediction)
         if(dim(copyKAT_result)[2] != length(cell_IDs)){
             missing_cells <- setdiff(cell_IDs,colnames(copyKAT_result))
@@ -131,13 +133,18 @@ def copykat(
         """
     )
 
-    with localconverter(ro.default_converter + numpy2ri.converter + pandas2ri.converter):
+    with localconverter(
+        ro.default_converter + numpy2ri.converter + pandas2ri.converter
+    ):
         copyKAT_result = ro.conversion.rpy2py(ro.globalenv["copyKAT_result"])
         copyKAT_pred = ro.conversion.rpy2py(ro.globalenv["copyKAT_pred"])
 
     chrom_pos = {
         "chr_pos": {
-            f"chr{chrom}": int(pos) for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
+            f"chr{chrom}": int(pos)
+            for pos, chrom in copyKAT_result.loc[:, ["chrom"]]
+            .drop_duplicates()
+            .itertuples()
         }
     }
 
@@ -145,7 +152,9 @@ def copykat(
     new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
     # align cells
     new_cpkat = new_cpkat.loc[:, adata.obs.index]
-    copyKAT_pred = adata.obs.merge(copyKAT_pred, left_index=True, right_index=True, how="left")["copykat.pred"]
+    copyKAT_pred = adata.obs.merge(
+        copyKAT_pred, left_index=True, right_index=True, how="left"
+    )["copykat.pred"]
     # transpose
     new_cpkat_trans = new_cpkat.T.values
 
