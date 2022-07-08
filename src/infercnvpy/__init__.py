@@ -4,4 +4,4 @@ from importlib.metadata import version
 from . import datasets, io, pl, pp, tl
 
 __all__ = ["datasets", "io", "pl", "pp", "tl"]
-__version__ = version("{{ cookiecutter.project_name }}")
+__version__ = version("infercnvpy")
