@@ -5,33 +5,55 @@ requires = ["hatchling"]
 
 [project]
 name = "infercnvpy"
-version = "0.0.1"
+version = "0.3.1dev"
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
-readme = "README.md"
+readme = "README.rst"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor Sturm"},
 ]
+maintainers = [
+    {name = "Gregor Sturm", email="gregor.sturm@i-med.ac.at"}
+]
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Source = "https://github.com/icbi-lab/infercnvpy"
 urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
-dependencies = ["anndata"]
+dependencies = [
+    'anndata>=0.7.3',
+    'scanpy>=1.6.0',
+    'pandas>=1',
+    'numpy>=1.20', # includes type annotations
+    'tqdm>=4.42.0', # required for process_map
+    'pytoml',
+    'gtfparse>=1.2.1',
+    'pycairo>=1.20; sys_platform == "win32"',
+    'leidenalg',
+    'pyreadr'
+]
 
 [project.optional-dependencies]
+copykat = [
+    'rpy2'
+]
 dev = [
     # CLI for managing the python project
-    "hatch",
+    "pre-commit",
+    "bump2version"
 ]
 doc = [
-    "sphinx>=4",
+    "sphinx>=4.2",
     "furo",
     "myst-parser",
     "sphinxcontrib-bibtex>=1.0.0",
     "scanpydoc[typehints]>=0.7.4",
-    # For notebooks
-    "nbsphinx",
-    "ipython>=8.3.0"
+    # for tutorial
+    'nbsphinx>=0.6.0,!=0.8.8', # https://github.com/spatialaudio/nbsphinx/issues/620, should be patched in >=0.8.9
+    'jupytext',
+    'sphinxcontrib-bibtex>=1.0.0',
+    'pycairo',
+    'jupyter_client',
+    'ipykernel',
 ]
 test = [
     "pytest",
