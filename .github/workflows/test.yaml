@@ -60,7 +60,7 @@ jobs:
               run: |
                   install.packages("pak", repos = sprintf("https://r-lib.github.io/p/pak/stable/%s/%s/%s", .Platform$pkgType, R.Version()$os, R.Version()$arch))
                   # TODO: use copykat version from february, latest version seens to have a bug...
-                  pak::pkg_install(c('stringr', 'navinlabcode/copykat@77acb0ff2fdc9fd762c1275c3abb1875738a6414'))
+                  pak::pkg_install(c('stringr', 'navinlabcode/copykat@674e331cf12ce14b62eaf6459f7c84a82fc4c775'))
               shell: Rscript {0}
 
             - name: Test

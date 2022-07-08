@@ -18,6 +18,8 @@ repos:
       rev: v1.12.1
       hooks:
           - id: blacken-docs
+            # because of possible ipython magics. Notebooks are reformatted in separate hook using jupytext
+            exclude: "docs/notebooks/.*"
     - repo: https://github.com/PyCQA/isort
       rev: 5.10.1
       hooks:
