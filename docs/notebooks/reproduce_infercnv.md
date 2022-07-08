@@ -1,12 +1,13 @@
 ---
 jupyter:
     jupytext:
+        main_language: python
         notebook_metadata_filter: -kernelspec
         text_representation:
             extension: .md
             format_name: markdown
-            format_version: "1.2"
-            jupytext_version: 1.5.0.rc1
+            format_version: "1.3"
+            jupytext_version: 1.14.0
 ---
 
 # Reproduce the heatmap from inferCNV

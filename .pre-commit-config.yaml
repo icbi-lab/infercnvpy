@@ -20,6 +20,16 @@ repos:
           - id: blacken-docs
             # because of possible ipython magics. Notebooks are reformatted in separate hook using jupytext
             exclude: "docs/notebooks/.*"
+            additional_dependencies:
+                - black==22.6.0 # Matches hook
+    - repo: https://github.com/mwouts/jupytext
+      rev: v1.14.0
+      hooks:
+          - id: jupytext
+            args: [--sync, --pipe, black]
+            files: "docs/notebooks/.*"
+            additional_dependencies:
+                - black==22.6.0 # Matches hook
     - repo: https://github.com/PyCQA/isort
       rev: 5.10.1
       hooks:

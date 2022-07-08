@@ -2,12 +2,13 @@
 jupyter:
     jupytext:
         formats: md,ipynb
+        main_language: python
         notebook_metadata_filter: -kernelspec
         text_representation:
             extension: .md
             format_name: markdown
-            format_version: "1.2"
-            jupytext_version: 1.5.0.rc1
+            format_version: "1.3"
+            jupytext_version: 1.14.0
 ---
 
 # Infer CNV on lung cancer dataset
@@ -220,9 +221,7 @@ to a distinct CNV cluster, and that these clusters tend to have the
 highest CNV score.
 
 ```python
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
-    2, 2, figsize=(12, 11), gridspec_kw=dict(wspace=0.5)
-)
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 11), gridspec_kw=dict(wspace=0.5))
 ax4.axis("off")
 sc.pl.umap(adata, color="cnv_leiden", ax=ax1, show=False)
 sc.pl.umap(adata, color="cnv_score", ax=ax2, show=False)
