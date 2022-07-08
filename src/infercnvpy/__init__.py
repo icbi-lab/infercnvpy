@@ -1,7 +1,6 @@
-from importlib.metadata import version
+"""Python library to infer copy number variation (CNV) from single-cell RNA-seq data"""
 
-from . import pl, pp, tl
+from ._metadata import __author__, __email__, __version__, within_flit
 
-__all__ = ["pl", "pp", "tl"]
-
-__version__ = version("infercnvpy")
+if not within_flit():
+    from . import datasets, io, pl, pp, tl
