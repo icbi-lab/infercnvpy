@@ -28,11 +28,7 @@ repos:
     #         name: Sync md and ipynb files
     #         files: "docs/notebooks/.*\\.(md|ipynb)"
     #         entry: |
-    #             jupytext_sync_autofmt () {
-    #                 jupytext --sync --pipe black --pre-commit-mode $@
-    #                 prettier -w $@
-    #             }
-    #             jupytext_sync_autofmt
+    #             jupytext_sync_autofmt () { jupytext --sync --pipe black --pre-commit-mode $@ && prettier -w $@ }; jupytext_sync_autofmt
     #         pass_filenames: true
     #         always_run: false
     #         language: conda
