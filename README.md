@@ -2,12 +2,24 @@
 
 [![Tests][badge-tests]][link-tests]
 [![Documentation][badge-docs]][link-docs]
+[![PyPI][badge-pypi]][link-pypi]
 
 [badge-tests]: https://img.shields.io/github/workflow/status/icbi-lab/infercnvpy/Test/main
 [link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
+[badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
+[link-pypi]: https://pypi.org/project/infercnvpy/
 
 Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable.
+
+![The main result of infercnv](img/infercnv_heatmap.png)
+
+**WARNING**:
+
+**This package is still experimental. The results have not been validated,
+except in that they look similar, but not identical, to the results of InferCNV.**
+
+**We are happy about feedback and welcome contributions!**
 
 ## Getting started
 
@@ -22,15 +34,13 @@ Python installed, we recommend installing [Miniconda](https://docs.conda.io/en/l
 
 There are several alternative options to install infercnvpy:
 
-<!--
-1) Install the latest release of `infercnvpy` from `PyPI <https://pypi.org/project/infercnvpy/>`_:
+1. Install the latest release of `infercnvpy` from `PyPI <https://pypi.org/project/infercnvpy/>`\_:
 
 ```bash
 pip install infercnvpy
 ```
--->
 
-1. Install the latest development version:
+2. Install the latest development version:
 
 ```bash
 pip install git+https://github.com/icbi-lab/infercnvpy.git@main

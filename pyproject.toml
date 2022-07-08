@@ -7,7 +7,7 @@ requires = ["hatchling"]
 name = "infercnvpy"
 version = "0.3.1dev"
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
