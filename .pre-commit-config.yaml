@@ -22,14 +22,28 @@ repos:
             exclude: "docs/notebooks/.*"
             additional_dependencies:
                 - black==22.6.0 # Matches hook
-    - repo: https://github.com/mwouts/jupytext
-      rev: v1.14.0
-      hooks:
-          - id: jupytext
-            args: [--sync, --pipe, black]
-            files: "docs/notebooks/.*"
-            additional_dependencies:
-                - black==22.6.0 # Matches hook
+    # - repo: local
+    #   hooks:
+    #       - id: jupytext-sync
+    #         name: Sync md and ipynb files
+    #         files: "docs/notebooks/.*\\.(md|ipynb)"
+    #         entry: |
+    #             jupytext --sync --pipe black --pre-commit-mode {} && prettier -w {}
+    #         pass_filenames: true
+    #         always_run: false
+    #         language: conda
+    #         additional_dependencies:
+    #             - jupytext==1.14.0
+    #             - black==22.6.0
+    #             - prettier==2.7.1
+    # - repo: https://github.com/mwouts/jupytext
+    #   rev: v1.14.0
+    #   hooks:
+    #       - id: jupytext
+    #         args: [--sync, --pipe, black]
+    #         files: "docs/notebooks/.*"
+    #         additional_dependencies:
+    #             - black==22.6.0 # Matches hook
     - repo: https://github.com/PyCQA/isort
       rev: 5.10.1
       hooks:
