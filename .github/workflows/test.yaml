@@ -54,7 +54,7 @@ jobs:
                   pip install codecov
             - name: Install dependencies
               run: |
-                  pip install ".[dev,test]"
+                  pip install ".[dev,test,copykat]"
 
             - name: Install R dependencies
               run: |
