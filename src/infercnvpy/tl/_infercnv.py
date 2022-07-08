@@ -6,9 +6,9 @@ from typing import Sequence, Tuple, Union
 import numpy as np
 import scipy.ndimage
 import scipy.sparse
-import tqdm
 from anndata import AnnData
 from scanpy import logging
+from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
 from .._util import _ensure_array
