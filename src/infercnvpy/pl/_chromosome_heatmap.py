@@ -102,8 +102,7 @@ def chromosome_heatmap_summary(
     **kwargs,
 ) -> Optional[Dict[str, matplotlib.axes.Axes]]:
     """
-    Plot a heatmap of average of the smoothed gene expression by chromosome per
-    category in groupby.
+    Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
 

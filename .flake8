@@ -44,6 +44,10 @@ ignore =
     D401
     # undefined RST roles
     RST304
+    # RST definition list ends without a blank linke; unexpected unindent
+    RST203
+    # ignore false positive warnings due to *args, **kwargs
+    RST210
 
 
 exclude = .git,__pycache__,build,docs/_build,dist

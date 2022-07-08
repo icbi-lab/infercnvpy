@@ -31,8 +31,7 @@ def infercnv(
     key_added: str = "cnv",
 ) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
     """
-    Infer Copy Number Variation (CNV) by averaging gene expression over genomic
-    regions.
+    Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
     but more computationally efficient. The method is described in more detail
@@ -173,8 +172,7 @@ def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step
 
 
 def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.ndarray]:
-    """Compute the running mean for each chromosome independently. Stack
-    the resulting arrays ordered by chromosome.
+    """Compute the running mean for each chromosome independently. Stack the resulting arrays ordered by chromosome.
 
     Parameters
     ----------

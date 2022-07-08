@@ -19,9 +19,8 @@ def oligodendroglioma() -> AnnData:
 
 
 def maynard2020_3k() -> AnnData:
-    """\
-    Return the dataset from :cite:`Maynard2020` as AnnData object, downsampled
-    to 3000 cells.
+    """
+    Return the dataset from :cite:`Maynard2020` as AnnData object, downsampled to 3000 cells.
 
     In brief, this data set was processed as follows:
         * raw data downloaded from ENA

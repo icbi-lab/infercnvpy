@@ -12,8 +12,7 @@ def neighbors(
     inplace: bool = True,
     **kwargs,
 ):
-    """Compute the neighborhood graph based on the result from
-    :func:`infercnvpy.tl.infercnv`.
+    """Compute the neighborhood graph based on the result from :func:`infercnvpy.tl.infercnv`.
 
     Parameters
     ----------

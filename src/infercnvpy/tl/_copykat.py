@@ -21,7 +21,8 @@ def copykat(
     n_jobs: Optional[int] = None,
     norm_cell_names: str = "",
 ) -> (pd.DataFrame, pd.Series):
-    """Inference of genomic copy number and subclonal structure.
+    """
+    Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
     Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
@@ -72,7 +73,6 @@ def copykat(
     -------
     Depending on the value of `inplace`, either returns `None` or a tuple (`CNV Matrix`,`CopyKat prediction`)
     """
-
     if n_jobs is None:
         n_jobs = cpu_count()
     if os.name != "posix":
@@ -94,7 +94,7 @@ def copykat(
 
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
-        expr = adata.X if layer is None else tmp_adata.layers[layer]
+        expr = adata.X if layer is None else adata.layers[layer]
         if issparse(expr):
             expr = expr.T.toarray()
         else:
