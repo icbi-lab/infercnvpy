@@ -2,10 +2,10 @@ import numpy as np
 
 # Determine the right tqdm version, see https://github.com/tqdm/tqdm/issues/1082
 try:
-    import ipywidgets  # type: ignore # NOQA
+    import ipywidgets  # type: ignore # noqa
     from tqdm.auto import tqdm
 except ModuleNotFoundError:
-    from tqdm import tqdm  # NOQA
+    from tqdm import tqdm  # noqa
 
 
 def _ensure_array(a):
@@ -21,8 +21,7 @@ def _choose_mtx_rep(adata, use_raw=False, layer=None):
     is_layer = layer is not None
     if use_raw and is_layer:
         raise ValueError(
-            "Cannot use expression from both layer and raw. You provided:"
-            f"'use_raw={use_raw}' and 'layer={layer}'"
+            "Cannot use expression from both layer and raw. You provided:" f"'use_raw={use_raw}' and 'layer={layer}'"
         )
     if is_layer:
         return adata.layers[layer]
