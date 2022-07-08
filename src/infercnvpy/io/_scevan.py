@@ -1,12 +1,13 @@
 """Read in result files from scevan"""
 
-from typing import Optional, Union
-from anndata import AnnData
 from pathlib import Path
-import pyreadr
-from scanpy import logging
-import pandas as pd
+from typing import Optional, Union
+
 import numpy as np
+import pandas as pd
+import pyreadr
+from anndata import AnnData
+from scanpy import logging
 
 
 def _get_chr_pos_from_array(chr_pos_array):
@@ -74,11 +75,7 @@ def read_scevan(
     scevan_subclones_file = list(scevan_res_dir.glob("*_CNAmtxSubclones.RData"))
     scevan_anno_file = list(scevan_res_dir.glob("*_count_mtx_annot.RData"))
 
-    if (
-        len(scevan_res_file) != 1
-        or len(scevan_subclones_file) > 1
-        or len(scevan_anno_file) != 1
-    ):
+    if len(scevan_res_file) != 1 or len(scevan_subclones_file) > 1 or len(scevan_anno_file) != 1:
         raise ValueError(
             "There must be exactely one CNA_mtx and count_mtx_annot file and at most one "
             "CNAmtxSubclones file in the result directory!"
@@ -89,9 +86,7 @@ def read_scevan(
         tumor_normal_call = pd.read_csv(scevan_res_table, index_col=0)
     else:
         tumor_normal_call = None
-        logging.warning(
-            "No `scevan_res_table` specified. Will not add tumor/normal classification."
-        )
+        logging.warning("No `scevan_res_table` specified. Will not add tumor/normal classification.")
     scevan_res = pyreadr.read_r(scevan_res_file[0])["CNA_mtx_relat"].T
     scevan_anno = pyreadr.read_r(scevan_anno_file[0])["count_mtx_annot"]
     scevan_subclone_res = None
@@ -104,9 +99,7 @@ def read_scevan(
     # add obs annotation
     if tumor_normal_call is not None:
         adata.obs[f"{key_added}_class"] = tumor_normal_call["class"]
-        adata.obs[f"{key_added}_confident_normal"] = tumor_normal_call[
-            "confidentNormal"
-        ]
+        adata.obs[f"{key_added}_confident_normal"] = tumor_normal_call["confidentNormal"]
         if "subclone" in tumor_normal_call.columns:
             adata.obs[f"{key_added}_subclone"] = tumor_normal_call["subclone"].apply(
                 lambda x: f"{int(x)}" if not pd.isnull(x) else np.nan
@@ -117,9 +110,7 @@ def read_scevan(
 
     adata.obsm[f"X_{key_added}"] = scevan_res.reindex(adata.obs_names).values
     if scevan_subclone_res is not None:
-        adata.obsm[f"X_{key_added}"].loc[
-            scevan_subclone_res.index, :
-        ] = scevan_subclone_res
+        adata.obsm[f"X_{key_added}"].loc[scevan_subclone_res.index, :] = scevan_subclone_res
     adata.uns[key_added] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
 
     if not inplace:

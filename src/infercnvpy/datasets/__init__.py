@@ -1,10 +1,12 @@
 """Example datasets"""
 import importlib.resources as pkg_resources
-from . import data
+
 import scanpy as sc
 from anndata import AnnData
 from scanpy import settings
 from scanpy.readwrite import read
+
+from . import data
 
 
 def oligodendroglioma() -> AnnData:

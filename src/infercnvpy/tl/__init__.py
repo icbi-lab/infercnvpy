@@ -1,11 +1,13 @@
 from typing import Union
+
+import numpy as np
+import scanpy as sc
+from anndata import AnnData
+from scanpy import logging
+
+from ._copykat import copykat
 from ._infercnv import infercnv
 from ._scores import cnv_score, ithcna, ithgex
-from ._copykat import copykat
-import numpy as np
-from anndata import AnnData
-import scanpy as sc
-from scanpy import logging
 
 
 def leiden(
@@ -132,9 +134,7 @@ def tsne(
         Additional arguments passed to :func:`scanpy.tl.tsne`.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
-        logging.warning(
-            "X_cnv_pca not found in adata.obsm. Computing PCA with default parameters"
-        )  # type: ignore
+        logging.warning("X_cnv_pca not found in adata.obsm. Computing PCA with default parameters")  # type: ignore
         pca(adata)
     tmp_adata = sc.tl.tsne(adata, use_rep=f"X_cnv_pca", copy=True, **kwargs)
 

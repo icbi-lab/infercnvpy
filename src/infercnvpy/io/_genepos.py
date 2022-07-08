@@ -1,11 +1,11 @@
-from os import PathLike
-from typing import Literal, Union
 from pathlib import Path
-from anndata import AnnData
-import pandas as pd
+from typing import Literal, Union
+
 import gtfparse
-from scanpy import logging
 import numpy as np
+import pandas as pd
+from anndata import AnnData
+from scanpy import logging
 
 
 def genomic_position_from_gtf(
@@ -38,9 +38,7 @@ def genomic_position_from_gtf(
     inplace
         If True, add the annotations directly to adata, otherwise return a dataframe.
     """
-    gtf = gtfparse.read_gtf(
-        gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"]
-    )
+    gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
     gtf = (
         gtf.loc[
             gtf["feature"] == "gene",
@@ -50,22 +48,16 @@ def genomic_position_from_gtf(
         .rename(columns={"seqname": "chromosome"})
     )
 
-    gene_ids_adata = (
-        adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]
-    ).values
+    gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     gtf = gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :]
 
     missing_from_gtf = len(set(gene_ids_adata) - set(gtf[gtf_gene_id].values))
     if missing_from_gtf:
-        logging.warning(
-            f"GTF file misses annotation for {missing_from_gtf} genes in adata."
-        )
+        logging.warning(f"GTF file misses annotation for {missing_from_gtf} genes in adata.")
 
     duplicated_symbols = np.sum(gtf["gene_name"].duplicated())
     if duplicated_symbols:
-        logging.warning(
-            f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file."
-        )
+        logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
         gtf = gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :]
 
     tmp_var = adata.var.copy()

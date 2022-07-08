@@ -5,8 +5,8 @@ from pathlib import Path
 here = Path(__file__).parent
 
 try:
-    from setuptools_scm import get_version
     import pytoml
+    from setuptools_scm import get_version
 
     proj = pytoml.loads((here.parent / "pyproject.toml").read_text())
     metadata = proj["tool"]["flit"]["metadata"]
@@ -24,7 +24,7 @@ try:
         # However, this didn't work, so I pass them explicitly here.
         root="..",
         relative_to=__file__,
-        **proj["tool"]["setuptools_scm"]
+        **proj["tool"]["setuptools_scm"],
     ).split("+")[0]
     __author__ = metadata["author"]
     __email__ = metadata["author-email"]
