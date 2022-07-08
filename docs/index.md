@@ -6,10 +6,10 @@
 :hidden: true
 :maxdepth: 1
 
-api.md
-changelog.md
+tutorials.rst
+infercnv.rst
+api.rst
 developer_docs.md
+changelog.md
 references.md
-
-notebooks/example
 ```
