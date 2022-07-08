@@ -1,14 +1,14 @@
 ---
 jupyter:
-    jupytext:
-        formats: md,ipynb
-        main_language: python
-        notebook_metadata_filter: -kernelspec
-        text_representation:
-            extension: .md
-            format_name: markdown
-            format_version: "1.3"
-            jupytext_version: 1.14.0
+  jupytext:
+    formats: md,ipynb
+    main_language: python
+    notebook_metadata_filter: -kernelspec
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.14.0
 ---
 
 # Infer CNV on lung cancer dataset
@@ -30,6 +30,8 @@ Treat the results with care. In particular, no validation with ground-truth data
 ```python
 import scanpy as sc
 import infercnvpy as cnv
+
+
 import matplotlib.pyplot as plt
 
 sc.settings.set_figure_params(figsize=(5, 5))

@@ -14,6 +14,8 @@ repos:
       rev: v2.7.1
       hooks:
           - id: prettier
+            # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
+            exclude: "docs/notebooks/.*\\.md"
     - repo: https://github.com/asottile/blacken-docs
       rev: v1.12.1
       hooks:
@@ -22,26 +24,12 @@ repos:
             exclude: "docs/notebooks/.*"
             additional_dependencies:
                 - black==22.6.0 # Matches hook
-    # - repo: local
-    #   hooks:
-    #       - id: jupytext-sync
-    #         name: Sync md and ipynb files
-    #         files: "docs/notebooks/.*\\.(md|ipynb)"
-    #         entry: |
-    #             jupytext_sync_autofmt () { jupytext --sync --pipe black --pre-commit-mode $@ && prettier -w $@ }; jupytext_sync_autofmt
-    #         pass_filenames: true
-    #         always_run: false
-    #         language: conda
-    #         additional_dependencies:
-    #             - jupytext==1.14.0
-    #             - black==22.6.0
-    #             - prettier==2.7.1
     # - repo: https://github.com/mwouts/jupytext
     #   rev: v1.14.0
     #   hooks:
     #       - id: jupytext
     #         args: [--sync, --pipe, black]
-    #         files: "docs/notebooks/.*"
+    #         files: "docs/notebooks/.*\\.md"
     #         additional_dependencies:
     #             - black==22.6.0 # Matches hook
     - repo: https://github.com/PyCQA/isort
