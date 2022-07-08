@@ -114,7 +114,7 @@ def infercnv(
     chr_pos, chunks = zip(
         *process_map(
             _infercnv_chunk,
-            [expr[i: i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
+            [expr[i : i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
             itertools.repeat(var),
             itertools.repeat(reference),
             itertools.repeat(lfc_clip),
