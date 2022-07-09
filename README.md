@@ -1,4 +1,4 @@
-# infercnvpy
+# infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell transcriptomics data
 
 [![Tests][badge-tests]][link-tests]
 [![Documentation][badge-docs]][link-docs]
@@ -10,7 +10,10 @@
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
 [link-pypi]: https://pypi.org/project/infercnvpy/
 
-Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable.
+Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by [InferCNV][], but plays nicely with [scanpy][] and is much more scalable.
+
+[InferCNV]: https://github.com/broadinstitute/inferCNV/wiki
+[scanpy]: https://scanpy.readthedocs.io/en/stable/index.html
 
 ![The main result of infercnv](img/infercnv_heatmap.png)
 
@@ -46,6 +49,21 @@ pip install infercnvpy
 pip install git+https://github.com/icbi-lab/infercnvpy.git@main
 ```
 
+
+To (optionally) run the `copyKAT` algorithm, you need a working R installation
+and the [copykat][] package installed. Usually, if `R` is in your `PATH`, [`rpy2`][rpy2] automatically
+detects your R installation. If you get an error message while importing `infercnvpy`,
+try setting the `R_HOME` environment variable before importing infercnvpy:
+
+```python
+import os
+os.environ["R_HOME"] = "/usr/lib/R"
+import infercnvpy
+```
+
+[copykat]: https://github.com/navinlabcode/copykat#step-1-installation
+[rpy2]: https://rpy2.github.io/
+
 ## Release notes
 
 See the [changelog][changelog].
@@ -57,7 +75,7 @@ If you found a bug, please use the [issue tracker][issue-tracker].
 
 ## Citation
 
-> t.b.a
+n/a
 
 [scverse-discourse]: https://discourse.scverse.org/
 [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
