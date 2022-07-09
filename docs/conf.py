@@ -9,7 +9,6 @@ import sys
 from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
-import jupytext
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "extensions"))
@@ -83,15 +82,6 @@ intersphinx_mapping = {
     "networkx": ("https://networkx.org/documentation/networkx-1.10/", None),
 }
 
-# Enable jupytext notebooks
-nbsphinx_custom_formats = {
-    ".md": lambda s: jupytext.reads(s, ".md"),
-}
-nbsphinx_execute_arguments = [
-    "--InlineBackend.figure_formats={'svg'}",
-    "--InlineBackend.rc={'figure.dpi': 96}",
-]
-nbsphinx_timeout = 300
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
