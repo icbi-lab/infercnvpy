@@ -1,11 +1,11 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 
 
 [project]
 name = "infercnvpy"
-version = "0.3.1dev"
+dynamic = ["version"]
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -59,6 +59,9 @@ test = [
     "pytest",
     "pytest-cov",
 ]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.coverage.run]
 source = ["infercnvpy"]
