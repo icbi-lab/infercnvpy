@@ -58,6 +58,12 @@ def chromosome_heatmap(
         )
     tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs)
 
+    # transfer colors from adata if present
+    if "{}_colors".format(groupby) in adata.uns:
+        tmp_adata.uns["{}_colors".format(groupby)] = adata.uns[
+            "{}_colors".format(groupby)
+        ]
+
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(
         sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1])
@@ -167,6 +173,12 @@ def chromosome_heatmap_summary(
         ),
         obs=tmp_obs,
     )
+
+    # transfer colors from adata if present
+    if "{}_colors".format(groupby) in adata.uns:
+        tmp_adata.uns["{}_colors".format(groupby)] = adata.uns[
+            "{}_colors".format(groupby)
+        ]
 
     chr_pos_dict = dict(
         sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1])
