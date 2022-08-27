@@ -2,9 +2,9 @@ name: docs
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
   release:
     types: [created]
 
@@ -66,8 +66,8 @@ jobs:
           then
             tmp_target_dir=$(echo $tmp_target_dir | sed "s/\/merge$//")
           fi
-          # when on master, we want to deploy to the root dir (-> ".")
-          target_dir=$(echo $tmp_target_dir | sed "s/heads\/master/./")
+          # when on main, we want to deploy to the root dir (-> ".")
+          target_dir=$(echo $tmp_target_dir | sed "s/heads\/main/./")
           echo $target_dir
           echo "target_dir=$target_dir" >> $GITHUB_ENV
         env:
