@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Infer CNV on lung cancer dataset &mdash; infercnvpy  documentation</title>
+
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/scanpy.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/typehints.css" type="text/css" />
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Reproduce the heatmap from inferCNV" href="reproduce_infercnv.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" />
+ 
+
+
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> infercnvpy
+          </a>
+              <div class="version">
+                0.3.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Infer CNV on lung cancer dataset</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Loading-the-example-dataset">Loading the example dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Running-infercnv">Running infercnv</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Clustering-by-CNV-profiles-and-identifying-tumor-cells">Clustering by CNV profiles and identifying tumor cells</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#UMAP-plot-of-CNV-profiles">UMAP plot of CNV profiles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Classifying-tumor-cells">Classifying tumor cells</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reproduce_infercnv.html">Reproduce the heatmap from inferCNV</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../infercnv.html">The inferCNV method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../zzz_bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">infercnvpy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../tutorials.html">Tutorials</a> &raquo;</li>
+      <li>Infer CNV on lung cancer dataset</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/icbi-lab/infercnvpy/blob/master/docs/tutorials/tutorial_3k.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt a.copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+</style>
+<section id="Infer-CNV-on-lung-cancer-dataset">
+<h1>Infer CNV on lung cancer dataset<a class="headerlink" href="#Infer-CNV-on-lung-cancer-dataset" title="Permalink to this headline"></a></h1>
+<p>In this tutorial, we demonstrate how infercnvpy can be used to derive Copy Number Variation (CNV)
+from a single-cell RNA-seq dataset and to distinguish between tumor and normal cells.</p>
+<p>For this tutorial, we use the dataset by <span id="id1">[<a class="reference internal" href="../zzz_bibliography.html#id2" title="Ashley Maynard, Caroline E. McCoach, Julia K. Rotow, Lincoln Harris, Franziska Haderk, D. Lucas Kerr, Elizabeth A. Yu, Erin L. Schenk, Weilun Tan, Alexander Zee, Michelle Tan, Philippe Gui, Tasha Lea, Wei Wu, Anatoly Urisman, Kirk Jones, Rene Sit, Pallav K. Kolli, Eric Seeley, Yaron Gesthalter, Daniel D. Le, Kevin A. Yamauchi, David M. Naeger, Sourav Bandyopadhyay, Khyati Shah, Lauren Cech, Nicholas J. Thomas, Anshal Gupta, Mayra Gonzalez, Hien Do, Lisa Tan, Bianca Bacaltos, Rafael Gomez-Sjoberg, Matthew Gubens, Thierry Jahan, Johannes R. Kratz, David Jablons, Norma Neff, Robert C. Doebele, Jonathan Weissman, Collin M. Blakely, Spyros Darmanis, and Trever G. Bivona. Therapy-induced evolution of human lung cancer revealed by single-cell RNA sequencing. Cell, 182(5):1232–1251.e22, September 2020. URL: https://doi.org/10.1016/j.cell.2020.07.017, doi:10.1016/j.cell.2020.07.017.">MMR+20</a>]</span> generated on the Smart-seq2 platform.
+The original dataset contains about 20,000 cells. Here, we use a downsampled version with 3,000 cells which is available through <a class="reference internal" href="../generated/infercnvpy.datasets.maynard2020_3k.html#infercnvpy.datasets.maynard2020_3k" title="infercnvpy.datasets.maynard2020_3k"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.datasets.maynard2020_3k()</span></code></a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>We consider this method still experimental, but decided to already put it on GitHub because it might be useful.
+Treat the results with care. In particular, no validation with ground-truth data has been performed.</p>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">infercnvpy</span> <span class="k">as</span> <span class="nn">cnv</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">set_figure_params</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/traitlets/traitlets.py:3044: FutureWarning: --rc={&#39;figure.dpi&#39;: 96} for dict-traits is deprecated in traitlets 5.0. You can pass --rc &lt;key=value&gt; ... multiple times to add items to a dict.
+  warn(
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/tqdm/auto.py:22: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
+  from .autonotebook import tqdm as notebook_tqdm
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">sc</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">print_header</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+scanpy==1.9.1 anndata==0.8.0 umap==0.5.3 numpy==1.21.6 scipy==1.8.0 pandas==1.4.2 scikit-learn==1.0.2 statsmodels==0.13.2 python-igraph==0.9.10 pynndescent==0.5.6
+</pre></div></div>
+</div>
+<section id="Loading-the-example-dataset">
+<h2>Loading the example dataset<a class="headerlink" href="#Loading-the-example-dataset" title="Permalink to this headline"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Preprocessing data</strong></p>
+<p>Low-quality cells should already be filtered out and the input data
+must be normalized and log-transformed. For more information, see
+<a class="reference internal" href="../infercnv.html#input-data"><span class="std std-ref">Preparing input data</span></a>.</p>
+<p>Also, the genomic positions need to be stored in <cite>adata.var</cite>. The
+columns <cite>chromosome</cite>, <cite>start</cite>, and <cite>end</cite> hold the chromosome and
+the start and end positions on that chromosome for each gene,
+respectively.</p>
+<p>Infercnvpy provides the <a class="reference internal" href="../generated/infercnvpy.io.genomic_position_from_gtf.html#infercnvpy.io.genomic_position_from_gtf" title="infercnvpy.io.genomic_position_from_gtf"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.io.genomic_position_from_gtf()</span></code></a> function
+to read these information from a GTF file and add them to <cite>adata.var</cite>.</p>
+</div>
+<p>The example dataset is already appropriately preprocessed.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">cnv</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">maynard2020_3k</span><span class="p">()</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[</span><span class="s2">&quot;ensg&quot;</span><span class="p">,</span> <span class="s2">&quot;chromosome&quot;</span><span class="p">,</span> <span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="s2">&quot;end&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 49.5M/49.5M [00:00&lt;00:00, 108MB/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ensg</th>
+      <th>chromosome</th>
+      <th>start</th>
+      <th>end</th>
+    </tr>
+    <tr>
+      <th>symbol</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>AL645933.5</th>
+      <td>ENSG00000288587.1</td>
+      <td>chr6</td>
+      <td>31400702</td>
+      <td>31463705</td>
+    </tr>
+    <tr>
+      <th>AC010184.1</th>
+      <td>ENSG00000288585.1</td>
+      <td>chr3</td>
+      <td>141449745</td>
+      <td>141456434</td>
+    </tr>
+    <tr>
+      <th>AC023296.1</th>
+      <td>ENSG00000288580.1</td>
+      <td>chr8</td>
+      <td>2923568</td>
+      <td>2926689</td>
+    </tr>
+    <tr>
+      <th>AL117334.2</th>
+      <td>ENSG00000288577.1</td>
+      <td>chr20</td>
+      <td>3406380</td>
+      <td>3410036</td>
+    </tr>
+    <tr>
+      <th>AC107294.4</th>
+      <td>ENSG00000288576.1</td>
+      <td>chr3</td>
+      <td>184778723</td>
+      <td>184780720</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<p>Let’s first inspect the UMAP plot based on the transcriptomics data:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_8_0.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_8_0.png" style="width: 698px; height: 357px;" />
+</div>
+</div>
+</section>
+<section id="Running-infercnv">
+<h2>Running infercnv<a class="headerlink" href="#Running-infercnv" title="Permalink to this headline"></a></h2>
+<p>Let’s now run <a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>. Essentially, this method sorts genes
+by chromosome and genomic position and compares the average gene expression over genomic
+region to a reference. The original inferCNV method uses a window size of 100,
+but larger window sizes can make sense, depending on the number of
+genes in your dataset.</p>
+<p><a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnv()</span></code></a> adds a <cite>cell x genomic_region</cite> matrix to
+<cite>adata.obsm[“X_cnv”]</cite>.</p>
+<p>For more information about the method check out <a class="reference internal" href="../infercnv.html#infercnv-method"><span class="std std-ref">The inferCNV method</span></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Choosing reference cells</strong></p>
+<p>The most common use-case is to compare tumor against normal cells. If you have
+prior information about which cells are normal (e.g. from cell-type annotations
+based on transcriptomics data), it is recommended to provide this information
+to <a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnv()</span></code></a>.</p>
+<p>The more different cell-types you
+can provide, the better. Some cell-types physiologicallly over-express
+certain genomic regions (e.g. plasma cells highly express Immunoglobulin genes
+which are genomically adjacent). If you provide multiple cell-types,
+only regions are considered being subject to CNV that are different from <em>all</em>
+provided cell-types.</p>
+<p>If you don’t provide any reference, the mean of all cells is used instead,
+which may work well on datasets that contain enough tumor and normal cells.</p>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># We provide all immune cell types as &quot;normal cells&quot;.</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">infercnv</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">reference_key</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
+    <span class="n">reference_cat</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;B cell&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Macrophage&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mast cell&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Monocyte&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NK cell&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Plasma cell&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;T cell CD4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;T cell CD8&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;T cell regulatory&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mDC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;pDC&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="n">window_size</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 1/1 [00:37&lt;00:00, 37.80s/it]
+</pre></div></div>
+</div>
+<p>Now, we can plot smoothed gene expression by cell-type and chromosome. We can observe that the Epithelial cell cluster, which consists largely of tumor cells, appears to be subject to copy number variation.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">chromosome_heatmap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/infercnvpy/pl/_chromosome_heatmap.py:59: FutureWarning: X.dtype being converted to np.float32 from float64. In the next version of anndata (0.9) conversion will not be automatic. Pass dtype explicitly to avoid this warning. Pass `AnnData(X, dtype=X.dtype, ...)` to get the future behavour.
+  tmp_adata = AnnData(X=adata.obsm[f&#34;X_{use_rep}&#34;], obs=adata.obs)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_13_1.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_13_1.png" style="width: 1213px; height: 674px;" />
+</div>
+</div>
+</section>
+<section id="Clustering-by-CNV-profiles-and-identifying-tumor-cells">
+<h2>Clustering by CNV profiles and identifying tumor cells<a class="headerlink" href="#Clustering-by-CNV-profiles-and-identifying-tumor-cells" title="Permalink to this headline"></a></h2>
+<p>To cluster and annotate cells, <cite>infercnvpy</cite> mirrors the <cite>scanpy</cite> workflow.
+The following functions work exactely as their <cite>scanpy</cite> counterpart, except that
+they use the CNV profile matrix as input. Using these functions, we can perform
+graph-based clustering and generate a UMAP plot based on the CNV profiles.
+Based on these clusters, we can annotate tumor and normal cells.</p>
+<table class="autosummary longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../generated/infercnvpy.tl.pca.html#infercnvpy.tl.pca" title="infercnvpy.tl.pca"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnvpy.tl.pca</span></code></a>(adata[, svd_solver, …])</p></td>
+<td><p>Compute the PCA on the result of <a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../generated/infercnvpy.pp.neighbors.html#infercnvpy.pp.neighbors" title="infercnvpy.pp.neighbors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnvpy.pp.neighbors</span></code></a>(adata[, use_rep, …])</p></td>
+<td><p>Compute the neighborhood graph based on the result from <a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../generated/infercnvpy.tl.leiden.html#infercnvpy.tl.leiden" title="infercnvpy.tl.leiden"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnvpy.tl.leiden</span></code></a>(adata[, neighbors_key, …])</p></td>
+<td><p>Perform leiden clustering on the CNV neighborhood graph.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../generated/infercnvpy.tl.umap.html#infercnvpy.tl.umap" title="infercnvpy.tl.umap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnvpy.tl.umap</span></code></a>(adata[, neighbors_key, …])</p></td>
+<td><p>Compute the UMAP on the result of <a class="reference internal" href="../generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../generated/infercnvpy.pl.umap.html#infercnvpy.pl.umap" title="infercnvpy.pl.umap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnvpy.pl.umap</span></code></a>(adata, **kwargs)</p></td>
+<td><p>Plot the CNV UMAP.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>After running leiden clustering, we can plot the chromosome heatmap by CNV clusters. We can observe that, as opposted to the clusters at the bottom, the clusters at the top have essentially no differentially expressed genomic regions. The differentially expressed regions are likely due to copy number variation and the respective clusters likely represent tumor cells.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">chromosome_heatmap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="s2">&quot;cnv_leiden&quot;</span><span class="p">,</span> <span class="n">dendrogram</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/infercnvpy/pl/_chromosome_heatmap.py:59: FutureWarning: X.dtype being converted to np.float32 from float64. In the next version of anndata (0.9) conversion will not be automatic. Pass dtype explicitly to avoid this warning. Pass `AnnData(X, dtype=X.dtype, ...)` to get the future behavour.
+  tmp_adata = AnnData(X=adata.obsm[f&#34;X_{use_rep}&#34;], obs=adata.obs)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+WARNING: dendrogram data not found (using key=dendrogram_cnv_leiden). Running `sc.tl.dendrogram` with default parameters. For fine tuning it is recommended to run `sc.tl.dendrogram` independently.
+WARNING: You’re trying to run this on 5314 dimensions of `.X`, if you really want this, set `use_rep=&#39;X&#39;`.
+         Falling back to preprocessing with `sc.pp.pca` and default params.
+WARNING: Groups are not reordered because the `groupby` categories and the `var_group_labels` are different.
+categories: 0, 1, 2, etc.
+var_group_labels: chr1, chr2, chr3, etc.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_18_2.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_18_2.png" style="width: 1103px; height: 669px;" />
+</div>
+</div>
+<section id="UMAP-plot-of-CNV-profiles">
+<h3>UMAP plot of CNV profiles<a class="headerlink" href="#UMAP-plot-of-CNV-profiles" title="Permalink to this headline"></a></h3>
+<p>We can visualize the same clusters as a UMAP plot. Additionally,
+<a class="reference internal" href="../generated/infercnvpy.tl.cnv_score.html#infercnvpy.tl.cnv_score" title="infercnvpy.tl.cnv_score"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.cnv_score()</span></code></a> computes a summary score that quantifies the amount of copy
+number variation per cluster. It is simply defined as the
+mean of the absolute values of the CNV matrix for each cluster.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">cnv_score</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The UMAP plot consists of a large blob of “normal” cells and several smaller clusters with distinct CNV profiles. Except for cluster “12”, which consists of ciliated cells, the isolated clusters are all epithelial cells. These are likely tumor cells and each cluster represents an individual sub-clone.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">fig</span><span class="p">,</span> <span class="p">((</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">),</span> <span class="p">(</span><span class="n">ax3</span><span class="p">,</span> <span class="n">ax4</span><span class="p">))</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">))</span>
+<span class="n">ax4</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_leiden&quot;</span><span class="p">,</span>
+    <span class="n">legend_loc</span><span class="o">=</span><span class="s2">&quot;on data&quot;</span><span class="p">,</span>
+    <span class="n">legend_fontoutline</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">,</span>
+    <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_score&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax2</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_23_0.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_23_0.png" style="width: 749px; height: 721px;" />
+</div>
+</div>
+<p>We can also visualize the CNV score and clusters on the transcriptomics-based UMAP plot. Again, we can see that there are subclusters of epithelial cells that belong to a distinct CNV cluster, and that these clusters tend to have the highest CNV score.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">fig</span><span class="p">,</span> <span class="p">((</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">),</span> <span class="p">(</span><span class="n">ax3</span><span class="p">,</span> <span class="n">ax4</span><span class="p">))</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+    <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">gridspec_kw</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">wspace</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">ax4</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_leiden&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_score&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax2</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_25_0.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_25_0.png" style="width: 812px; height: 721px;" />
+</div>
+</div>
+</section>
+<section id="Classifying-tumor-cells">
+<h3>Classifying tumor cells<a class="headerlink" href="#Classifying-tumor-cells" title="Permalink to this headline"></a></h3>
+<p>Based on these observations, we can now assign cell to either “tumor” or “normal”. To this end, we add a new column <code class="docutils literal notranslate"><span class="pre">cnv_status</span></code> to <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cnv_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;normal&quot;</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cnv_leiden&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;10&quot;</span><span class="p">,</span> <span class="s2">&quot;13&quot;</span><span class="p">,</span> <span class="s2">&quot;15&quot;</span><span class="p">,</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span> <span class="s2">&quot;11&quot;</span><span class="p">,</span> <span class="s2">&quot;16&quot;</span><span class="p">,</span> <span class="s2">&quot;12&quot;</span><span class="p">]),</span> <span class="s2">&quot;cnv_status&quot;</span>
+<span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tumor&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">gridspec_kw</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">wspace</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+<span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_status&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;cnv_status&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+... storing &#39;cnv_status&#39; as categorical
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_28_1.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_28_1.png" style="width: 865px; height: 356px;" />
+</div>
+</div>
+<p>Now, we can plot the CNV heatmap for tumor and normal cells separately:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">chromosome_heatmap</span><span class="p">(</span><span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cnv_status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;tumor&quot;</span><span class="p">,</span> <span class="p">:])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/infercnvpy/pl/_chromosome_heatmap.py:59: FutureWarning: X.dtype being converted to np.float32 from float64. In the next version of anndata (0.9) conversion will not be automatic. Pass dtype explicitly to avoid this warning. Pass `AnnData(X, dtype=X.dtype, ...)` to get the future behavour.
+  tmp_adata = AnnData(X=adata.obsm[f&#34;X_{use_rep}&#34;], obs=adata.obs)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_30_1.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_30_1.png" style="width: 1103px; height: 669px;" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnv</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">chromosome_heatmap</span><span class="p">(</span><span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cnv_status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="p">:])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/infercnvpy/pl/_chromosome_heatmap.py:59: FutureWarning: X.dtype being converted to np.float32 from float64. In the next version of anndata (0.9) conversion will not be automatic. Pass dtype explicitly to avoid this warning. Pass `AnnData(X, dtype=X.dtype, ...)` to get the future behavour.
+  tmp_adata = AnnData(X=adata.obsm[f&#34;X_{use_rep}&#34;], obs=adata.obs)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_tutorial_3k_31_1.png" class="no-scaled-link" src="../_images/tutorials_tutorial_3k_31_1.png" style="width: 1103px; height: 676px;" />
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="reproduce_infercnv.html" class="btn btn-neutral float-right" title="Reproduce the heatmap from inferCNV" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Gregor Sturm..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

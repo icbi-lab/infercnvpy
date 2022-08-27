@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/pl/_chromosome_heatmap.py#L12-L94
+
+infercnvpy.pl.chromosome\_heatmap
+=================================
+
+.. currentmodule:: infercnvpy.pl
+
+.. autofunction:: chromosome_heatmap

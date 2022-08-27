@@ -1,0 +1,8 @@
+﻿:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/_infercnv.py#L14-L134
+
+infercnvpy.tl.infercnv
+======================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: infercnv

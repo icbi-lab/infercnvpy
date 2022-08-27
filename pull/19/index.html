@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+  <title>infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell transcriptomics data &mdash; infercnvpy  documentation</title>
+  
+
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/scanpy.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/typehints.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorials" href="tutorials.html" />
+ 
+
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#" class="icon icon-home"> infercnvpy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.2.dev2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="infercnv.html">The inferCNV method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zzz_bibliography.html">Bibliography</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">infercnvpy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell transcriptomics data</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/icbi-lab/infercnvpy/blob/master/docs/index.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="infercnvpy-scanpy-plugin-to-infer-copy-number-variation-cnv-from-single-cell-transcriptomics-data">
+<h1>infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell transcriptomics data<a class="headerlink" href="#infercnvpy-scanpy-plugin-to-infer-copy-number-variation-cnv-from-single-cell-transcriptomics-data" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://github.com/icbi-lab/infercnvpy/actions?query=workflow%3Atests"><img alt="Build Status" src="https://github.com/icbi-lab/infercnvpy/workflows/tests/badge.svg" /></a> <a class="reference external" href="https://icbi-lab.github.io/infercnvpy"><img alt="Documentation Status" src="https://github.com/icbi-lab/infercnvpy/workflows/docs/badge.svg" /></a> <a class="reference external" href="https://pypi.org/project/infercnvpy/"><img alt="PyPI" src="https://img.shields.io/pypi/v/infercnvpy?logo=PyPI" /></a> <a class="reference external" href="https://github.com/psf/black"><img alt="The uncompromising python formatter" src="https://img.shields.io/badge/code%20style-black-000000.svg" /></a></p>
+<p>Infercnv is a scalable python library to infer copy number variation (CNV) events
+from single cell transcriptomics data. It is heavliy inspired by <a class="reference external" href="https://github.com/broadinstitute/inferCNV/wiki">InferCNV</a>,
+but plays nicely with <a class="reference external" href="https://scanpy.readthedocs.io/en/stable/index.html">scanpy</a> and is much more scalable.</p>
+<img alt="The main result of infercnv" class="align-center" src="_images/infercnv_heatmap.png" />
+<p><strong>WARNING</strong>:</p>
+<p><strong>This package is still experimental. The results have not been validated,
+except in that they look similar, but not identical, to the results of InferCNV.</strong></p>
+<p><strong>We are happy about feedback and welcome contributions!</strong></p>
+<section id="getting-started">
+<h2>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
+<p>Please refer to the <a class="reference external" href="https://icbi-lab.github.io/infercnvpy">documentation</a>. In particular, the</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://icbi-lab.github.io/infercnvpy/tutorials/tutorial_3k.html">Tutorial</a>, and the</p></li>
+<li><p><a class="reference external" href="https://icbi-lab.github.io/infercnvpy/api.html">API documentation</a>.</p></li>
+</ul>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>You need to have Python 3.8 or newer installed on your system. If you don’t have
+Python installed, we recommend installing <a class="reference external" href="https://docs.conda.io/en/latest/miniconda.html">Miniconda</a>.</p>
+<p>There are several alternative options to install infercnvpy:</p>
+<ol class="arabic simple">
+<li><p>Install the latest release of <code class="docutils literal notranslate"><span class="pre">infercnvpy</span></code> from <a class="reference external" href="https://pypi.org/project/infercnvpy/">PyPI</a>:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">infercnvpy</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Install the latest development version:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">icbi</span><span class="o">-</span><span class="n">lab</span><span class="o">/</span><span class="n">infercnvpy</span><span class="o">.</span><span class="n">git</span><span class="nd">@master</span>
+</pre></div>
+</div>
+</section>
+<section id="release-notes">
+<h2>Release notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h2>
+<p>See the <a class="reference external" href="https://github.com/icbi-lab/infercnvpy/releases">release section</a>.</p>
+</section>
+<section id="contact">
+<h2>Contact<a class="headerlink" href="#contact" title="Permalink to this headline">¶</a></h2>
+<p>Please use the <a class="reference external" href="https://github.com/icbi-lab/infercnvpy/issues">issue tracker</a>.</p>
+</section>
+<section id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Permalink to this headline">¶</a></h2>
+<p>n/a</p>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="tutorials.html" class="btn btn-neutral float-right" title="Tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2021, Gregor Sturm.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

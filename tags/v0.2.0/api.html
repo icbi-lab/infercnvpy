@@ -1,0 +1,419 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+  <title>API &mdash; infercnvpy  documentation</title>
+  
+
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/scanpy.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/typehints.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="infercnvpy.io.genomic_position_from_gtf" href="generated/infercnvpy.io.genomic_position_from_gtf.html" />
+    <link rel="prev" title="The inferCNV method" href="infercnv.html" />
+ 
+
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> infercnvpy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="infercnv.html">The inferCNV method</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-infercnvpy.io">Input/Output: <code class="docutils literal notranslate"><span class="pre">io</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/infercnvpy.io.genomic_position_from_gtf.html">infercnvpy.io.genomic_position_from_gtf</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-infercnvpy.pp">Preprocessing: <code class="docutils literal notranslate"><span class="pre">pp</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/infercnvpy.pp.neighbors.html">infercnvpy.pp.neighbors</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tools-tl">Tools: <code class="docutils literal notranslate"><span class="pre">tl</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#infercnv">InferCNV</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.infercnv.html">infercnvpy.tl.infercnv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.copykat.html">infercnvpy.tl.copykat</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.cnv_score.html">infercnvpy.tl.cnv_score</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#embeddings">Embeddings</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.pca.html">infercnvpy.tl.pca</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.umap.html">infercnvpy.tl.umap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.tsne.html">infercnvpy.tl.tsne</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#clustering">Clustering</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.tl.leiden.html">infercnvpy.tl.leiden</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-infercnvpy.pl">Plotting: <code class="docutils literal notranslate"><span class="pre">pl</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">InferCNV</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.pl.chromosome_heatmap.html">infercnvpy.pl.chromosome_heatmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.pl.chromosome_heatmap_summary.html">infercnvpy.pl.chromosome_heatmap_summary</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Embeddings</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.pl.umap.html">infercnvpy.pl.umap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/infercnvpy.pl.tsne.html">infercnvpy.pl.tsne</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-infercnvpy.datasets">Datasets: <code class="docutils literal notranslate"><span class="pre">datasets</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/infercnvpy.datasets.maynard2020_3k.html">infercnvpy.datasets.maynard2020_3k</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/infercnvpy.datasets.oligodendroglioma.html">infercnvpy.datasets.oligodendroglioma</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="zzz_bibliography.html">Bibliography</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">infercnvpy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/icbi-lab/infercnvpy/blob/master/docs/api.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<p>Import infercnvpy together with scanpy as</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">infercnvpy</span> <span class="k">as</span> <span class="nn">cnv</span>
+</pre></div>
+</div>
+<p>For consistency, the infercnvpy API tries to follow the <a class="reference external" href="https://scanpy.readthedocs.io/en/stable/api/index.html">scanpy API</a>
+as closely as possible.</p>
+<section id="module-infercnvpy.io">
+<span id="input-output-io"></span><span id="api-io"></span><h2>Input/Output: <code class="docutils literal notranslate"><span class="pre">io</span></code><a class="headerlink" href="#module-infercnvpy.io" title="Permalink to this headline">¶</a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.io.genomic_position_from_gtf.html#infercnvpy.io.genomic_position_from_gtf" title="infercnvpy.io.genomic_position_from_gtf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">genomic_position_from_gtf</span></code></a>(gtf_file[, adata, …])</p></td>
+<td><p>Get genomic gene positions from a GTF file.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-infercnvpy.pp">
+<span id="preprocessing-pp"></span><h2>Preprocessing: <code class="docutils literal notranslate"><span class="pre">pp</span></code><a class="headerlink" href="#module-infercnvpy.pp" title="Permalink to this headline">¶</a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.pp.neighbors.html#infercnvpy.pp.neighbors" title="infercnvpy.pp.neighbors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">neighbors</span></code></a>(adata[, use_rep, key_added, inplace])</p></td>
+<td><p>Compute the neighborhood graph based on the result from <a class="reference internal" href="generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tools-tl">
+<h2>Tools: <code class="docutils literal notranslate"><span class="pre">tl</span></code><a class="headerlink" href="#tools-tl" title="Permalink to this headline">¶</a></h2>
+<p>Tools add an interpretable annotation to the <a class="reference external" href="https://anndata.readthedocs.io/en/stable/anndata.AnnData.html#anndata.AnnData" title="(in anndata v0.7.7.dev1+g33006dc)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AnnData</span></code></a> object
+which usually can be visualized by a corresponding plotting function.</p>
+<p>The tools for embeddings and clustering mirror the scanpy API.
+However, while the scanpy tools operate on transcriptomics data, the
+infercnvpy equivalent operates on CNV data.</p>
+<span class="target" id="module-infercnvpy.tl"></span><section id="infercnv">
+<h3>InferCNV<a class="headerlink" href="#infercnv" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infercnv</span></code></a>(adata, *[, reference_key, …])</p></td>
+<td><p>Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/infercnvpy.tl.copykat.html#infercnvpy.tl.copykat" title="infercnvpy.tl.copykat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copykat</span></code></a>(adata[, gene_ids, segmentation_cut, …])</p></td>
+<td><p>Inference of genomic copy number and subclonal structure.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.tl.cnv_score.html#infercnvpy.tl.cnv_score" title="infercnvpy.tl.cnv_score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cnv_score</span></code></a>(adata, *[, obs_key, use_rep, …])</p></td>
+<td><p>Assign each cnv cluster a CNV score.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="embeddings">
+<h3>Embeddings<a class="headerlink" href="#embeddings" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.tl.pca.html#infercnvpy.tl.pca" title="infercnvpy.tl.pca"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pca</span></code></a>(adata[, svd_solver, zero_center, …])</p></td>
+<td><p>Compute the PCA on the result of <a class="reference internal" href="generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/infercnvpy.tl.umap.html#infercnvpy.tl.umap" title="infercnvpy.tl.umap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">umap</span></code></a>(adata[, neighbors_key, key_added, inplace])</p></td>
+<td><p>Compute the UMAP on the result of <a class="reference internal" href="generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.tl.tsne.html#infercnvpy.tl.tsne" title="infercnvpy.tl.tsne"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tsne</span></code></a>(adata[, use_rep, key_added, inplace])</p></td>
+<td><p>Compute the t-SNE on the result of <a class="reference internal" href="generated/infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="clustering">
+<h3>Clustering<a class="headerlink" href="#clustering" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.tl.leiden.html#infercnvpy.tl.leiden" title="infercnvpy.tl.leiden"><code class="xref py py-obj docutils literal notranslate"><span class="pre">leiden</span></code></a>(adata[, neighbors_key, key_added, …])</p></td>
+<td><p>Perform leiden clustering on the CNV neighborhood graph.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-infercnvpy.pl">
+<span id="plotting-pl"></span><h2>Plotting: <code class="docutils literal notranslate"><span class="pre">pl</span></code><a class="headerlink" href="#module-infercnvpy.pl" title="Permalink to this headline">¶</a></h2>
+<section id="id1">
+<h3>InferCNV<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.pl.chromosome_heatmap.html#infercnvpy.pl.chromosome_heatmap" title="infercnvpy.pl.chromosome_heatmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chromosome_heatmap</span></code></a>(adata, *[, groupby, …])</p></td>
+<td><p>Plot a heatmap of smoothed gene expression by chromosome.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/infercnvpy.pl.chromosome_heatmap_summary.html#infercnvpy.pl.chromosome_heatmap_summary" title="infercnvpy.pl.chromosome_heatmap_summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chromosome_heatmap_summary</span></code></a>(adata, *[, …])</p></td>
+<td><p>Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h3>Embeddings<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.pl.umap.html#infercnvpy.pl.umap" title="infercnvpy.pl.umap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">umap</span></code></a>(adata, **kwargs)</p></td>
+<td><p>Plot the CNV UMAP.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/infercnvpy.pl.tsne.html#infercnvpy.pl.tsne" title="infercnvpy.pl.tsne"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tsne</span></code></a>(adata, **kwargs)</p></td>
+<td><p>Plot the CNV t-SNE.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-infercnvpy.datasets">
+<span id="datasets-datasets"></span><h2>Datasets: <code class="docutils literal notranslate"><span class="pre">datasets</span></code><a class="headerlink" href="#module-infercnvpy.datasets" title="Permalink to this headline">¶</a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/infercnvpy.datasets.maynard2020_3k.html#infercnvpy.datasets.maynard2020_3k" title="infercnvpy.datasets.maynard2020_3k"><code class="xref py py-obj docutils literal notranslate"><span class="pre">maynard2020_3k</span></code></a>()</p></td>
+<td><p>Return the dataset from <span id="id3">[<a class="reference internal" href="zzz_bibliography.html#id2" title="Ashley Maynard, Caroline E. McCoach, Julia K. Rotow, Lincoln Harris, Franziska Haderk, D. Lucas Kerr, Elizabeth A. Yu, Erin L. Schenk, Weilun Tan, Alexander Zee, Michelle Tan, Philippe Gui, Tasha Lea, Wei Wu, Anatoly Urisman, Kirk Jones, Rene Sit, Pallav K. Kolli, Eric Seeley, Yaron Gesthalter, Daniel D. Le, Kevin A. Yamauchi, David M. Naeger, Sourav Bandyopadhyay, Khyati Shah, Lauren Cech, Nicholas J. Thomas, Anshal Gupta, Mayra Gonzalez, Hien Do, Lisa Tan, Bianca Bacaltos, Rafael Gomez-Sjoberg, Matthew Gubens, Thierry Jahan, Johannes R. Kratz, David Jablons, Norma Neff, Robert C. Doebele, Jonathan Weissman, Collin M. Blakely, Spyros Darmanis, and Trever G. Bivona. Therapy-induced evolution of human lung cancer revealed by single-cell RNA sequencing. Cell, 182(5):1232–1251.e22, September 2020. URL: https://doi.org/10.1016/j.cell.2020.07.017, doi:10.1016/j.cell.2020.07.017.">MMR+20</a>]</span> as AnnData object, downsampled to 3000 cells.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/infercnvpy.datasets.oligodendroglioma.html#infercnvpy.datasets.oligodendroglioma" title="infercnvpy.datasets.oligodendroglioma"><code class="xref py py-obj docutils literal notranslate"><span class="pre">oligodendroglioma</span></code></a>()</p></td>
+<td><p>The original inferCNV example dataset.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="generated/infercnvpy.io.genomic_position_from_gtf.html" class="btn btn-neutral float-right" title="infercnvpy.io.genomic_position_from_gtf" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="infercnv.html" class="btn btn-neutral float-left" title="The inferCNV method" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2021, Gregor Sturm.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

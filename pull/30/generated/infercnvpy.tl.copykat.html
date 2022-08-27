@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>infercnvpy.tl.copykat &mdash; infercnvpy  documentation</title>
+
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/scanpy.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/typehints.css" type="text/css" />
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="infercnvpy.tl.cnv_score" href="infercnvpy.tl.cnv_score.html" />
+    <link rel="prev" title="infercnvpy.tl.infercnv" href="infercnvpy.tl.infercnv.html" />
+ 
+
+
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> infercnvpy
+          </a>
+              <div class="version">
+                0.2.1.dev13
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../infercnv.html">The inferCNV method</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-infercnvpy.io">Input/Output: <code class="docutils literal notranslate"><span class="pre">io</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-infercnvpy.pp">Preprocessing: <code class="docutils literal notranslate"><span class="pre">pp</span></code></a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../api.html#tools-tl">Tools: <code class="docutils literal notranslate"><span class="pre">tl</span></code></a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../api.html#infercnv">InferCNV</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="infercnvpy.tl.infercnv.html">infercnvpy.tl.infercnv</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">infercnvpy.tl.copykat</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#cnv-scores">CNV scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#embeddings">Embeddings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#clustering">Clustering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-infercnvpy.pl">Plotting: <code class="docutils literal notranslate"><span class="pre">pl</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-infercnvpy.datasets">Datasets: <code class="docutils literal notranslate"><span class="pre">datasets</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../zzz_bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">infercnvpy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">API</a> &raquo;</li>
+      <li>infercnvpy.tl.copykat</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/_copykat.py#L10-L166" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="infercnvpy-tl-copykat">
+<h1>infercnvpy.tl.copykat<a class="headerlink" href="#infercnvpy-tl-copykat" title="Permalink to this headline"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="infercnvpy.tl.copykat">
+<span class="sig-prename descclassname"><span class="pre">infercnvpy.tl.</span></span><span class="sig-name descname"><span class="pre">copykat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'S'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segmentation_cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'copykat_result'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_genes_chr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_added</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cnv'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_cell_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#infercnvpy.tl.copykat" title="Permalink to this definition"></a></dt>
+<dd><p>Inference of genomic copy number and subclonal structure.</p>
+<p>Runs CopyKAT (Copynumber Karyotyping of Tumors) <span id="id1">[<a class="reference internal" href="../zzz_bibliography.html#id4" title="Gao R., Bai S., Henderson YC, Lin Y., Schalck A., Yan Y., Kumar T., Hu M., Sei E., Davis A., Wang F., Shaitelman SF, Wang JR, Chen K., Moulder S., Lai SY, and Navin NE. Delineating copy number and clonal substructure in human tumors from single-cell transcriptomes. Nature Biotechnology, 39:599–608, January 2021. URL: https://doi.org/10.1038/s41587-020-00795-2, doi:10.1038/s41587-020-00795-2.">RSY+21</a>]</span> based on integrative
+Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
+in single cells to separate tumor cells from normal cells, and tumor
+subclones using high-throughput sc-RNAseq data.</p>
+<p>Note on input data from the original authors:</p>
+<blockquote>
+<div><p>The matrix values are often the count of unique molecular identifier (UMI)
+from nowadays high througput single cell RNAseq data. The early generation of
+scRNAseq data may be summarized as TPM values or total read counts,
+which should also work.</p>
+</div></blockquote>
+<p>This means that unlike for <a class="reference internal" href="infercnvpy.tl.infercnv.html#infercnvpy.tl.infercnv" title="infercnvpy.tl.infercnv"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.tl.infercnv()</span></code></a> the input data
+should not be log-transformed.</p>
+<p>CopyKAT also does NOT require running <a class="reference internal" href="infercnvpy.io.genomic_position_from_gtf.html#infercnvpy.io.genomic_position_from_gtf" title="infercnvpy.io.genomic_position_from_gtf"><code class="xref py py-func docutils literal notranslate"><span class="pre">infercnvpy.io.genomic_position_from_gtf()</span></code></a>,
+it infers the genomic position from the gene symbols in <code class="docutils literal notranslate"><span class="pre">adata.var_names</span></code>.</p>
+<p>You can find more info on GitHub: <a class="reference external" href="https://github.com/navinlabcode/copykat">https://github.com/navinlabcode/copykat</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>adata</strong> : <span class="annotation terse"><a class="reference external" href="https://anndata.readthedocs.io/en/stable/anndata.AnnData.html#anndata.AnnData" title="(in anndata v0.7.7.dev1+g33006dc)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AnnData</span></code></a></span><span class="annotation full"><a class="reference external" href="https://anndata.readthedocs.io/en/stable/anndata.AnnData.html#anndata.AnnData" title="(in anndata v0.7.7.dev1+g33006dc)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AnnData</span></code></a></span></dt><dd><p>annotated data matrix</p>
+</dd>
+<dt><strong>key_added</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">'cnv'</span></code>)</dt><dd><p>Key under which the copyKAT scores will be stored in <code class="docutils literal notranslate"><span class="pre">adata.obsm</span></code> and <code class="docutils literal notranslate"><span class="pre">adata.uns</span></code>.</p>
+</dd>
+<dt><strong>inplace</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">True</span></code>)</dt><dd><p>If True, store the result in adata, otherwise return it.</p>
+</dd>
+<dt><strong>gene_ids</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">'S'</span></code>)</dt><dd><p>gene id type: Symbol (“S”) or Ensemble (“E”).</p>
+</dd>
+<dt><strong>segmentation_cut</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">0.1</span></code>)</dt><dd><p>segmentation parameters, input 0 to 1; larger looser criteria.</p>
+</dd>
+<dt><strong>distance</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">'euclidean'</span></code>)</dt><dd><p>distance methods include “euclidean”, and correlation coverted distance include “pearson” and “spearman”.</p>
+</dd>
+<dt><strong>s_name</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">'copykat_result'</span></code>)</dt><dd><p>sample (output file) name.</p>
+</dd>
+<dt><strong>min_genes_chr</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">5</span></code>)</dt><dd><p>minimal number of genes per chromosome for cell filtering.</p>
+</dd>
+<dt><strong>norm_cell_names</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span> (default: <code class="docutils literal notranslate"><span class="pre">''</span></code>)</dt><dd><p>cell barcodes (<code class="docutils literal notranslate"><span class="pre">adata.obs.index</span></code>) indicate normal cells</p>
+</dd>
+<dt><strong>n_jobs</strong> : <span class="annotation terse"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span><span class="annotation full"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]</span> (default: <code class="docutils literal notranslate"><span class="pre">None</span></code>)</dt><dd><p>Number of cores to use for copyKAT analysis. Per default, uses all cores
+available on the system. Multithreading does not work on Windows and this
+value will be ignored.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><span class="annotation terse">(&lt;class ‘pandas.core.frame.DataFrame’&gt;, &lt;class ‘pandas.core.series.Series’&gt;)</span><span class="annotation full">(&lt;class ‘pandas.core.frame.DataFrame’&gt;, &lt;class ‘pandas.core.series.Series’&gt;)</span></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Depending on the value of <code class="docutils literal notranslate"><span class="pre">inplace</span></code>, either returns <code class="docutils literal notranslate"><span class="pre">None</span></code> or a tuple (<code class="docutils literal notranslate"><span class="pre">CNV</span> <span class="pre">Matrix</span></code>,`CopyKat prediction`)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="infercnvpy.tl.infercnv.html" class="btn btn-neutral float-left" title="infercnvpy.tl.infercnv" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="infercnvpy.tl.cnv_score.html" class="btn btn-neutral float-right" title="infercnvpy.tl.cnv_score" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Gregor Sturm..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

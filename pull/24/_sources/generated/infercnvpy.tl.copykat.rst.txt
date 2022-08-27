@@ -1,0 +1,8 @@
+:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/_copykat.py#L10-L149
+
+infercnvpy.tl.copykat
+=====================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: copykat

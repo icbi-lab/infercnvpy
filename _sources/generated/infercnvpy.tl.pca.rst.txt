@@ -1,0 +1,8 @@
+﻿:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/__init__.py#L31-L73
+
+infercnvpy.tl.pca
+=================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: pca

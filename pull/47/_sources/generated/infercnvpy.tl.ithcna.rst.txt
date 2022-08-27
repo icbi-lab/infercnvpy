@@ -1,0 +1,8 @@
+﻿:github_url: https://github.com/icbi-lab/infercnvpy/tree/master/infercnvpy/tl/_scores.py#L154-L221
+
+infercnvpy.tl.ithcna
+====================
+
+.. currentmodule:: infercnvpy.tl
+
+.. autofunction:: ithcna
