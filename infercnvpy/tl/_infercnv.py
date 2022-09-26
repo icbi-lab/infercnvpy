@@ -165,7 +165,7 @@ def _running_mean(
         only compute running windows ever `step` columns, e.g. if step is 10
         0:100, 10:110, 20:120 etc. Saves memory.
     """
-    r = np.arange(1, n)
+    r = np.arange(1, n + 1)
     pyramid = np.minimum(r, r[::-1])
     smoothed_x = np.apply_along_axis(
         lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x
