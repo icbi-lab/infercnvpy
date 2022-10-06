@@ -5,5 +5,5 @@ Tutorials
    :maxdepth: 1
    :caption: Contents:
 
-   tutorials/tutorial_3k.md
-   tutorials/reproduce_infercnv.md
+   notebooks/tutorial_3k.ipynb
+   notebooks/reproduce_infercnv.ipynb
