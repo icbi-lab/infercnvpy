@@ -61,4 +61,3 @@ specifies one or multiple values in `reference_key` that refer to normal cells.
 Alternatively, you can specify a numpy array with average gene expression values
 (for instance, derived from a different dataset), to `reference` which will be used
 as reference instead. This array needs to align to the `var` axis of adata.
-
