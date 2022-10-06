@@ -8,8 +8,8 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 -]
 +build-backend = "hatchling.build"
 +requires = ["hatchling"]
- 
- 
+
+
  [project]
  name = "infercnvpy"
 +version = "0.0.1"
@@ -29,7 +29,7 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 -license = {file = "LICENSE"}
 -readme = "README.md"
  dependencies = ["anndata"]
- 
+
  [project.optional-dependencies]
  dev = [
 -    # dev version generation
@@ -47,6 +47,6 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 -filterwarnings = [
 -    # "ignore:.*U.*mode is deprecated:DeprecationWarning",
 -]
- 
+
  [tool.isort]
  include_trailing_comma = true
