@@ -57,6 +57,10 @@ def chromosome_heatmap(
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
     tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs)
 
+    # transfer colors from adata if present
+    if f"{groupby}_colors" in adata.uns:
+        tmp_adata.uns[f"{groupby}_colors"] = adata.uns[f"{groupby}_colors"]
+
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
@@ -155,6 +159,10 @@ def chromosome_heatmap_summary(
         X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]),
         obs=tmp_obs,
     )
+
+    # transfer colors from adata if present
+    if f"{groupby}_colors" in adata.uns:
+        tmp_adata.uns[f"{groupby}_colors"] = adata.uns[f"{groupby}_colors"]
 
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
