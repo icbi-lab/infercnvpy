@@ -74,3 +74,12 @@ repos:
       hooks:
           - id: pyupgrade
             args: [--py3-plus, --py38-plus, --keep-runtime-typing]
+    - repo: local
+      hooks:
+          - id: forbid-to-commit
+            name: Don't commit rej files
+            entry: |
+                Cannot commit .rej files. These indicate merge conflicts that arise during automated template updates.
+                Fix the merge conflicts manually and remove the .rej files.
+            language: fail
+            files: '.*\.rej$'
