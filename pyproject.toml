@@ -1,34 +1,30 @@
 [build-system]
-requires = [
-    'flit_core >=2,<4',
-    'setuptools_scm',
-    'pytoml',
-    'wheel',
-]
-build-backend = 'flit_core.buildapi'
+build-backend = "hatchling.build"
+requires = ["hatchling", "hatch-vcs"]
 
-[tool.flit.metadata]
-module = 'infercnvpy'
-author = 'Gregor Sturm'
-author-email = 'gregor.sturm@i-med.ac.at'
-home-page = 'https://github.com/icbi-lab/infercnvpy'
-description-file = "README.rst"
-classifiers = [
-    'License :: OSI Approved :: BSD License',
-    'Development Status :: 4 - Beta',
-    'Intended Audience :: Developers',
-    'Intended Audience :: Science/Research',
-    'Programming Language :: Python :: 3',
+
+[project]
+name = "infercnvpy"
+dynamic = ["version"]
+description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Gregor Sturm"},
 ]
-requires-python = '>= 3.8'
-requires = [
+maintainers = [
+    {name = "Gregor Sturm", email="gregor.sturm@i-med.ac.at"}
+]
+urls.Documentation = "https://infercnvpy.readthedocs.io/"
+urls.Source = "https://github.com/icbi-lab/infercnvpy"
+urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
+dependencies = [
     'anndata>=0.7.3',
     'scanpy>=1.6.0',
     'pandas>=1',
     'numpy>=1.20', # includes type annotations
-    'tqdm>=4.42.0', # required for process_map
-    # for getting the version
-    'setuptools_scm',
+    'tqdm>=4.63.0', # fixes tqdm.auto
     'pytoml',
     'gtfparse>=1.2.1',
     'pycairo>=1.20; sys_platform == "win32"',
@@ -36,36 +32,79 @@ requires = [
     'pyreadr'
 ]
 
-[tool.flit.metadata.requires-extra]
+[project.optional-dependencies]
 copykat = [
     'rpy2'
 ]
-test = [
-    'pytest',
-    'black',
-    'pre-commit',
+dev = [
+    # CLI for managing the python project
+    "pre-commit",
+    "bump2version"
 ]
 doc = [
-    'sphinx>=4.2',
-    'sphinx_rtd_theme>=0.4',
-    'scanpydoc[typehints]>=0.7.5',
-    'docutils<0.18',
+    "sphinx>=4.2",
+    "furo",
+    "myst-parser",
+    "sphinxcontrib-bibtex>=1.0.0",
+    "scanpydoc[typehints]>=0.7.4",
     # for tutorial
     'nbsphinx>=0.6.0,!=0.8.8', # https://github.com/spatialaudio/nbsphinx/issues/620, should be patched in >=0.8.9
     'jupytext',
-    'sphinxcontrib-bibtex>=1.0.0',
     'pycairo',
     'jupyter_client',
     'ipykernel',
 ]
+test = [
+    "pytest",
+    "pytest-cov",
+]
 
-[tool.flit.metadata.urls]
-Documentation = 'https://icbi-lab.github.io/infercnvpy/'
+[tool.hatch.version]
+source = "vcs"
+
+[tool.coverage.run]
+source = ["infercnvpy"]
+omit = [
+    "**/test_*.py",
+]
 
 [tool.pytest.ini_options]
-minversion = 6.0
-testpaths = 'infercnvpy/tests'
-norecursedirs = [ '.*', 'build', 'dist', '*.egg', 'data', '__pycache__']
+testpaths = ["tests"]
+xfail_strict = true
+addopts = [
+    # "-Werror",  # if 3rd party libs raise DeprecationWarnings, just use filterwarnings below
+    "--import-mode=importlib",  # allow using test files with same name
+]
+filterwarnings = [
+    # "ignore:.*U.*mode is deprecated:DeprecationWarning",
+]
 
-[tool.setuptools_scm]
-git_describe_command = "git describe --dirty --tags --long --match v*.*.*"
+[tool.isort]
+include_trailing_comma = true
+multi_line_output = 3
+profile = "black"
+skip_glob = ["docs/*"]
+
+[tool.black]
+line-length = 120
+target-version = ['py38']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.jupytext]
+formats = "ipynb,md"
