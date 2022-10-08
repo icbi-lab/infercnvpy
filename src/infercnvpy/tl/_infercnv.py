@@ -164,12 +164,21 @@ def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step
         only compute running windows ever `step` columns, e.g. if step is 10
         0:100, 10:110, 20:120 etc. Saves memory.
     """
-    r = np.arange(1, n)
-    pyramid = np.minimum(r, r[::-1])
-    smoothed_x = np.apply_along_axis(lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x) / np.sum(
-        pyramid
-    )
-    return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
+    if n < x.shape[1]:  # regular convolution: the filter is smaller than the #genes
+        r = np.arange(1, n + 1)
+
+        pyramid = np.minimum(r, r[::-1])
+        smoothed_x = np.apply_along_axis(lambda row: np.convolve(row, pyramid, mode="same"), axis=1, arr=x) / np.sum(
+            pyramid
+        )
+        return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
+
+    else:  # there's less genes than the filtersize. just apply a single conv with a smaller filter (no sliding)
+        r = np.arange(1, x.shape[1] + 1)
+        pyramid = np.minimum(r, r[::-1])
+        smoothed_x = x @ pyramid.reshape(-1, 1)
+        smoothed_x = smoothed_x / pyramid.sum()
+        return smoothed_x
 
 
 def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.ndarray]:
