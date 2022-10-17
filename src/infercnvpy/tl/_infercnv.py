@@ -159,11 +159,7 @@ def _natural_sort(l: Sequence):
     return sorted(l, key=alphanum_key)
 
 
-def _running_mean(
-    x: Union[np.ndarray, scipy.sparse.spmatrix],
-    n: int = 50,
-    step: int = 10
-) -> np.ndarray:
+def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10) -> np.ndarray:
     """
     Compute a pyramidially weighted running mean.
 
@@ -186,7 +182,7 @@ def _running_mean(
                 pyramid,
             ),
             axis=1,
-            arr=x
+            arr=x,
         ) / np.sum(pyramid)
         return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
@@ -198,12 +194,7 @@ def _running_mean(
         return smoothed_x
 
 
-def _running_mean_by_chromosome(
-    expr,
-    var,
-    window_size,
-    step
-) -> Tuple[dict, np.ndarray, pd.DataFrame]:
+def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.ndarray, pd.DataFrame]:
     """Compute the running mean for each chromosome independently. Stack the resulting arrays ordered by chromosome.
 
     Parameters
@@ -229,11 +220,7 @@ def _running_mean_by_chromosome(
     def _running_mean_for_chromosome(chr):
         genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
         tmp_x = expr[:, var.index.get_indexer(genes)]
-        x_conv = _running_mean(
-            tmp_x,
-            n=window_size,
-            step=step
-        )
+        x_conv = _running_mean(tmp_x, n=window_size, step=step)
         convolved_gene_names = _gene_list_convolve(genes, window_size=window_size - 1, step=step, mode="same")
         assert len(convolved_gene_names) == x_conv.shape[1], f"{len(convolved_gene_names)} vs {x_conv.shape[1]}"
         # DataFrame containing all the genes that go into a specific position
@@ -298,15 +285,7 @@ def _get_reference(
     return reference
 
 
-def _infercnv_chunk(
-    tmp_x,
-    var,
-    reference,
-    lfc_cap,
-    window_size,
-    step,
-    dynamic_threshold
-):
+def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold):
     """The actual infercnv work is happening here.
 
     Process chunks of serveral thousand genes independently since this
