@@ -3,7 +3,7 @@ name: Sync Template
 on:
     workflow_dispatch:
     schedule:
-        - cron: "0 2 * * *" # every night at 2:00
+        - cron: "0 2 * * *" # every night at 2:00 UTC
 
 jobs:
     sync:
@@ -11,12 +11,12 @@ jobs:
         steps:
             - uses: actions/checkout@v2
             - name: Set up Python 3.10
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v4
               with:
                   python-version: "3.10"
             - name: Install dependencies
               # for now, pin cookiecutter version, due to https://github.com/cruft/cruft/issues/166
-              run: python -m pip install --upgrade cruft "cookiecutter<2" pre-commit
+              run: python -m pip install --upgrade cruft "cookiecutter<2" pre-commit toml
             - name: Find Latest Tag
               uses: oprypin/find-latest-tag@v1.1.0
               id: get-latest-tag
@@ -35,11 +35,12 @@ jobs:
                   branch: template-update
                   title: Automated template update from cookiecutter-scverse
                   body: |
-                      A new version of the scverse cookiecutter template got released. This PR
-                      adds all new changes to your repository and helps to to stay in sync with the latest
-                      best-practice template maintained by the scverse team.
+                      A new version of the [scverse cookiecutter template](https://github.com/scverse/cookiecutter-scverse/releases)
+                      got released. This PR adds all new changes to your repository and helps to to stay in sync with
+                      the latest best-practice template maintained by the scverse team.
 
-                      If a merge conflict arised, a `.rej` file with the rejected patch is generated. You'll need to
-                      manually merge these changes.
+                      **If a merge conflict arised, a `.rej` file with the rejected patch is generated. You'll need to
+                      manually merge these changes.**
 
-                      For more information about the template sync, please refer to the [template documentation](TODO).
+                      For more information about the template sync, please refer to the
+                      [template documentation](https://cookiecutter-scverse-instance.readthedocs.io/en/latest/developer_docs.html#automated-template-sync).
