@@ -1,0 +1,33 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -19,7 +19,11 @@ maintainers = [
+ urls.Documentation = "https://infercnvpy.readthedocs.io/"
+ urls.Source = "https://github.com/icbi-lab/infercnvpy"
+ urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
+-dependencies = ["anndata"]
++dependencies = [
++    "anndata",
++    # for debug logging (referenced from the issue template)
++    "session-info"
++]
+ 
+ [project.optional-dependencies]
+ dev = [
+@@ -29,13 +33,13 @@ dev = [
+ ]
+ doc = [
+     "sphinx>=4",
+-    "furo",
+-    "myst-parser",
++    "sphinx-book-theme>=0.3.3",
++    "myst-nb",
+     "sphinxcontrib-bibtex>=1.0.0",
+-    "scanpydoc[typehints]>=0.7.4",
++    "sphinx-autodoc-typehints",
+     # For notebooks
+-    "nbsphinx",
+-    "ipykernel"
++    "ipykernel",
++    "sphinx-copybutton",
+ ]
+ test = [
+     "pytest",

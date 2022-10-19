@@ -17,10 +17,11 @@ sys.path.insert(0, str(HERE / "extensions"))
 # -- Project information -----------------------------------------------------
 
 info = metadata("infercnvpy")
-project = info["Name"]
+project_name = info["Name"]
 author = info["Author"]
 copyright = f"{datetime.now():%Y}, {author}."
 version = info["Version"]
+repository_url = "https://github.com/" + "grst" + "/" + project_name
 
 # The full version, including alpha/beta/rc tags
 release = info["Version"]
@@ -43,15 +44,14 @@ html_context = {
 # Add any Sphinx extension module names here, as strings.
 # They can be extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
-    "myst_parser",
+    "myst_nb",
+    "sphinx_copybutton",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinxcontrib.bibtex",
     "sphinx_autodoc_typehints",
-    "scanpydoc.definition_list_typed_field",
-    "nbsphinx",
     "sphinx.ext.mathjax",
     *[p.stem for p in (HERE / "extensions").glob("*.py")],
 ]
@@ -95,10 +95,16 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "furo"
+html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
+html_title = project_name
 
-pygments_style = "sphinx"
+html_theme_options = {
+    "repository_url": repository_url,
+    "use_repository_button": True,
+}
+
+pygments_style = "default"
 
 nitpick_ignore = [
     # If building the documentation fails because of a missing link that is outside your control,

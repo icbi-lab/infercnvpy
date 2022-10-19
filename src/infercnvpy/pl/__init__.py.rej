@@ -1,0 +1,4 @@
+diff a/src/infercnvpy/pl/__init__.py b/src/infercnvpy/pl/__init__.py	(rejected hunks)
+@@ -1 +1 @@
+-from .basic import basic_plot
++from .basic import BasicClass, basic_plot
