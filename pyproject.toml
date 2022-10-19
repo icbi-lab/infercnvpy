@@ -29,7 +29,9 @@ dependencies = [
     'gtfparse>=1.2.1',
     'pycairo>=1.20; sys_platform == "win32"',
     'leidenalg',
-    'pyreadr'
+    'pyreadr',
+    # for debug logging (referenced from the issue template)
+    "session-info",
 ]
 
 [project.optional-dependencies]
@@ -43,16 +45,15 @@ dev = [
 ]
 doc = [
     "sphinx>=4.2",
-    "furo",
-    "myst-parser",
+    "sphinx-book-theme>=0.3.3",
+    "myst-nb",
     "sphinxcontrib-bibtex>=1.0.0",
-    "scanpydoc[typehints]>=0.7.4",
+    "sphinx-autodoc-typehints",
     # for tutorial
-    'nbsphinx>=0.6.0,!=0.8.8', # https://github.com/spatialaudio/nbsphinx/issues/620, should be patched in >=0.8.9
-    'jupytext',
+    "ipykernel",
+    "sphinx-copybutton",
     'pycairo',
     'jupyter_client',
-    'ipykernel',
 ]
 test = [
     "pytest",
