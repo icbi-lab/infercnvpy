@@ -31,13 +31,13 @@ diff a/docs/conf.py b/docs/conf.py	(rejected hunks)
 +    ".ipynb": "myst-nb",
 +    ".myst": "myst-nb",
 +}
- 
+
  intersphinx_mapping = {
      "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
      "numpy": ("https://numpy.org/doc/stable/", None),
  }
- 
+
 -nbsphinx_execute = "never"
- 
+
  # List of patterns, relative to source directory, that match files and
  # directories to ignore when looking for source files.

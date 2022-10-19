@@ -9,7 +9,7 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 +    # for debug logging (referenced from the issue template)
 +    "session-info"
 +]
- 
+
  [project.optional-dependencies]
  dev = [
 @@ -29,13 +33,13 @@ dev = [
