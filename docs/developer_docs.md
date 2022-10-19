@@ -20,6 +20,7 @@ On the RTD dashboard choose "Import a Project" and follow the instructions to ad
     that break the documentation. To do so, got to `Admin -> Advanced Settings`, check the
     `Build pull requests for this projects` option, and click `Save`. For more information, please refer to
     the [official RTD documentation](https://docs.readthedocs.io/en/stable/pull-requests.html).
+-   If you find the RTD builds are failing, you can disable the `fail_on_warning` option in `.readthedocs.yaml`.
 
 ### Coverage tests with _Codecov_
 
@@ -92,6 +93,8 @@ The following pre-commit checks are for errors and inconsistencies:
     -   **check-case-conflict**: check files that would conflict with case-insensitive file systems.
 -   [pyupgrade](https://github.com/asottile/pyupgrade):
     upgrade syntax for newer versions of the language.
+-   **forbid-to-commit**: Make sure that `*.rej` files cannot be commited. These files are created by the
+    [automated template sync](#automated-template-sync) if there's a merge conflict and need to be addressed manually.
 
 #### Notes on pre-commit checks
 
@@ -240,6 +243,32 @@ in the root of the repository. Continuous integration will automatically run the
 
 [scanpy-test-docs]: https://scanpy.readthedocs.io/en/latest/dev/testing.html#writing-tests
 
+### Automated template sync
+
+Automated template sync is enabled by default. This means that every night, a GitHub action runs [cruft][] to check
+if a new version of the `scverse-cookiecutter` template got released. If there are any new changes, a pull request
+proposing these changes is created automatically. This helps keeping the repository up-to-date with the latest
+coding standards.
+
+It may happen that a template sync results in a merge conflict. If this is the case a `*.ref` file with the
+diff is created. You need to manually address these changes and remove the `.rej` file when you are done.
+The pull request can only be merged after all `*.rej` files have been removed.
+
+:::{tip}
+The following hints may be useful to work with the template sync:
+
+-   GitHub automatically disables scheduled actions if there has been not activity to the repository for 60 days.
+    You can re-enable or manually trigger the sync by navigating to `Actions` -> `Sync Template` in your GitHub repository.
+-   If you want to ignore certain files from the template update, you can add them to the `[tool.cruft]` section in the
+    `pyproject.toml` file in the root of your repository. More details are described in the
+    [cruft documentation][cruft-update-project].
+-   To disable the sync entirely, simply remove the file `.github/workflows/sync.yaml`.
+
+:::
+
+[cruft]: https://cruft.github.io/cruft/
+[cruft-update-project]: https://cruft.github.io/cruft/#updating-a-project
+
 ### Making a release
 
 #### Updating the version number
@@ -289,23 +318,21 @@ Please write documentation for your package. This project uses [sphinx][] with t
 
 -   the [myst][] extension allows to write documentation in markdown/Markedly Structured Text
 -   [Numpy-style docstrings][numpydoc] (through the [napoloen][numpydoc-napoleon] extension).
--   Jupyter notebooks as tutorials through [nbsphinx][] (See [Tutorials with nbsphinx](#tutorials-with-nbsphinx-and-jupyter-notebooks))
+-   Jupyter notebooks as tutorials through [myst-nb][] (See [Tutorials with myst-nb](#tutorials-with-myst-nb-and-jupyter-notebooks))
 -   [Sphinx autodoc typehints][], to automatically reference annotated input and output types
 
 See the [scanpy developer docs](https://scanpy.readthedocs.io/en/latest/dev/documentation.html) for more information
 on how to write documentation.
 
-### Tutorials with nbsphinx and jupyter notebooks
+### Tutorials with myst-nb and jupyter notebooks
 
-The documentation is set-up to render jupyter notebooks stored in the `docs/notebooks` directory using [nbsphinx][].
+The documentation is set-up to render jupyter notebooks stored in the `docs/notebooks` directory using [myst-nb][].
 Currently, only notebooks in `.ipynb` format are supported that will be included with both their input and output cells.
 It is your reponsibility to update and re-run the notebook whenever necessary.
 
 If you are interested in automatically running notebooks as part of the continuous integration, please check
 out [this feature request](https://github.com/scverse/cookiecutter-scverse/issues/40) in the `cookiecutter-scverse`
 repository.
-
-[nbsphinx]: https://github.com/spatialaudio/nbsphinx
 
 #### Hints
 
@@ -329,7 +356,7 @@ open _build/html/index.html
 [codecov docs]: https://docs.codecov.com/docs
 [pre-commit.ci]: https://pre-commit.ci/
 [readthedocs.org]: https://readthedocs.org/
-[nbshpinx]: https://github.com/spatialaudio/nbsphinx
+[myst-nb]: https://myst-nb.readthedocs.io/en/latest/
 [jupytext]: https://jupytext.readthedocs.io/en/latest/
 [pre-commit]: https://pre-commit.com/
 [anndata]: https://github.com/scverse/anndata
