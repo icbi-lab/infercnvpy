@@ -32,6 +32,7 @@ dependencies = [
     'pyreadr',
     # for debug logging (referenced from the issue template)
     "session-info",
+    "ipython"
 ]
 
 [project.optional-dependencies]
