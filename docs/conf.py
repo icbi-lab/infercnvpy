@@ -21,7 +21,7 @@ project_name = info["Name"]
 author = info["Author"]
 copyright = f"{datetime.now():%Y}, {author}."
 version = info["Version"]
-repository_url = "https://github.com/" + "grst" + "/" + project_name
+repository_url = f"https://github.com/grst/{project_name}"
 
 # The full version, including alpha/beta/rc tags
 release = info["Version"]
@@ -53,6 +53,7 @@ extensions = [
     "sphinxcontrib.bibtex",
     "sphinx_autodoc_typehints",
     "sphinx.ext.mathjax",
+    "IPython.sphinxext.ipython_console_highlighting",
     *[p.stem for p in (HERE / "extensions").glob("*.py")],
 ]
 

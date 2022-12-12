@@ -1,0 +1,9 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -39,6 +39,7 @@ doc = [
+     "sphinx-autodoc-typehints",
+     # For notebooks
+     "ipykernel",
++    "ipython",
+     "sphinx-copybutton",
+ ]
+ test = [
