@@ -1,6 +1,6 @@
 {
     "template": "https://github.com/scverse/cookiecutter-scverse",
-    "commit": "28f47a97470826ca5000df24fd272e0d32d1c6fa",
+    "commit": "c96cadaa981a71113cc97ada8e5085188ed22ed7",
     "context": {
         "cookiecutter": {
             "project_name": "infercnvpy",
@@ -19,5 +19,5 @@
         }
     },
     "directory": null,
-    "checkout": "v0.0.3"
+    "checkout": "v0.1.1"
 }
