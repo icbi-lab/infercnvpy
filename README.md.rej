@@ -1,0 +1,10 @@
+diff a/README.md b/README.md	(rejected hunks)
+@@ -3,7 +3,7 @@
+ [![Tests][badge-tests]][link-tests]
+ [![Documentation][badge-docs]][link-docs]
+ 
+-[badge-tests]: https://img.shields.io/github/workflow/status/grst/infercnvpy/Test/main
++[badge-tests]: https://img.shields.io/github/actions/workflow/status/grst/infercnvpy/test.yaml?branch=main
+ [link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
+ [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
+ 
