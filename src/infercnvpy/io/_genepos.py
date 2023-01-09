@@ -38,7 +38,9 @@ def genomic_position_from_gtf(
     inplace
         If True, add the annotations directly to adata, otherwise return a dataframe.
     """
-    gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
+    gtf = gtfparse.read_gtf(
+        gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"], result_type="pandas"
+    )
     gtf = (
         gtf.loc[
             gtf["feature"] == "gene",
