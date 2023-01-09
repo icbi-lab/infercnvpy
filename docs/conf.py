@@ -103,7 +103,6 @@ intersphinx_mapping = {
     "networkx": ("https://networkx.org/documentation/networkx-1.10/", None),
 }
 
-
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
