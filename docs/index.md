@@ -9,7 +9,8 @@
 tutorials.rst
 infercnv.rst
 api.rst
-developer_docs.md
+template_usage.md
+contributing.md
 changelog.md
 references.md
 ```
