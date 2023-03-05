@@ -8,107 +8,165 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from hmmlearn import hmm
 from scipy.sparse import issparse
+from scipy import sparse
 from scipy import stats
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import anndata
+import warnings
 
-def get_hmm_model(means : np.array, 
-                  variances : np.array,
-                  HMM_transition_prob : float = 1e-6,
-                  learned : bool = True, 
-                  n_iter : int = 100) -> hmm.GaussianHMM:
-    assert means.size == 3
-    assert variances.size == 3
-    assert HMM_transition_prob >= 0
-    assert HMM_transition_prob <= 1
-    if learned:
-        model = hmm.GaussianHMM(n_components=3, 
-                                covariance_type="full", 
-                                init_params='t', 
-                                params='t',
-                                n_iter=n_iter)
-        model.means_ = means.reshape(3,1)
-        return model
-    else:
-        t = HMM_transition_prob
-        model = hmm.GaussianHMM(n_components=3,
-                                covariance_type='full',
-                                n_iter=100) 
-        model.transmat_ = np.array([[1-2*t,  t,     t],
-                                    [t,     1-2*t,  t],
-                                    [t,      t,     1-2*t]])
-        model.startprob_ = np.array([t,     1-2*t,  t])
-        model.means_ = means.reshape(3,1)
-        model.covars_ = variances.reshape((3,1,1))
-        return model
 
-def std_helper(A : Union[np.ndarray, scipy.sparse.csr.csr_matrix]) -> float:
-    # numpy
+def get_X_from_adata(adata: AnnData, key_used: str = 'cnv') -> np.ndarray:
+    return adata.obsm[f'X_{key_used}']
+
+def std_helper(A: Union[np.ndarray, scipy.sparse.spmatrix]) -> float:
+    """
+    Compute the standard deviation of a matrix or sparse matrix
+
+    Args:
+        A: matrix or sparse matrix
+
+    Returns:
+        float: standard deviation
+    """
     if type(A) == np.ndarray:
         return A.std()
-    elif type(A) == scipy.sparse.csr.csr_matrix:
+    elif issparse(A):
         return np.sqrt((A.power(2)).mean() - A.mean()**2)
     else:
         raise Exception('Unknown type', type(A))
 
-def get_state_parameters_infercnv(
-        nonmalignant_cnv : Union[np.ndarray, scipy.sparse.csr.csr_matrix],
-        p_val : float = 0.01, 
-        halve_mean_delta : bool = True) -> Tuple[np.array, np.array]:
-    ref_mean = nonmalignant_cnv.mean()
-    ref_sigma = std_helper(nonmalignant_cnv)
-    mean_delta = np.abs(norm.ppf(p_val, loc=0, scale=ref_sigma))
-    # Divide mean_delta in half to get similar mean_delta to InferCNV - should ideally not be there
-    if halve_mean_delta:
-        mean_delta /= 2
-    sorted_means = np.array([ref_mean - mean_delta, ref_mean, ref_mean + mean_delta]).reshape(-1,1)
-    variance = ref_sigma ** 2
-    sorted_variances = np.array([variance, variance, variance]).reshape(3,1,1)
-    return sorted_means, sorted_variances
+def get_hmm_model(means: np.array,
+                  variances: np.array,
+                  HMM_transition_prob: float = 1e-6,
+                  n_iter: int = 100) -> hmm.GaussianHMM:
+    """
+    Initialize a Gaussian HMM model with 3 hidden states
 
-def run_hmm_transition_not_learned(adata, subclone_key, means, variances, key_used, log1p_base='e', exponentiate=False): # p_val=0.01, log1p_base='e', trans_prob=1e-6):
+    Args:
+        means: means of the 3 hidden states
+        variances: variances of the 3 hidden states
+        HMM_transition_prob: Probability of transitioning to a different state for each different state
+        n_iter: Number of iterations to run the inference algorithm
+
+    Returns:
+        hmm.GaussianHMM: Initialized Gaussian HMM model
+    """
+    assert means.size == 3
+    assert variances.size == 3
+    assert HMM_transition_prob >= 0
+    assert HMM_transition_prob <= 1
+
+    t = HMM_transition_prob
+    model = hmm.GaussianHMM(n_components=3,
+                            covariance_type='full',
+                            n_iter=n_iter)
+    model.transmat_ = np.array([[1 - 2 * t, t, t],
+                                [t, 1 - 2 * t, t],
+                                [t, t, 1 - 2 * t]])
+    model.startprob_ = np.array([t, 1 - 2 * t, t])
+    model.means_ = means.reshape(3, 1)
+    model.covars_ = variances.reshape((3, 1, 1))
+    return model
+
+def get_state_parameters_qnorm(
+        nonmalignant_cnv: Union[np.ndarray, scipy.sparse.spmatrix],
+        p_val: float = 0.01) -> Tuple[np.array, np.array]:
+    """
+    Compute the mean and variance of the 3 hidden states based on statistics of the non-malignant cells,
+    using the inverse normal CDF.
+
+    Args:
+        nonmalignant_cnv: matrix of CNV values for non-malignant cells
+        p_val: p-value to use for the inverse normal CDF
+
+    Returns:
+        np.ndarray: means of the 3 hidden states
+        np.ndarray: variances of the 3 hidden states
+    """
+    mean = nonmalignant_cnv.mean()
+    sigma = std_helper(nonmalignant_cnv)
+    variance = sigma ** 2
+    mean_delta = np.abs(norm.ppf(p_val, loc=0, scale=sigma))
+    # Divide mean_delta in half to get similar mean_delta to InferCNV - should ideally not be there
+    mean_delta /= 2
+    means = np.array([mean - mean_delta, mean, mean + mean_delta]).reshape(-1, 1)
+    variances = np.array([variance, variance, variance]).reshape(3, 1, 1)
+    return means, variances
+
+def Z_dict_to_dense(adata, subclone_key, key_used, Z_dict) -> np.ndarray:
+    """
+    Compute a full matrix of hidden states from a dictionary of hidden states for each subclone
+
+    Args:
+        adata: AnnData object
+        subclone_key: key in adata.obs that contains the subclone names
+        key_used: Key under which the output from tl.infercnv (non-denoised CNV values) is stored in adata.
+        Z_dict: Dictionary of hidden states for each subclone
+    Returns:
+        float: standard deviation
+    """
+    X = get_X_from_adata(adata, key_used=key_used)
+    subclone_names = np.unique(adata.obs[subclone_key].to_numpy())
+    Z_matrix = -2 * np.ones(X.shape, dtype=np.int32)
+    for subclone_name in subclone_names:
+        cluster_idx = np.argwhere(adata.obs[subclone_key].to_numpy() == subclone_name).reshape(-1)
+        Z_t_dense = Z_dict[subclone_name].todense()
+        for cluster_id in cluster_idx:
+            Z_matrix[cluster_id] = Z_t_dense
+    assert np.all(Z_matrix != -2), 'Z_matrix not filled'
+    return Z_matrix
+
+def run_hmm_transition_not_learned(adata: AnnData,
+                                   subclone_key: str,
+                                   model: hmm.GaussianHMM,
+                                   key_used: str) -> dict:
+    """
+    Run the HMM model on each subclone, where the sequence of observations for a subclone is attained by averaging across cells
+
+    Args:
+        adata: AnnData object
+        subclone_key: key in adata.obs that contains the subclone names
+        model: HMM model to apply
+        key_used: Key under which the output from tl.infercnv (non-denoised CNV values) is stored in adata.
+    Returns:
+        dict: a dictionary of subclone names to the hidden states for each cell in the subclone stored as a sparse array
+    """
+
     # Make matrix of CNV values
     X = get_X_from_adata(adata, key_used=key_used)
-    if exponentiate:
-        X = np.exp(X) if log1p_base == 'e' else np.power(log1p_base, np.array(np.asarray(adata.obsm['X_cnv'].todense())))
-
+    # Get the names of all distinct subclones
     subclone_names = np.unique(adata.obs[subclone_key].to_numpy())
-    # Initialize matrix that will have 0,1,2 for del, neutral, gain hidden states
-    Z_matrix = -1 * np.ones_like(X)
     chr_pos_dict = dict(sorted(adata.uns[key_used]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
     # List of tuples (chr_start, chr_end)
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [X.shape[1]]))
-    model = get_hmm_model(means, variances, learned=False) # mu,sigma,mean_delta,HMM_transition_prob=trans_prob)
 
+    subclones_Z_dict = {}
     for subclone_name in subclone_names:
         # Which cells are in this subclone?
         cluster_idx = np.argwhere(adata.obs[subclone_key].to_numpy() == subclone_name).reshape(-1)
+        # Matrix of CNV values for only the cells in this subclone
         cluster_expr = X[cluster_idx]
         # Observed values for hmm is the mean CNV values across the cells in the subclone
-        hmm_X = cluster_expr.mean(axis=0).reshape(-1,1)
+        hmm_X = cluster_expr.mean(axis=0).reshape(-1, 1)
         # Iterate over each chromosome
-        for i, (chr_start_pos, chr_end_pos) in enumerate(var_group_positions):
+        hmm_Z = -2 * np.ones(hmm_X.shape, dtype=np.int32).reshape(-1)
+        for _, (chr_start_pos, chr_end_pos) in enumerate(var_group_positions):
             # The gene indices for this chromosome
+            # this is to avoid cases where they are not consecutive, but probably not needed
             chr_idx = np.arange(chr_start_pos, chr_end_pos)
+            # Observed values for this chromosome
+            X_t = hmm_X[chr_idx]
             # Get the most likely state for each CNV value
-            Z_d = model.predict(hmm_X[chr_idx])
+            Z_t = model.predict(X_t).astype(np.int32) - 1
             # Assign the most likely states to all the cells in the subclone
-            for cluster_id in cluster_idx:
-                assert Z_matrix[cluster_id, chr_idx].mean() == -1., Z_matrix[cluster_id, chr_idx]
-                Z_matrix[cluster_id, chr_idx] = Z_d
+            hmm_Z[chr_idx] = Z_t
+        assert hmm_Z.min() != -2, 'Did not predict hidden state for all genes'
+        hmm_Z_sparse = sparse.csr_matrix(hmm_Z)
+        subclones_Z_dict[subclone_name] = hmm_Z_sparse
 
-    return Z_matrix
-
-def get_X_from_adata(adata: AnnData, key_used : str = 'cnv') -> Union[np.ndarray, scipy.sparse.csr.csr_matrix]:
-    if type(adata.obsm[f'X_{key_used}']) == anndata._core.views.ArrayView or type(adata.obsm[f'X_{key_used}']) == np.ndarray:
-        X = np.array(adata.obsm[f'X_{key_used}'])
-    elif type(adata.obsm[f'X_{key_used}']) == scipy.sparse.csr.csr_matrix or type(adata.obsm[f'X_{key_used}']) == anndata._core.views.SparseCSRView:
-        X = np.array(adata.obsm[f'X_{key_used}'].todense())
-    else:
-        raise ValueError(f'X_{key_used} is not a numpy array or a scipy sparse matrix')
-    return X
+    return subclones_Z_dict
 
 def hmm_denoising(
     adata: AnnData,
@@ -118,10 +176,10 @@ def hmm_denoising(
     subclone_key='cell_type',
     key_used: str = 'cnv',
     key_added: str = 'hmm',
+    p_val: float = 0.01,
     iterations: int = 1,
-    exponentiate: bool = False,
-    inplace : bool = True
-) -> Union[None, np.ndarray]:
+    inplace: bool = True
+) -> Tuple[bool, np.ndarray, dict]:
     """Applies HMM for denoising of CNV value matrix.
 
     Parameters:
@@ -142,6 +200,8 @@ def hmm_denoising(
         Key under which the denoised matrix (hidden states inferred by HMM) will be stored in adata if `inplace=True`.
         Will store the matrix in `adata.obsm["X_{key_added}"] and additional information
         in `adata.uns[key_added]`.
+    p_val
+        p-value used for determining the means for the three Gaussians used in the HMM.
     iterations
         If iterations is 1, the HMM transmission probabilies (means and variances of the three Gaussians) are estimated only once
         and HMM is applied once.
@@ -151,54 +211,78 @@ def hmm_denoising(
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
 
     Returns:
-    int:Returning value
-
+        converged (bool): convergence status, only relevant when multiple iterations are used
+        Z_matrix (np.ndarray): hidden states inferred by HMM as a dense matrix
+        Z_dict (dict): hidden states inferred by HMM as a dictionary of sparse matrices, one for each subclone
     """
-    
+    warnings.filterwarnings('ignore', category=FutureWarning)
+
     assert iterations > 0, 'iterations must be greater than 0'
 
-    # Get the malignant cells as matrix
+    # Get the malignant cells
     adata_nonmalignant_subset = adata[adata.obs[reference_key].isin(reference_cat) == True]
     # Get the malignant cells as matrix
     nonmalignant_cnv = get_X_from_adata(adata_nonmalignant_subset, key_used=key_used)
     # Find the means for three CNV states using K-means
-    means, variances = get_state_parameters_infercnv(nonmalignant_cnv)
+    means, variances = get_state_parameters_qnorm(nonmalignant_cnv, p_val=p_val)
+    # Construct HMM model
+    model = get_hmm_model(means, variances)
+
     # Z-matrix, one row per cell, one column per gene, values are 0,1,2 for del, neutral, gain
-    Z_matrix = run_hmm_transition_not_learned(adata = adata,
-                                                        subclone_key = subclone_key,
-                                                        means = means,
-                                                        variances = variances,
-                                                        key_used=key_used,
-                                                        exponentiate=exponentiate)
+    Z_dict = run_hmm_transition_not_learned(adata=adata,
+                                            subclone_key=subclone_key,
+                                            model=model,
+                                            key_used=key_used)
+    Z_matrix = Z_dict_to_dense(adata, subclone_key, key_used, Z_dict)
+
     converged = False
-    for i in range(1,iterations):
-        new_means = np.array([adata.obsm[f'X_{key_used}'][Z_matrix == 0.].mean(), adata.obsm[f'X_{key_used}'][Z_matrix == 1.].mean(), adata.obsm[f'X_{key_used}'][Z_matrix == 2.].mean()]).reshape(-1,1)
-        new_variances = np.array([adata.obsm[f'X_{key_used}'][Z_matrix == 0.].std() ** 2, adata.obsm[f'X_{key_used}'][Z_matrix == 1.].std() ** 2, adata.obsm[f'X_{key_used}'][Z_matrix == 2.].std() ** 2]).reshape(-1,1,1)
-        Z_matrix_new = run_hmm_transition_not_learned(adata = adata,
-                                                                    subclone_key = subclone_key,
-                                                                    means = new_means,
-                                                                    variances= new_variances,
-                                                                    key_used=key_used,
-                                                                    exponentiate=exponentiate)
+    for _ in range(1, iterations):
+        XZ0 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == -1])
+        XZ1 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == 0])
+        XZ2 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == 1])
+        new_means = np.array([XZ0.mean(), XZ1.mean(), XZ2.mean()]).reshape(-1, 1)
+        new_variances = np.array([XZ0.std() ** 2, XZ1.std() ** 2, XZ2.std() ** 2]).reshape(-1, 1, 1)
+        new_model = get_hmm_model(new_means, new_variances)
+        Z_dict_new = run_hmm_transition_not_learned(adata=adata,
+                                                    subclone_key=subclone_key,
+                                                    model=new_model,
+                                                    key_used=key_used)
+        Z_matrix_new = Z_dict_to_dense(adata, subclone_key, key_used, Z_dict_new)
         if(np.array_equal(Z_matrix, Z_matrix_new)):
             converged = True
             break
         else:
             Z_matrix = Z_matrix_new
-
-    # chromosome heatmap can only be displayed if both postive and negative CNV values
-    # are present - or equivalently both positive and negative CNV states inferred
-    if Z_matrix.min() != 0.:
-        print('WARNING, found no deletions, adding a gain on gene 0 of cell 0 for visualization to work')
-        Z_matrix[0][0] = 0.
-    if Z_matrix.max() != 2.:
-        print('WARNING, found no gains, adding a gain on gene 1 of cell 0 for visualization to work')
-        Z_matrix[0][1] = 2.
+            Z_dict = Z_dict_new
 
     if inplace:
-        # Subtract 1 from Z_matrix to get -1,0,1 for del, neutral, gain
-        adata.obsm[f'X_{key_added}'] = Z_matrix - 1
+        adata.obsm[f'X_{key_added}'] = Z_matrix
         # For making pl.chromosome_heatmap work, we copy the chromosome positions from the cnv key
         adata.uns[key_added] = adata.uns[key_used]
-    else:
-        return Z_matrix
+    
+    return converged, Z_matrix, Z_dict
+
+def fix_vmin_vmax_for_plotting(adata: AnnData, key_used: str = 'hmm', inplace: bool = True):
+    """
+    Makes sure results of HMM can be plotted by pl.chromosome_heatmap, ensuring that the Z_matrix has both positive and negative values.
+
+    Parameters:
+        adata: AnnData
+        key_used: the key under which the HMM results are stored in adata.obsm
+        inplace: if True, the modified Z_matrix is stored in adata.obsm
+    """
+    
+    Z_matrix = get_X_from_adata(adata, key_used=key_used)
+    # chromosome heatmap can only be displayed if both postive and negative CNV values
+    # are present - or equivalently both positive and negative CNV states inferred
+    if Z_matrix.min() >= 0:
+        print('WARNING, found no deletions, adding a gain on gene 0 of cell 0 for visualization to work')
+        Z_matrix[0][0] = -0.00001
+    if Z_matrix.max() <= 0:
+        print('WARNING, found no gains, adding a gain on gene 1 of cell 0 for visualization to work')
+        Z_matrix[0][1] = 0.00001
+    
+    if inplace:
+        adata.obsm[f'X_{key_used}'] = Z_matrix
+
+    return Z_matrix  
