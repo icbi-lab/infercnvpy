@@ -1,23 +1,18 @@
 from typing import Tuple, Union, Sequence
 import numpy as np
-from scanpy import logging
 from anndata import AnnData
 import scipy.ndimage
 import scipy.sparse
-import matplotlib.pyplot as plt
 from scipy.stats import norm
 from hmmlearn import hmm
 from scipy.sparse import issparse
 from scipy import sparse
-from scipy import stats
-from sklearn.cluster import KMeans
-from sklearn.mixture import GaussianMixture
-import anndata
 import warnings
 
 
 def get_X_from_adata(adata: AnnData, key_used: str = 'cnv') -> np.ndarray:
     return adata.obsm[f'X_{key_used}']
+
 
 def std_helper(A: Union[np.ndarray, scipy.sparse.spmatrix]) -> float:
     """
@@ -29,12 +24,11 @@ def std_helper(A: Union[np.ndarray, scipy.sparse.spmatrix]) -> float:
     Returns:
         float: standard deviation
     """
-    if type(A) == np.ndarray:
-        return A.std()
-    elif issparse(A):
+    if issparse(A):
         return np.sqrt((A.power(2)).mean() - A.mean()**2)
     else:
-        raise Exception('Unknown type', type(A))
+        return A.std()
+
 
 def get_hmm_model(means: np.array,
                   variances: np.array,
@@ -69,6 +63,7 @@ def get_hmm_model(means: np.array,
     model.covars_ = variances.reshape((3, 1, 1))
     return model
 
+
 def get_state_parameters_qnorm(
         nonmalignant_cnv: Union[np.ndarray, scipy.sparse.spmatrix],
         p_val: float = 0.01) -> Tuple[np.array, np.array]:
@@ -94,6 +89,7 @@ def get_state_parameters_qnorm(
     variances = np.array([variance, variance, variance]).reshape(3, 1, 1)
     return means, variances
 
+
 def Z_dict_to_dense(adata, subclone_key, key_used, Z_dict) -> np.ndarray:
     """
     Compute a full matrix of hidden states from a dictionary of hidden states for each subclone
@@ -111,16 +107,17 @@ def Z_dict_to_dense(adata, subclone_key, key_used, Z_dict) -> np.ndarray:
     Z_matrix = -2 * np.ones(X.shape, dtype=np.int32)
     for subclone_name in subclone_names:
         cluster_idx = np.argwhere(adata.obs[subclone_key].to_numpy() == subclone_name).reshape(-1)
-        Z_t_dense = Z_dict[subclone_name].todense()
+        Z_t_dense = Z_dict[subclone_name].toarray()
         for cluster_id in cluster_idx:
             Z_matrix[cluster_id] = Z_t_dense
     assert np.all(Z_matrix != -2), 'Z_matrix not filled'
     return Z_matrix
 
-def run_hmm_transition_not_learned(adata: AnnData,
-                                   subclone_key: str,
-                                   model: hmm.GaussianHMM,
-                                   key_used: str) -> dict:
+
+def apply_hmm(adata: AnnData,
+              subclone_key: str,
+              model: hmm.GaussianHMM,
+              key_used: str) -> dict:
     """
     Run the HMM model on each subclone, where the sequence of observations for a subclone is attained by averaging across cells
 
@@ -167,6 +164,7 @@ def run_hmm_transition_not_learned(adata: AnnData,
         subclones_Z_dict[subclone_name] = hmm_Z_sparse
 
     return subclones_Z_dict
+
 
 def hmm_denoising(
     adata: AnnData,
@@ -229,24 +227,26 @@ def hmm_denoising(
     model = get_hmm_model(means, variances)
 
     # Z-matrix, one row per cell, one column per gene, values are 0,1,2 for del, neutral, gain
-    Z_dict = run_hmm_transition_not_learned(adata=adata,
-                                            subclone_key=subclone_key,
-                                            model=model,
-                                            key_used=key_used)
+    Z_dict = apply_hmm(adata=adata,
+                       subclone_key=subclone_key,
+                       model=model,
+                       key_used=key_used)
     Z_matrix = Z_dict_to_dense(adata, subclone_key, key_used, Z_dict)
 
     converged = False
     for _ in range(1, iterations):
+        # Get CNV values associated with each inferred hidden state in previous step
         XZ0 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == -1])
         XZ1 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == 0])
         XZ2 = np.asarray(adata.obsm[f'X_{key_used}'][Z_matrix == 1])
+        # Recompute means and variances for each Gaussian
         new_means = np.array([XZ0.mean(), XZ1.mean(), XZ2.mean()]).reshape(-1, 1)
         new_variances = np.array([XZ0.std() ** 2, XZ1.std() ** 2, XZ2.std() ** 2]).reshape(-1, 1, 1)
         new_model = get_hmm_model(new_means, new_variances)
-        Z_dict_new = run_hmm_transition_not_learned(adata=adata,
-                                                    subclone_key=subclone_key,
-                                                    model=new_model,
-                                                    key_used=key_used)
+        Z_dict_new = apply_hmm(adata=adata,
+                               subclone_key=subclone_key,
+                               model=new_model,
+                               key_used=key_used)
         Z_matrix_new = Z_dict_to_dense(adata, subclone_key, key_used, Z_dict_new)
         if(np.array_equal(Z_matrix, Z_matrix_new)):
             converged = True
@@ -259,8 +259,9 @@ def hmm_denoising(
         adata.obsm[f'X_{key_added}'] = Z_matrix
         # For making pl.chromosome_heatmap work, we copy the chromosome positions from the cnv key
         adata.uns[key_added] = adata.uns[key_used]
-    
+
     return converged, Z_matrix, Z_dict
+
 
 def fix_vmin_vmax_for_plotting(adata: AnnData, key_used: str = 'hmm', inplace: bool = True):
     """
@@ -271,7 +272,7 @@ def fix_vmin_vmax_for_plotting(adata: AnnData, key_used: str = 'hmm', inplace: b
         key_used: the key under which the HMM results are stored in adata.obsm
         inplace: if True, the modified Z_matrix is stored in adata.obsm
     """
-    
+
     Z_matrix = get_X_from_adata(adata, key_used=key_used)
     # chromosome heatmap can only be displayed if both postive and negative CNV values
     # are present - or equivalently both positive and negative CNV states inferred
@@ -281,8 +282,8 @@ def fix_vmin_vmax_for_plotting(adata: AnnData, key_used: str = 'hmm', inplace: b
     if Z_matrix.max() <= 0:
         print('WARNING, found no gains, adding a gain on gene 1 of cell 0 for visualization to work')
         Z_matrix[0][1] = 0.00001
-    
+
     if inplace:
         adata.obsm[f'X_{key_used}'] = Z_matrix
 
-    return Z_matrix  
+    return Z_matrix

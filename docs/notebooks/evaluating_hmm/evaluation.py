@@ -97,7 +97,7 @@ def infercnvobj_to_anndata(infercnvobj_filename, stage):
     return adata
 
 
-def evaluate_example(example_output_dir, reference_cat, step_size=10):
+def evaluate_example(example_output_dir, reference_cat, step_size=10, full_pipeline_n_iters=10):
     quickstart_filename = join(example_output_dir, '15_no_subclusteringHMMi3.infercnv_obj')
     quick15_adata = infercnvobj_to_anndata(quickstart_filename, stage=15)
     print('A) Plot of InferCNV-R at stage 15 before it applies HMM:')
@@ -141,7 +141,7 @@ def evaluate_example(example_output_dir, reference_cat, step_size=10):
         subclone_key='cell_type',
         key_used='cnv',
         key_added='hmm',
-        iterations=10,
+        iterations=full_pipeline_n_iters,
     )
     print(f'E) Applying InferCNV-Py HMM to (D)')
     cnv.pl.chromosome_heatmap(quick3_adata, use_rep='hmm', groupby="cell_type")
