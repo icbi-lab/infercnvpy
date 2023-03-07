@@ -168,7 +168,6 @@ def apply_hmm(adata: AnnData,
 
 def hmm_denoising(
     adata: AnnData,
-    *,
     reference_key: str,
     reference_cat: Union[None, str, Sequence[str]] = None,
     subclone_key='cell_type',
@@ -176,7 +175,8 @@ def hmm_denoising(
     key_added: str = 'hmm',
     p_val: float = 0.01,
     iterations: int = 1,
-    inplace: bool = True
+    inplace: bool = True,
+    transition_prob: float = 1e-6
 ) -> Tuple[bool, np.ndarray, dict]:
     """Applies HMM for denoising of CNV value matrix.
 
@@ -200,6 +200,8 @@ def hmm_denoising(
         in `adata.uns[key_added]`.
     p_val
         p-value used for determining the means for the three Gaussians used in the HMM.
+    HMM_transition_prob
+        Parameter for transition matrix of HMM. HMM_transition_prob: Probability of transitioning to a different state (for each different state), so half the probability of moving to another state
     iterations
         If iterations is 1, the HMM transmission probabilies (means and variances of the three Gaussians) are estimated only once
         and HMM is applied once.
@@ -224,7 +226,7 @@ def hmm_denoising(
     # Find the means for three CNV states using K-means
     means, variances = get_state_parameters_qnorm(nonmalignant_cnv, p_val=p_val)
     # Construct HMM model
-    model = get_hmm_model(means, variances)
+    model = get_hmm_model(means, variances, HMM_transition_prob=transition_prob)
 
     # Z-matrix, one row per cell, one column per gene, values are 0,1,2 for del, neutral, gain
     Z_dict = apply_hmm(adata=adata,
@@ -242,7 +244,8 @@ def hmm_denoising(
         # Recompute means and variances for each Gaussian
         new_means = np.array([XZ0.mean(), XZ1.mean(), XZ2.mean()]).reshape(-1, 1)
         new_variances = np.array([XZ0.std() ** 2, XZ1.std() ** 2, XZ2.std() ** 2]).reshape(-1, 1, 1)
-        new_model = get_hmm_model(new_means, new_variances)
+        new_model = get_hmm_model(new_means, new_variances, HMM_transition_prob=transition_prob)
+        # Infer hidden states using the new HMM
         Z_dict_new = apply_hmm(adata=adata,
                                subclone_key=subclone_key,
                                model=new_model,

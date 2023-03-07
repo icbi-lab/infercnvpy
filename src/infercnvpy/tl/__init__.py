@@ -9,8 +9,6 @@ from ._copykat import copykat
 from ._infercnv import infercnv
 from ._scores import cnv_score, ithcna, ithgex
 from ._hmm_denoising import hmm_denoising
-from ._subclonal_clustering import subclonal_clustering
-
 
 def leiden(
     adata: AnnData,
