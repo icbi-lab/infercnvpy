@@ -55,7 +55,7 @@ def chromosome_heatmap(
     """
     if groupby == "cnv_leiden" and "cnv_leiden" not in adata.obs.columns:
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
-    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs)
+    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs, uns=adata.uns)
 
     # transfer colors from adata if present
     if f"{groupby}_colors" in adata.uns:
