@@ -54,6 +54,7 @@ def cnv_score(
             "The obs_key argument has been renamed to `groupby` for consistency with "
             "other functions and will be removed in the future. ",
             category=FutureWarning,
+            stacklevel=2,
         )
         groupby = obs_key
 
