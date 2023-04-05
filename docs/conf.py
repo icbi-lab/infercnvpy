@@ -87,6 +87,7 @@ source_suffix = {
 }
 
 intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
     "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
     "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
     "h5py": ("https://docs.h5py.org/en/stable/", None),
