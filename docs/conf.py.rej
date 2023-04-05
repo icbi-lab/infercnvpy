@@ -1,7 +1,7 @@
 diff a/docs/conf.py b/docs/conf.py	(rejected hunks)
 @@ -87,6 +87,7 @@ source_suffix = {
  }
- 
+
  intersphinx_mapping = {
 +    "python": ("https://docs.python.org/3", None),
      "anndata": ("https://anndata.readthedocs.io/en/stable/", None),

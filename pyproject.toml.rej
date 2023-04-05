@@ -2,7 +2,7 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 @@ -2,7 +2,6 @@
  build-backend = "hatchling.build"
  requires = ["hatchling"]
- 
+
 -
  [project]
  name = "infercnvpy"
@@ -19,7 +19,7 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 @@ -61,32 +60,59 @@ addopts = [
      "--import-mode=importlib",  # allow using test files with same name
  ]
- 
+
 -[tool.isort]
 -include_trailing_comma = true
 -multi_line_output = 3
@@ -97,6 +97,6 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 +"docs/*" = ["I"]
 +"tests/*" = ["D"]
 +"*/__init__.py" = ["F401"]
- 
+
  [tool.jupytext]
  formats = "ipynb,md"
