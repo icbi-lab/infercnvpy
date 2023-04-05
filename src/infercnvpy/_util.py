@@ -10,7 +10,7 @@ def _ensure_array(a):
 
 
 def _choose_mtx_rep(adata, use_raw=False, layer=None):
-    """Get gene expression from anndata depending on use_raw and layer"""
+    """Get gene expression from anndata depending on use_raw and layer."""
     is_layer = layer is not None
     if use_raw and is_layer:
         raise ValueError(

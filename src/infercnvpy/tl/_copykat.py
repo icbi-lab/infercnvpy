@@ -17,12 +17,11 @@ def copykat(
     min_genes_chr: int = 5,
     key_added: str = "cnv",
     inplace: bool = True,
-    layer: str = None,
+    layer: Optional[str] = None,
     n_jobs: Optional[int] = None,
     norm_cell_names: str = "",
 ) -> (pd.DataFrame, pd.Series):
-    """
-    Inference of genomic copy number and subclonal structure.
+    """Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
     Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
@@ -52,6 +51,8 @@ def copykat(
         Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
+    layer
+        AnnData layer to use for running copykat
     gene_ids
         gene id type: Symbol ("S") or Ensemble ("E").
     segmentation_cut
@@ -84,13 +85,15 @@ def copykat(
         from rpy2.robjects.conversion import localconverter
         from rpy2.robjects.packages import importr
     except ImportError:
-        raise ImportError("copyKAT requires rpy2 to be installed. ")
+        raise ImportError("copyKAT requires rpy2 to be installed. ") from None
 
     try:
         importr("copykat")
         importr("stringr")
     except ImportError:
-        raise ImportError("copyKAT requires a valid R installation with the following packages: " "copykat, stringr")
+        raise ImportError(
+            "copyKAT requires a valid R installation with the following packages: " "copykat, stringr"
+        ) from None
 
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
