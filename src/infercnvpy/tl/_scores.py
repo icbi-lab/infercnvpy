@@ -1,4 +1,4 @@
-"""Scores to summarize and assess copy number variation"""
+"""Scores to summarize and assess copy number variation."""
 import warnings
 from typing import Any, Mapping, Optional
 
@@ -6,7 +6,7 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
-from .._util import _choose_mtx_rep
+from infercnvpy._util import _choose_mtx_rep
 
 
 def cnv_score(

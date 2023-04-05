@@ -2,7 +2,7 @@ import scanpy as sc
 from anndata import AnnData
 from scanpy import logging
 
-from .. import tl
+from infercnvpy import tl
 
 
 def neighbors(
@@ -16,6 +16,8 @@ def neighbors(
 
     Parameters
     ----------
+    adata
+        AnnData object
     use_rep
         Key under which the PCA of the results of :func:`infercnvpy.tl.infercnv`
         are stored in anndata. If not present, attempts to run :func:`infercnvpy.tl.pca`

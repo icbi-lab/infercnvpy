@@ -1,4 +1,4 @@
-"""Read in result files from scevan"""
+"""Read in result files from scevan."""
 
 from pathlib import Path
 from typing import Optional, Union
@@ -34,8 +34,7 @@ def read_scevan(
     subset: bool = True,
     key_added: str = "scevan",
 ) -> Optional[AnnData]:
-    """
-    Load results from SCEVAN :cite:`DeFalco2021` for downstream analysis with infercnvpy.
+    """Load results from SCEVAN :cite:`DeFalco2021` for downstream analysis with infercnvpy.
 
     Requires that the cell barcodes used for SCEVAN and `adata.obs_names` match,
     but the order is irrelevant.

@@ -11,7 +11,7 @@ from scanpy import logging
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
-from .._util import _ensure_array
+from infercnvpy._util import _ensure_array
 
 
 def infercnv(
@@ -31,8 +31,7 @@ def infercnv(
     layer: Union[str, None] = None,
     key_added: str = "cnv",
 ) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix]]:
-    """
-    Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
+    """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
     but more computationally efficient. The method is described in more detail
@@ -151,13 +150,14 @@ def _natural_sort(l: Sequence):
 
 
 def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10) -> np.ndarray:
-    """
-    Compute a pyramidially weighted running mean.
+    """Compute a pyramidially weighted running mean.
 
     Densifies the matrix. Use `step` and `chunksize` to save memory.
 
     Parameters
     ----------
+    x
+        matrix to work on
     n
         Length of the running window
     step
@@ -191,7 +191,10 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.
     var
         The var data frame of the associated AnnData object
     window_size
+        size of the running window (number of genes in to include in the window)
     step
+        only compute every nth running window where n = `step`. Set to 1 to compute
+        all windows.
 
     Returns
     -------
@@ -211,7 +214,7 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> Tuple[dict, np.
 
     running_means = [_running_mean_for_chromosome(chr) for chr in chromosomes]
 
-    chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
+    chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])))
 
     return chr_start_pos, np.hstack(running_means)
 
