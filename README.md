@@ -74,14 +74,15 @@ For questions and help requests, you can reach out in the [scverse discourse][sc
 If you found a bug, please use the [issue tracker][issue-tracker].
 
 <<<<<<<
+
 ## Citation
 
 n/a
 
 =======
->>>>>>>
-[scverse-discourse]: https://discourse.scverse.org/
-[issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
-[changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
-[link-docs]: https://infercnvpy.readthedocs.io
-[link-api]: https://infercnvpy.readthedocs.io/latest/api.html
+
+> > > > > > > [scverse-discourse]: https://discourse.scverse.org/
+> > > > > > > [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
+> > > > > > > [changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
+> > > > > > > [link-docs]: https://infercnvpy.readthedocs.io
+> > > > > > > [link-api]: https://infercnvpy.readthedocs.io/latest/api.html
