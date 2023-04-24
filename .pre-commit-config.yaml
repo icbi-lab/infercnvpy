@@ -11,7 +11,7 @@ repos:
       hooks:
           - id: black
     - repo: https://github.com/pre-commit/mirrors-prettier
-      rev: v3.0.0-alpha.6
+      rev: v3.0.0-alpha.9-for-vscode
       hooks:
           - id: prettier
             # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
@@ -23,7 +23,7 @@ repos:
             # https://github.com/jupyterlab/jupyterlab/issues/12675
             language_version: "17.9.1"
     - repo: https://github.com/charliermarsh/ruff-pre-commit
-      rev: v0.0.261
+      rev: v0.0.262
       hooks:
           - id: ruff
             args: [--fix, --exit-non-zero-on-fix]
