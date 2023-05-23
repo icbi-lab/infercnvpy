@@ -11,6 +11,7 @@ from scipy.sparse import issparse
 def copykat(
     adata: AnnData,
     gene_ids: str = "S",
+    organism: str = "human",
     segmentation_cut: float = 0.1,
     distance: str = "euclidean",
     s_name: str = "copykat_result",
@@ -69,6 +70,8 @@ def copykat(
         Number of cores to use for copyKAT analysis. Per default, uses all cores
         available on the system. Multithreading does not work on Windows and this
         value will be ignored.
+    organism
+        Runs methods for calculating copy numbers from: "human" or "mouse" scRNAseq data (default: "human")
 
     Returns
     -------
@@ -112,15 +115,22 @@ def copykat(
     ro.globalenv["s_name"] = ro.conversion.py2rpy(s_name)
     ro.globalenv["min_gene_chr"] = ro.conversion.py2rpy(min_genes_chr)
     ro.globalenv["norm_cell_names"] = ro.conversion.py2rpy(norm_cell_names)
+    ro.globalenv["organism"] = ro.conversion.py2rpy(organism)
 
     logging.info("Running copyKAT")
     ro.r(
         """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
-        copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
+        if (organism == "mouse"){
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
+                                n.cores = n_jobs, output.seg = FALSE, genome = 'mm10')
+        } else {
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
                                 KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
                                 n.cores = n_jobs, output.seg = FALSE)
+        }
         copyKAT_result <- data.frame(copyKAT_run$CNAmat)
         colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\\.", "-")
         copyKAT_pred <- data.frame(copyKAT_run$prediction)
