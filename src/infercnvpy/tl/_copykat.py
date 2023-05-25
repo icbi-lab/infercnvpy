@@ -148,14 +148,26 @@ def copykat(
         copyKAT_result = ro.conversion.rpy2py(ro.globalenv["copyKAT_result"])
         copyKAT_pred = ro.conversion.rpy2py(ro.globalenv["copyKAT_pred"])
 
-    chrom_pos = {
-        "chr_pos": {
-            f"chr{chrom}": int(pos) for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
+    if organism == "human":
+        chrom_pos = {
+            "chr_pos": {
+                f"chr{chrom}": int(pos) for pos, chrom in copyKAT_result.loc[:, ["chrom"]].drop_duplicates().itertuples()
+            }
         }
-    }
+    elif organism == "mouse":
+        chrom_pos = {
+            "chr_pos": {
+                f"chr{chrom}": int(pos) for pos, chrom in copyKAT_result.loc[:, ["chromosome_name"]].drop_duplicates().itertuples() 
+            }
+        }
 
     # Drop cols
-    new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
+    if organism == "human":
+        new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
+    elif organism == "mouse":
+        new_cpkat = copyKAT_result.drop(["start_position", "chromosome_name", "abspos",
+            "end_position", "ensembl_gene_id", "mgi_symbol", "band"], axis=1)
+    
     # align cells
     new_cpkat = new_cpkat.loc[:, adata.obs.index]
     copyKAT_pred = adata.obs.merge(copyKAT_pred, left_index=True, right_index=True, how="left")["copykat.pred"]
