@@ -7,11 +7,11 @@ default_stages:
 minimum_pre_commit_version: 2.16.0
 repos:
     - repo: https://github.com/psf/black
-      rev: "23.3.0"
+      rev: "23.7.0"
       hooks:
           - id: black
     - repo: https://github.com/pre-commit/mirrors-prettier
-      rev: v3.0.0-alpha.9-for-vscode
+      rev: v3.0.0
       hooks:
           - id: prettier
             # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
@@ -22,13 +22,13 @@ repos:
             # See https://github.com/scverse/cookiecutter-scverse/issues/143 and
             # https://github.com/jupyterlab/jupyterlab/issues/12675
             language_version: "17.9.1"
-    - repo: https://github.com/charliermarsh/ruff-pre-commit
-      rev: v0.0.270
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.0.280
       hooks:
           - id: ruff
             args: [--fix, --exit-non-zero-on-fix]
     - repo: https://github.com/asottile/blacken-docs
-      rev: 1.13.0
+      rev: 1.15.0
       hooks:
           - id: blacken-docs
             # because of possible ipython magics. Notebooks are reformatted in separate hook using jupytext
