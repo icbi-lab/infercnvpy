@@ -83,12 +83,10 @@ filterwarnings = [
 
 [tool.black]
 line-length = 120
-target-version = ["py38"]
 
 [tool.ruff]
 src = ["src"]
 line-length = 120
-target-version = "py38"
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
@@ -137,9 +135,6 @@ convention = "numpy"
 "docs/*" = ["I"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
-
-[tool.jupytext]
-formats = "ipynb,md"
 
 [tool.cruft]
 skip = [
