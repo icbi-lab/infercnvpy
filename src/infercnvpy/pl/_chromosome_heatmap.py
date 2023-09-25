@@ -62,7 +62,13 @@ def chromosome_heatmap(
 
     # center color map at 0
     tmp_data = tmp_adata.X.data if issparse(tmp_adata.X) else tmp_adata.X
-    norm = TwoSlopeNorm(0, vmin=np.nanmin(tmp_data), vmax=np.nanmax(tmp_data))
+    vmin = kwargs.pop("vmin", None)
+    vmax = kwargs.pop("vmax", None)
+    if vmin is None:
+        vmin = np.nanmin(tmp_data)
+    if vmax is None:
+        vmax = np.nanmax(tmp_data)
+    kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
@@ -76,7 +82,6 @@ def chromosome_heatmap(
         show_gene_labels=False,
         var_group_positions=var_group_positions,
         var_group_labels=list(chr_pos_dict.keys()),
-        norm=norm,
         show=False,
         **kwargs,
     )
@@ -158,7 +163,13 @@ def chromosome_heatmap_summary(
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
-    norm = TwoSlopeNorm(0, vmin=np.min(tmp_adata.X), vmax=np.max(tmp_adata.X))
+    vmin = kwargs.pop("vmin", None)
+    vmax = kwargs.pop("vmax", None)
+    if vmin is None:
+        vmin = np.min(tmp_adata.X)
+    if vmax is None:
+        vmax = np.max(tmp_adata.X)
+    kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
@@ -172,7 +183,6 @@ def chromosome_heatmap_summary(
         show_gene_labels=False,
         var_group_positions=var_group_positions,
         var_group_labels=list(chr_pos_dict.keys()),
-        norm=norm,
         show=False,
         **kwargs,
     )
