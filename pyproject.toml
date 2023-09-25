@@ -8,7 +8,7 @@ name = "infercnvpy"
 dynamic = ["version"]
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor Sturm"},
@@ -42,14 +42,15 @@ copykat = [
 dev = [
     # CLI for managing the python project
     "pre-commit",
-    "bump2version"
 ]
 doc = [
+    "docutils>=0.8,!=0.18.*,!=0.19.*",
     "sphinx>=4.2",
     "sphinx-book-theme>=1.0.0",
     "myst-nb",
     "sphinxcontrib-bibtex>=1.0.0",
     "sphinx-autodoc-typehints",
+    "sphinxext-opengraph",
     # for tutorial
     "ipykernel",
     "sphinx-copybutton",
