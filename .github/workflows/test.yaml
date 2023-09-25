@@ -19,60 +19,60 @@ jobs:
       run:
         shell: bash -e {0} # -e to fail on error
 
-  strategy:
-    fail-fast: false
-    matrix:
-      include:
-        - os: ubuntu-latest
-          python: "3.9"
-          r: release
-        - os: ubuntu-latest
-          python: "3.10"
-          r: release
-        - os: ubuntu-latest
-          python: "3.10"
-          r: release
-          pip-flags: "--pre"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.9"
+            r: release
+          - os: ubuntu-latest
+            python: "3.10"
+            r: release
+          - os: ubuntu-latest
+            python: "3.10"
+            r: release
+            pip-flags: "--pre"
 
-      env:
-        OS: ${{ matrix.os }}
-        PYTHON: ${{ matrix.python }}
-        GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-        R_KEEP_PKG_SOURCE: yes
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python }}
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
 
-      steps:
-        - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python }}
-          uses: actions/setup-python@v4
-          with:
-            python-version: ${{ matrix.python }}
-            cache: "pip"
-            cache-dependency-path: "**/pyproject.toml"
-        - uses: r-lib/actions/setup-r@v2
-          with:
-            r-version: ${{ matrix.r }}
-            use-public-rspm: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.r }}
+          use-public-rspm: true
 
-        - name: Install test dependencies
-          run: |
-            python -m pip install --upgrade pip wheel
-        - name: Install dependencies
-          run: |
-            pip install ".[dev,test,copykat]"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+      - name: Install dependencies
+        run: |
+          pip install ".[dev,test,copykat]"
 
-        - name: Install R dependencies
-          run: |
-            install.packages("pak", repos = sprintf("https://r-lib.github.io/p/pak/stable/%s/%s/%s", .Platform$pkgType, R.Version()$os, R.Version()$arch))
-            # TODO: use copykat version from february, latest version seens to have a bug...
-            pak::pkg_install(c('stringr', 'navinlabcode/copykat@674e331cf12ce14b62eaf6459f7c84a82fc4c775'))
-          shell: Rscript {0}
+      - name: Install R dependencies
+        run: |
+          install.packages("pak", repos = sprintf("https://r-lib.github.io/p/pak/stable/%s/%s/%s", .Platform$pkgType, R.Version()$os, R.Version()$arch))
+          # TODO: use copykat version from february, latest version seens to have a bug...
+          pak::pkg_install(c('stringr', 'navinlabcode/copykat@674e331cf12ce14b62eaf6459f7c84a82fc4c775'))
+        shell: Rscript {0}
 
-        - name: Test
-          env:
-            MPLBACKEND: agg
-            PLATFORM: ${{ matrix.os }}
-            DISPLAY: :42
-          run: |
-            pytest -v --cov --color=yes
-        - name: Upload coverage
-          uses: codecov/codecov-action@v3
+      - name: Test
+        env:
+          MPLBACKEND: agg
+          PLATFORM: ${{ matrix.os }}
+          DISPLAY: :42
+        run: |
+          pytest -v --cov --color=yes
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
