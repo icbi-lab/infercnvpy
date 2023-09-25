@@ -141,6 +141,7 @@ def chromosome_heatmap_summary(
     groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
+    tmp_obs.index = tmp_obs.index.astype(str)
 
     def _get_group_mean(group):
         group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby] == group, :], axis=0)
