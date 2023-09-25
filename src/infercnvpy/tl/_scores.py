@@ -1,6 +1,7 @@
 """Scores to summarize and assess copy number variation."""
 import warnings
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 import numpy as np
 import scipy.sparse as sp
