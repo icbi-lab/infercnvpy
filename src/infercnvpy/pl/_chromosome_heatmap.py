@@ -150,9 +150,7 @@ def chromosome_heatmap_summary(
         return group_mean
 
     tmp_adata = sc.AnnData(
-        X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]),
-        obs=tmp_obs,
-        uns=adata.uns
+        X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]), obs=tmp_obs, uns=adata.uns
     )
 
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
