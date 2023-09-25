@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 import matplotlib.axes
 import numpy as np
@@ -16,11 +16,11 @@ def chromosome_heatmap(
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
     cmap: Union[str, Colormap] = "bwr",
-    figsize: Tuple[int, int] = (16, 10),
+    figsize: tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
     **kwargs,
-) -> Optional[Dict[str, matplotlib.axes.Axes]]:
+) -> Optional[dict[str, matplotlib.axes.Axes]]:
     """Plot a heatmap of smoothed gene expression by chromosome.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
@@ -99,11 +99,11 @@ def chromosome_heatmap_summary(
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
     cmap: Union[str, Colormap] = "bwr",
-    figsize: Tuple[int, int] = (16, 10),
+    figsize: tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
     **kwargs,
-) -> Optional[Dict[str, matplotlib.axes.Axes]]:
+) -> Optional[dict[str, matplotlib.axes.Axes]]:
     """Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
