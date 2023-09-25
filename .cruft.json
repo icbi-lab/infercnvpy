@@ -1,23 +1,23 @@
 {
-    "template": "https://github.com/scverse/cookiecutter-scverse",
-    "commit": "03ef73af73ea4a927decc396232d9c2c5e958ee1",
-    "context": {
-        "cookiecutter": {
-            "project_name": "infercnvpy",
-            "package_name": "infercnvpy",
-            "project_description": "Infer copy number variation (CNV) from scRNA-seq data. Plays nicely with Scanpy. ",
-            "author_full_name": "Gregor Sturm",
-            "author_email": "mail@gregor-sturm.de",
-            "github_user": "grst",
-            "project_repo": "https://github.com/icbi-lab/infercnvpy",
-            "license": "BSD 3-Clause License",
-            "_copy_without_render": [
-                ".github/workflows/**.yaml",
-                "docs/_templates/autosummary/**.rst"
-            ],
-            "_template": "https://github.com/scverse/cookiecutter-scverse"
-        }
-    },
-    "directory": null,
-    "checkout": "v0.2.11"
+  "template": "https://github.com/scverse/cookiecutter-scverse",
+  "commit": "605f95714130c960bce12eab98a4e023e8932249",
+  "context": {
+    "cookiecutter": {
+      "project_name": "infercnvpy",
+      "package_name": "infercnvpy",
+      "project_description": "Infer copy number variation (CNV) from scRNA-seq data. Plays nicely with Scanpy. ",
+      "author_full_name": "Gregor Sturm",
+      "author_email": "mail@gregor-sturm.de",
+      "github_user": "grst",
+      "project_repo": "https://github.com/icbi-lab/infercnvpy",
+      "license": "BSD 3-Clause License",
+      "_copy_without_render": [
+        ".github/workflows/**.yaml",
+        "docs/_templates/autosummary/**.rst"
+      ],
+      "_template": "https://github.com/scverse/cookiecutter-scverse"
+    }
+  },
+  "directory": null,
+  "checkout": "v0.2.22"
 }
