@@ -26,3 +26,6 @@ __pycache__/
 # IDEs
 /.idea/
 /.vscode/
+
+# Notebooks
+.ipynb_checkpoints
