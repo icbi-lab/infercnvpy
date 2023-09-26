@@ -4,7 +4,7 @@
 [![Documentation][badge-docs]][link-docs]
 [![PyPI][badge-pypi]][link-pypi]
 
-[badge-tests]: https://img.shields.io/github/actions/workflow/status/grst/infercnvpy/test.yaml?branch=main
+[badge-tests]: https://img.shields.io/github/actions/workflow/status/icbi-lab/infercnvpy/test.yaml?branch=main
 [link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
