@@ -7,11 +7,11 @@ default_stages:
 minimum_pre_commit_version: 2.16.0
 repos:
   - repo: https://github.com/psf/black
-    rev: "23.9.1"
+    rev: "23.12.1"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.3
+    rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
         # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
@@ -23,7 +23,7 @@ repos:
         # https://github.com/jupyterlab/jupyterlab/issues/12675
         language_version: "17.9.1"
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.291
+    rev: v0.1.9
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -36,7 +36,7 @@ repos:
         additional_dependencies:
           - black==22.6.0 # Matches hook
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: detect-private-key
       - id: check-ast
