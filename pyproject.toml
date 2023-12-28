@@ -60,7 +60,7 @@ doc = [
 ]
 test = [
     "pytest",
-    "converage",
+    "coverage",
 ]
 
 [tool.hatch.version]
