@@ -27,10 +27,10 @@ jobs:
             python: "3.9"
             r: release
           - os: ubuntu-latest
-            python: "3.10"
+            python: "3.11"
             r: release
           - os: ubuntu-latest
-            python: "3.10"
+            python: "3.11"
             r: release
             pip-flags: "--pre"
 

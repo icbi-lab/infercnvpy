@@ -56,10 +56,11 @@ doc = [
     "sphinx-copybutton",
     'pycairo',
     'jupyter_client',
+    "pandas",
 ]
 test = [
     "pytest",
-    "pytest-cov",
+    "converage",
 ]
 
 [tool.hatch.version]
