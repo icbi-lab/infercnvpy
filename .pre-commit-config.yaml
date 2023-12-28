@@ -6,10 +6,6 @@ default_stages:
   - push
 minimum_pre_commit_version: 2.16.0
 repos:
-  - repo: https://github.com/psf/black
-    rev: "23.9.1"
-    hooks:
-      - id: black
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.0.3
     hooks:
@@ -23,20 +19,15 @@ repos:
         # https://github.com/jupyterlab/jupyterlab/issues/12675
         language_version: "17.9.1"
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.291
+    rev: v0.1.9
     hooks:
       - id: ruff
+        types_or: [python, pyi, jupyter]
         args: [--fix, --exit-non-zero-on-fix]
-  - repo: https://github.com/asottile/blacken-docs
-    rev: 1.16.0
-    hooks:
-      - id: blacken-docs
-        # because of possible ipython magics. Notebooks are reformatted in separate hook using jupytext
-        exclude: "docs/notebooks/.*"
-        additional_dependencies:
-          - black==22.6.0 # Matches hook
+      - id: ruff-format
+        types_or: [python, pyi, jupyter]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: detect-private-key
       - id: check-ast
