@@ -95,9 +95,7 @@ def infercnv(
 
     var_mask = adata.var["chromosome"].isnull()
     if np.sum(var_mask):
-        logging.warning(
-            f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. "
-        )  # type: ignore
+        logging.warning(f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. ")  # type: ignore
     if exclude_chromosomes is not None:
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
     tmp_adata = adata[:, ~var_mask]
