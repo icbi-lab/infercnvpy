@@ -21,8 +21,8 @@ def copykat(
     layer: Optional[str] = None,
     n_jobs: Optional[int] = None,
     norm_cell_names: str = "",
-    cell_line = "no",
-    window_size = 25,
+    cell_line="no",
+    window_size=25,
 ) -> (pd.DataFrame, pd.Series):
     """Inference of genomic copy number and subclonal structure.
 
@@ -75,9 +75,10 @@ def copykat(
     organism
         Runs methods for calculating copy numbers from: "human" or "mouse" scRNAseq data (default: "human")
     cell_line
-        if the data are from pure cell line (ie. not a mixture of tumor and normal), put "yes" to use a synthetic baseline (default: "no") 
+        if the data are from pure cell line (ie. not a mixture of tumor and normal), put "yes" to use a synthetic baseline (default: "no")
     window_size
         Sets a minimal window size for segmentation
+
     Returns
     -------
     Depending on the value of `inplace`, either returns `None` or a tuple (`CNV Matrix`,`CopyKat prediction`)
