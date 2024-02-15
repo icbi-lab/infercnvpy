@@ -21,6 +21,8 @@ def copykat(
     layer: Optional[str] = None,
     n_jobs: Optional[int] = None,
     norm_cell_names: str = "",
+    cell_line = "no",
+    window_size = 25,
 ) -> (pd.DataFrame, pd.Series):
     """Inference of genomic copy number and subclonal structure.
 
@@ -72,7 +74,10 @@ def copykat(
         value will be ignored.
     organism
         Runs methods for calculating copy numbers from: "human" or "mouse" scRNAseq data (default: "human")
-
+    cell_line
+        if the data are from pure cell line (ie. not a mixture of tumor and normal), put "yes" to use a synthetic baseline (default: "no") 
+    window_size
+        Sets a minimal window size for segmentation
     Returns
     -------
     Depending on the value of `inplace`, either returns `None` or a tuple (`CNV Matrix`,`CopyKat prediction`)
@@ -116,6 +121,8 @@ def copykat(
     ro.globalenv["min_gene_chr"] = ro.conversion.py2rpy(min_genes_chr)
     ro.globalenv["norm_cell_names"] = ro.conversion.py2rpy(norm_cell_names)
     ro.globalenv["organism"] = ro.conversion.py2rpy(organism)
+    ro.globalenv["cell_line"] = ro.conversion.py2rpy(cell_line)
+    ro.globalenv["window_size"] = ro.conversion.py2rpy(window_size)
 
     logging.info("Running copyKAT")
     ro.r(
@@ -123,12 +130,12 @@ def copykat(
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
         if (organism == "mouse"){
-            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
-                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = window_size,
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, cell.line = cell_line,
                                 n.cores = n_jobs, output.seg = FALSE, genome = 'mm10')
         } else {
-            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
-                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = window_size,
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, cell.line = cell_line,
                                 n.cores = n_jobs, output.seg = FALSE)
         }
         copyKAT_result <- data.frame(copyKAT_run$CNAmat)
