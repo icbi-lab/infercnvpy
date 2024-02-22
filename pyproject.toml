@@ -103,7 +103,7 @@ select = [
     "RUF100",  # Report unused noqa directives
 ]
 ignore = [
-    # line too long -> we accept long comment lines; black gets rid of long code lines
+    # line too long -> we accept long comment lines; formatter gets rid of long code lines
     "E501",
     # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
     "E731",
@@ -130,10 +130,10 @@ ignore = [
     "D213",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "docs/*" = ["I"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
@@ -147,5 +147,5 @@ skip = [
     "docs/changelog.md",
     "docs/references.bib",
     "docs/references.md",
-    "docs/notebooks/example.ipynb"
+    "docs/notebooks/example.ipynb",
 ]
