@@ -1,4 +1,5 @@
 """Example datasets."""
+
 import importlib.resources as pkg_resources
 
 import scanpy as sc

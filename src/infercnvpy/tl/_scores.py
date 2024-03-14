@@ -1,4 +1,5 @@
 """Scores to summarize and assess copy number variation."""
+
 import warnings
 from collections.abc import Mapping
 from typing import Any, Optional
