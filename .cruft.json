@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/scverse/cookiecutter-scverse",
-  "commit": "8e96abb5c3e2d5078c44713958da672711cf2a48",
+  "commit": "87a407a65408d75a949c0b54b19fd287475a56f8",
   "context": {
     "cookiecutter": {
       "project_name": "infercnvpy",
@@ -12,7 +12,8 @@
       "project_repo": "https://github.com/icbi-lab/infercnvpy",
       "license": "BSD 3-Clause License",
       "_copy_without_render": [
-        ".github/workflows/**.yaml",
+        ".github/workflows/build.yaml",
+        ".github/workflows/test.yaml",
         "docs/_templates/autosummary/**.rst"
       ],
       "_render_devdocs": false,
@@ -24,5 +25,5 @@
     }
   },
   "directory": null,
-  "checkout": "v0.3.0"
+  "checkout": "v0.4.0"
 }
