@@ -81,4 +81,4 @@ n/a
 [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
 [changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
 [link-docs]: https://infercnvpy.readthedocs.io
-[link-api]: https://infercnvpy.readthedocs.io/latest/api.html
+[link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html
