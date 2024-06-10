@@ -1,7 +1,8 @@
 import itertools
 import re
+from collections.abc import Sequence
 from multiprocessing import cpu_count
-from typing import Sequence, Tuple, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -12,7 +13,7 @@ from scanpy import logging
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
-from .._util import _ensure_array
+from infercnvpy._util import _ensure_array
 
 
 def infercnv(
@@ -31,9 +32,8 @@ def infercnv(
     inplace: bool = True,
     layer: Union[str, None] = None,
     key_added: str = "cnv",
-) -> Union[None, Tuple[dict, scipy.sparse.csr_matrix, pd.DataFrame]]:
-    """
-    Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
+) -> Union[None, tuple[dict, scipy.sparse.csr_matrix]]:
+    """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
     but more computationally efficient. The method is described in more detail
@@ -97,9 +97,7 @@ def infercnv(
 
     var_mask = adata.var["chromosome"].isnull()
     if np.sum(var_mask):
-        logging.warning(
-            f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. "
-        )  # type: ignore
+        logging.warning(f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. ")  # type: ignore
     if exclude_chromosomes is not None:
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
     tmp_adata = adata[:, ~var_mask]
@@ -177,6 +175,8 @@ def _running_mean(
 
     Parameters
     ----------
+    x
+        matrix to work on
     n
         Length of the running window
     step
@@ -244,7 +244,10 @@ def _running_mean_by_chromosome(
     var
         The var data frame of the associated AnnData object
     window_size
+        size of the running window (number of genes in to include in the window)
     step
+        only compute every nth running window where n = `step`. Set to 1 to compute
+        all windows.
 
     Returns
     -------
@@ -265,7 +268,7 @@ def _running_mean_by_chromosome(
         for chr in chromosomes
     ]
 
-    print("hi")
+    chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])))
 
     running_means, convolved_dfs = zip(*running_means)
 

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 import matplotlib.axes
 import numpy as np
@@ -16,13 +16,12 @@ def chromosome_heatmap(
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
     cmap: Union[str, Colormap] = "bwr",
-    figsize: Tuple[int, int] = (16, 10),
+    figsize: tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
     **kwargs,
-) -> Optional[Dict[str, matplotlib.axes.Axes]]:
-    """
-    Plot a heatmap of smoothed gene expression by chromosome.
+) -> Optional[dict[str, matplotlib.axes.Axes]]:
+    """Plot a heatmap of smoothed gene expression by chromosome.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
 
@@ -55,11 +54,7 @@ def chromosome_heatmap(
     """
     if groupby == "cnv_leiden" and "cnv_leiden" not in adata.obs.columns:
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
-    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs)
-
-    # transfer colors from adata if present
-    if f"{groupby}_colors" in adata.uns:
-        tmp_adata.uns[f"{groupby}_colors"] = adata.uns[f"{groupby}_colors"]
+    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs, uns=adata.uns)
 
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
@@ -67,7 +62,13 @@ def chromosome_heatmap(
 
     # center color map at 0
     tmp_data = tmp_adata.X.data if issparse(tmp_adata.X) else tmp_adata.X
-    norm = TwoSlopeNorm(0, vmin=np.nanmin(tmp_data), vmax=np.nanmax(tmp_data))
+    vmin = kwargs.pop("vmin", None)
+    vmax = kwargs.pop("vmax", None)
+    if vmin is None:
+        vmin = np.nanmin(tmp_data)
+    if vmax is None:
+        vmax = np.nanmax(tmp_data)
+    kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
@@ -81,7 +82,6 @@ def chromosome_heatmap(
         show_gene_labels=False,
         var_group_positions=var_group_positions,
         var_group_labels=list(chr_pos_dict.keys()),
-        norm=norm,
         show=False,
         **kwargs,
     )
@@ -100,13 +100,12 @@ def chromosome_heatmap_summary(
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
     cmap: Union[str, Colormap] = "bwr",
-    figsize: Tuple[int, int] = (16, 10),
+    figsize: tuple[int, int] = (16, 10),
     show: Optional[bool] = None,
     save: Union[str, bool, None] = None,
     **kwargs,
-) -> Optional[Dict[str, matplotlib.axes.Axes]]:
-    """
-    Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.
+) -> Optional[dict[str, matplotlib.axes.Axes]]:
+    """Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
 
@@ -147,6 +146,7 @@ def chromosome_heatmap_summary(
     groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
+    tmp_obs.index = tmp_obs.index.astype(str)
 
     def _get_group_mean(group):
         group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby] == group, :], axis=0)
@@ -156,19 +156,20 @@ def chromosome_heatmap_summary(
         return group_mean
 
     tmp_adata = sc.AnnData(
-        X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]),
-        obs=tmp_obs,
+        X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]), obs=tmp_obs, uns=adata.uns
     )
-
-    # transfer colors from adata if present
-    if f"{groupby}_colors" in adata.uns:
-        tmp_adata.uns[f"{groupby}_colors"] = adata.uns[f"{groupby}_colors"]
 
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
-    norm = TwoSlopeNorm(0, vmin=np.min(tmp_adata.X), vmax=np.max(tmp_adata.X))
+    vmin = kwargs.pop("vmin", None)
+    vmax = kwargs.pop("vmax", None)
+    if vmin is None:
+        vmin = np.min(tmp_adata.X)
+    if vmax is None:
+        vmax = np.max(tmp_adata.X)
+    kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
     var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
@@ -182,7 +183,6 @@ def chromosome_heatmap_summary(
         show_gene_labels=False,
         var_group_positions=var_group_positions,
         var_group_labels=list(chr_pos_dict.keys()),
-        norm=norm,
         show=False,
         **kwargs,
     )

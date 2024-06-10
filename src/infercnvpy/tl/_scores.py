@@ -1,12 +1,14 @@
-"""Scores to summarize and assess copy number variation"""
+"""Scores to summarize and assess copy number variation."""
+
 import warnings
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
-from .._util import _choose_mtx_rep
+from infercnvpy._util import _choose_mtx_rep
 
 
 def cnv_score(
@@ -54,6 +56,7 @@ def cnv_score(
             "The obs_key argument has been renamed to `groupby` for consistency with "
             "other functions and will be removed in the future. ",
             category=FutureWarning,
+            stacklevel=2,
         )
         groupby = obs_key
 

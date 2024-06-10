@@ -8,7 +8,7 @@ name = "infercnvpy"
 dynamic = ["version"]
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor Sturm"},
@@ -26,12 +26,13 @@ dependencies = [
     'numpy>=1.20', # includes type annotations
     'tqdm>=4.63.0', # fixes tqdm.auto
     'pytoml',
-    'gtfparse>=1.2.1',
+    'gtfparse>=2.1',
     'pycairo>=1.20; sys_platform == "win32"',
     'leidenalg',
     'pyreadr',
     # for debug logging (referenced from the issue template)
     "session-info",
+    "ipython"
 ]
 
 [project.optional-dependencies]
@@ -41,23 +42,25 @@ copykat = [
 dev = [
     # CLI for managing the python project
     "pre-commit",
-    "bump2version"
 ]
 doc = [
+    "docutils>=0.8,!=0.18.*,!=0.19.*",
     "sphinx>=4.2",
-    "sphinx-book-theme>=0.3.3",
+    "sphinx-book-theme>=1.0.0",
     "myst-nb",
     "sphinxcontrib-bibtex>=1.0.0",
     "sphinx-autodoc-typehints",
+    "sphinxext-opengraph",
     # for tutorial
     "ipykernel",
     "sphinx-copybutton",
     'pycairo',
     'jupyter_client',
+    "pandas",
 ]
 test = [
     "pytest",
-    "pytest-cov",
+    "coverage",
 ]
 
 [tool.hatch.version]
@@ -80,35 +83,60 @@ filterwarnings = [
     # "ignore:.*U.*mode is deprecated:DeprecationWarning",
 ]
 
-[tool.isort]
-include_trailing_comma = true
-multi_line_output = 3
-profile = "black"
-skip_glob = ["docs/*"]
-
 [tool.black]
 line-length = 120
-target-version = ['py38']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
 
-[tool.jupytext]
-formats = "ipynb,md"
+[tool.ruff]
+src = ["src"]
+line-length = 120
+select = [
+    "F",  # Errors detected by Pyflakes
+    "E",  # Error detected by Pycodestyle
+    "W",  # Warning detected by Pycodestyle
+    "I",  # isort
+    "D",  # pydocstyle
+    "B",  # flake8-bugbear
+    "TID",  # flake8-tidy-imports
+    "C4",  # flake8-comprehensions
+    "BLE",  # flake8-blind-except
+    "UP",  # pyupgrade
+    "RUF100",  # Report unused noqa directives
+]
+ignore = [
+    # line too long -> we accept long comment lines; black gets rid of long code lines
+    "E501",
+    # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
+    "E731",
+    # allow I, O, l as variable names -> I is the identity matrix
+    "E741",
+    # Missing docstring in public package
+    "D104",
+    # Missing docstring in public module
+    "D100",
+    # Missing docstring in __init__
+    "D107",
+    # Errors from function calls in argument defaults. These are fine when the result is immutable.
+    "B008",
+    # __magic__ methods are are often self-explanatory, allow missing docstrings
+    "D105",
+    # first line should end with a period [Bug: doesn't work with single-line docstrings]
+    "D400",
+    # First line should be in imperative mood; try rephrasing
+    "D401",
+    ## Disable one in each pair of mutually incompatible rules
+    # We don’t want a blank line before a class docstring
+    "D203",
+    # We want docstrings to start immediately after the opening triple quote
+    "D213",
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.per-file-ignores]
+"docs/*" = ["I"]
+"tests/*" = ["D"]
+"*/__init__.py" = ["F401"]
 
 [tool.cruft]
 skip = [

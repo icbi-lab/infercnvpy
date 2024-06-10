@@ -4,7 +4,7 @@
 [![Documentation][badge-docs]][link-docs]
 [![PyPI][badge-pypi]][link-pypi]
 
-[badge-tests]: https://img.shields.io/github/workflow/status/icbi-lab/infercnvpy/Test/main
+[badge-tests]: https://img.shields.io/github/actions/workflow/status/icbi-lab/infercnvpy/test.yaml?branch=main
 [link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
@@ -32,7 +32,7 @@ Please refer to the [documentation][link-docs]. In particular, the
 
 ## Installation
 
-You need to have Python 3.8 or newer installed on your system. If you don't have
+You need to have Python 3.9 or newer installed on your system. If you don't have
 Python installed, we recommend installing [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).
 
 There are several alternative options to install infercnvpy:

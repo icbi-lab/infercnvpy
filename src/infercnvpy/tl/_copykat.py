@@ -11,18 +11,20 @@ from scipy.sparse import issparse
 def copykat(
     adata: AnnData,
     gene_ids: str = "S",
+    organism: str = "human",
     segmentation_cut: float = 0.1,
     distance: str = "euclidean",
     s_name: str = "copykat_result",
     min_genes_chr: int = 5,
     key_added: str = "cnv",
     inplace: bool = True,
-    layer: str = None,
+    layer: Optional[str] = None,
     n_jobs: Optional[int] = None,
     norm_cell_names: str = "",
+    cell_line="no",
+    window_size=25,
 ) -> (pd.DataFrame, pd.Series):
-    """
-    Inference of genomic copy number and subclonal structure.
+    """Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
     Bayesian approaches to identify genome-wide aneuploidy at 5MB resolution
@@ -52,6 +54,8 @@ def copykat(
         Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
+    layer
+        AnnData layer to use for running copykat
     gene_ids
         gene id type: Symbol ("S") or Ensemble ("E").
     segmentation_cut
@@ -68,6 +72,12 @@ def copykat(
         Number of cores to use for copyKAT analysis. Per default, uses all cores
         available on the system. Multithreading does not work on Windows and this
         value will be ignored.
+    organism
+        Runs methods for calculating copy numbers from: "human" or "mouse" scRNAseq data (default: "human")
+    cell_line
+        if the data are from pure cell line (ie. not a mixture of tumor and normal), put "yes" to use a synthetic baseline (default: "no")
+    window_size
+        Sets a minimal window size for segmentation
 
     Returns
     -------
@@ -84,13 +94,15 @@ def copykat(
         from rpy2.robjects.conversion import localconverter
         from rpy2.robjects.packages import importr
     except ImportError:
-        raise ImportError("copyKAT requires rpy2 to be installed. ")
+        raise ImportError("copyKAT requires rpy2 to be installed. ") from None
 
     try:
         importr("copykat")
         importr("stringr")
     except ImportError:
-        raise ImportError("copyKAT requires a valid R installation with the following packages: " "copykat, stringr")
+        raise ImportError(
+            "copyKAT requires a valid R installation with the following packages: " "copykat, stringr"
+        ) from None
 
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
@@ -109,15 +121,24 @@ def copykat(
     ro.globalenv["s_name"] = ro.conversion.py2rpy(s_name)
     ro.globalenv["min_gene_chr"] = ro.conversion.py2rpy(min_genes_chr)
     ro.globalenv["norm_cell_names"] = ro.conversion.py2rpy(norm_cell_names)
+    ro.globalenv["organism"] = ro.conversion.py2rpy(organism)
+    ro.globalenv["cell_line"] = ro.conversion.py2rpy(cell_line)
+    ro.globalenv["window_size"] = ro.conversion.py2rpy(window_size)
 
     logging.info("Running copyKAT")
     ro.r(
         """
         rownames(expr_r) <- gene_names
         colnames(expr_r) <- cell_IDs
-        copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = 25,
-                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names,
+        if (organism == "mouse"){
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = window_size,
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, cell.line = cell_line,
+                                n.cores = n_jobs, output.seg = FALSE, genome = 'mm10')
+        } else {
+            copyKAT_run <- copykat(rawmat = expr_r, id.type = gene_ids, ngene.chr = min_gene_chr, win.size = window_size,
+                                KS.cut = segmentation_cut, sam.name = s_name, distance = distance, norm.cell.names = norm_cell_names, cell.line = cell_line,
                                 n.cores = n_jobs, output.seg = FALSE)
+        }
         copyKAT_result <- data.frame(copyKAT_run$CNAmat)
         colnames(copyKAT_result) <- str_replace_all(colnames(copyKAT_result), "\\\\.", "-")
         copyKAT_pred <- data.frame(copyKAT_run$prediction)

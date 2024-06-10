@@ -1,4 +1,5 @@
-"""Python library to infer copy number variation (CNV) from single-cell RNA-seq data"""
+"""Python library to infer copy number variation (CNV) from single-cell RNA-seq data."""
+
 from importlib.metadata import version
 
 from . import datasets, io, pl, pp, tl
