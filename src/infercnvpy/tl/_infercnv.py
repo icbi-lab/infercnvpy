@@ -2,7 +2,7 @@ import itertools
 import re
 from collections.abc import Sequence
 from multiprocessing import cpu_count
-from typing import Union
+from typing import Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -91,8 +91,7 @@ def infercnv(
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
         raise ValueError(
-            "Genomic positions not found. There need to be `chromosome`, `start`, and "
-            "`end` columns in `adata.var`. "
+            "Genomic positions not found. There need to be `chromosome`, `start`, and " "`end` columns in `adata.var`. "
         )
 
     var_mask = adata.var["chromosome"].isnull()
@@ -132,12 +131,8 @@ def infercnv(
     # annotate the genomic range of each window
     start_dict = var["start"].to_dict()
     stop_dict = var["end"].to_dict()
-    convolved_dfs["start"] = convolved_dfs["genes"].apply(
-        lambda x: start_dict[x[0]]
-    )  # start of the first gene
-    convolved_dfs["end"] = convolved_dfs["genes"].apply(
-        lambda x: stop_dict[x[-1]]
-    )  # stop of the last gene
+    convolved_dfs["start"] = convolved_dfs["genes"].apply(lambda x: start_dict[x[0]])  # start of the first gene
+    convolved_dfs["end"] = convolved_dfs["genes"].apply(lambda x: stop_dict[x[-1]])  # stop of the last gene
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
@@ -193,15 +188,11 @@ def _running_mean(
         ) / np.sum(pyramid)
 
         ## get the indices of the genes used in the convolution
-        convolution_indices = get_convolution_indices(x, n)[
-            np.arange(0, smoothed_x.shape[1], step)
-        ]
+        convolution_indices = get_convolution_indices(x, n)[np.arange(0, smoothed_x.shape[1], step)]
         ## Pull out the genes used in the convolution
         convolved_gene_names = gene_list[convolution_indices]
 
-        return smoothed_x[
-            :, np.arange(0, smoothed_x.shape[1], step)
-        ], convolved_gene_names
+        return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)], convolved_gene_names
 
     else:  # If there is less genes than the window size, set the window size to the number of genes and perform a single convolution
         n = x.shape[1]  # set the filter size to the number of genes
@@ -214,15 +205,11 @@ def _running_mean(
         ) / np.sum(pyramid)
 
         ## get the indices of the genes used in the convolution
-        convolution_indices = get_convolution_indices(x, n)[
-            np.arange(0, smoothed_x.shape[1], step)
-        ]
+        convolution_indices = get_convolution_indices(x, n)[np.arange(0, smoothed_x.shape[1], step)]
         ## Pull out the genes used in the convolution
         convolved_gene_names = gene_list[convolution_indices]
 
-        return smoothed_x[
-            :, np.arange(0, smoothed_x.shape[1], step)
-        ], convolved_gene_names
+        return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)], convolved_gene_names
 
 
 def get_convolution_indices(x, n):
@@ -232,9 +219,7 @@ def get_convolution_indices(x, n):
     return np.array(indices)
 
 
-def _running_mean_by_chromosome(
-    expr, var, window_size, step
-) -> Tuple[dict, np.ndarray, pd.DataFrame]:
+def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.ndarray, pd.DataFrame]:
     """Compute the running mean for each chromosome independently. Stack the resulting arrays ordered by chromosome.
 
     Parameters
@@ -258,15 +243,9 @@ def _running_mean_by_chromosome(
         A numpy array with the smoothed gene expression, ordered by chromosome
         and genomic position
     """
-    chromosomes = _natural_sort(
-        [x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"]
-    )
+    chromosomes = _natural_sort([x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
 
-
-    running_means = [
-        _running_mean_for_chromosome(chr, expr, var, window_size, step)
-        for chr in chromosomes
-    ]
+    running_means = [_running_mean_for_chromosome(chr, expr, var, window_size, step) for chr in chromosomes]
 
     chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])))
 
@@ -276,28 +255,18 @@ def _running_mean_by_chromosome(
     convolved_dfs.index.name = "relative_position"
     convolved_dfs.reset_index(inplace=True)
 
-    chr_start_pos = {
-        chr: i
-        for chr, i in zip(
-            chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])
-        )
-    }
+    chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
+
     return chr_start_pos, np.hstack(running_means), convolved_dfs
 
 
 def _running_mean_for_chromosome(chr, expr, var, window_size, step):
     genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
     tmp_x = expr[:, var.index.get_indexer(genes)]
-    x_conv, convolved_gene_names = _running_mean(
-        tmp_x, n=window_size, step=step, gene_list=genes
-    )
-    assert (
-        len(convolved_gene_names) == x_conv.shape[1]
-    ), f"{len(convolved_gene_names)} vs {x_conv.shape[1]}"
+    x_conv, convolved_gene_names = _running_mean(tmp_x, n=window_size, step=step, gene_list=genes)
+    assert len(convolved_gene_names) == x_conv.shape[1], f"{len(convolved_gene_names)} vs {x_conv.shape[1]}"
     # DataFrame containing all the genes that go into a specific position
-    convolved_df = pd.DataFrame(
-        {"genes": convolved_gene_names.tolist(), "chromosome": chr}
-    )
+    convolved_df = pd.DataFrame({"genes": convolved_gene_names.tolist(), "chromosome": chr})
 
     return x_conv, convolved_df
 
@@ -337,9 +306,7 @@ def _get_reference(
                     f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-            reference = np.vstack(
-                [np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat]
-            )
+            reference = np.vstack([np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat])
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
@@ -350,9 +317,7 @@ def _get_reference(
     return reference
 
 
-def _infercnv_chunk(
-    tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold
-):
+def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold):
     """The actual infercnv work is happening here.
 
     Process chunks of serveral thousand genes independently since this
@@ -379,9 +344,7 @@ def _infercnv_chunk(
     # Step 2 - clip log fold changes
     x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
     # Step 3 - smooth by genomic position
-    chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(
-        x_clipped, var, window_size=window_size, step=step
-    )
+    chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(x_clipped, var, window_size=window_size, step=step)
     # Step 4 - center by cell
     x_cell_centered = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
 
