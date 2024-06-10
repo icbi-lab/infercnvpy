@@ -45,6 +45,7 @@ def test_get_reference_given_reference(adata_mock):
         ("cell_type", ["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"]),
     ],
 )
+
 def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
