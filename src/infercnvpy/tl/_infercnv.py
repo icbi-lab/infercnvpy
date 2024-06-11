@@ -124,19 +124,17 @@ def infercnv(
             max_workers=cpu_count() if n_jobs is None else n_jobs,
         )
     )
+
     res = scipy.sparse.vstack(chunks)
-    convolved_dfs = convolved_dfs[0]  # since each chunk returns the same df
     chr_pos = chr_pos[0]
-
-    # annotate the genomic range of each window
-    start_dict = var["start"].to_dict()
-    stop_dict = var["end"].to_dict()
-    convolved_dfs["start"] = convolved_dfs["genes"].apply(lambda x: start_dict[x[0]])  # start of the first gene
-    convolved_dfs["end"] = convolved_dfs["genes"].apply(lambda x: stop_dict[x[-1]])  # stop of the last gene
-
+    per_gene_df = pd.concat(convolved_dfs, axis=1)
+    # Ensure the DataFrame has the correct index
+    per_gene_df.index = adata.obs.index
+    
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.uns[key_added] = {"chr_pos": chr_pos, "df": convolved_dfs}
+        adata.obsm[f"gene_values_{key_added}"] = per_gene_df
+        adata.uns[key_added] = {"chr_pos": chr_pos}
 
     else:
         return chr_pos, res, convolved_dfs
@@ -191,25 +189,58 @@ def _running_mean(
         convolution_indices = get_convolution_indices(x, n)[np.arange(0, smoothed_x.shape[1], step)]
         ## Pull out the genes used in the convolution
         convolved_gene_names = gene_list[convolution_indices]
+        smoothed_x = smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
-        return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)], convolved_gene_names
+        convolved_gene_values = calculate_gene_averages(convolved_gene_names, smoothed_x)
+
+        return smoothed_x, convolved_gene_values
 
     else:  # If there is less genes than the window size, set the window size to the number of genes and perform a single convolution
         n = x.shape[1]  # set the filter size to the number of genes
         r = np.arange(1, n + 1)
-        pyramid = np.minimum(r, r[::-1])
+        ## As we are only doing one convolution the values should be equal
+        pyramid = np.array([1] * n)
+        # Old code to make the pyramid
+        # pyramid = np.minimum(r, r[::-1])
         smoothed_x = np.apply_along_axis(
             lambda row: np.convolve(row, pyramid, mode="valid"),
             axis=1,
             arr=x,
         ) / np.sum(pyramid)
 
-        ## get the indices of the genes used in the convolution
-        convolution_indices = get_convolution_indices(x, n)[np.arange(0, smoothed_x.shape[1], step)]
-        ## Pull out the genes used in the convolution
-        convolved_gene_names = gene_list[convolution_indices]
+        ## As all genes are used the convolution the values are identical for all genes
+        convolved_gene_values = pd.DataFrame(np.repeat(smoothed_x, len(gene_list), axis=1), columns=gene_list)
 
-        return smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)], convolved_gene_names
+        return smoothed_x, convolved_gene_values
+
+
+def calculate_gene_averages(convolved_gene_names, smoothed_x):
+    ## create a dictionary to store the gene values per sample
+    gene_to_values = {}
+    # Calculate the number of genes in each convolution, will be same as the window size default=100
+    length = len(convolved_gene_names[0])
+    # Convert the flattened convolved gene names to a list
+    flatten_list = list(convolved_gene_names.flatten())
+
+    # For each sample in smoothed_x find the value for each gene and store it in a dictionary
+    for sample, row in enumerate(smoothed_x):
+        # Create sample level in the dictionary
+        if sample not in gene_to_values:
+            gene_to_values[sample] = {}
+        # For each gene in the flattened gene list find the value and store it in the dictionary
+        for i, gene in enumerate(flatten_list):
+            if gene not in gene_to_values[sample]:
+                gene_to_values[sample][gene] = []
+            # As the gene list has been flattend we can use the floor division of the index
+            # to get the correct position of the gene to get the value and store it in the dictionary
+            gene_to_values[sample][gene].append(row[i // length])
+
+    for sample in gene_to_values:
+        for gene in gene_to_values[sample]:
+            gene_to_values[sample][gene] = np.mean(gene_to_values[sample][gene])
+
+    convolved_gene_values = pd.DataFrame(gene_to_values).T
+    return convolved_gene_values
 
 
 def get_convolution_indices(x, n):
@@ -247,15 +278,12 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
 
     running_means = [_running_mean_for_chromosome(chr, expr, var, window_size, step) for chr in chromosomes]
 
-    chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])))
-
     running_means, convolved_dfs = zip(*running_means)
 
-    convolved_dfs = pd.concat(convolved_dfs)  # since its a list of dfs before
-    convolved_dfs.index.name = "relative_position"
-    convolved_dfs.reset_index(inplace=True)
-
     chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
+
+    ## Concatenate the gene dfs
+    convolved_dfs = pd.concat(convolved_dfs, axis=1)  # since its a list of dfs before
 
     return chr_start_pos, np.hstack(running_means), convolved_dfs
 
@@ -263,12 +291,9 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
 def _running_mean_for_chromosome(chr, expr, var, window_size, step):
     genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
     tmp_x = expr[:, var.index.get_indexer(genes)]
-    x_conv, convolved_gene_names = _running_mean(tmp_x, n=window_size, step=step, gene_list=genes)
-    assert len(convolved_gene_names) == x_conv.shape[1], f"{len(convolved_gene_names)} vs {x_conv.shape[1]}"
-    # DataFrame containing all the genes that go into a specific position
-    convolved_df = pd.DataFrame({"genes": convolved_gene_names.tolist(), "chromosome": chr})
+    x_conv, convolved_gene_values = _running_mean(tmp_x, n=window_size, step=step, gene_list=genes)
 
-    return x_conv, convolved_df
+    return x_conv, convolved_gene_values
 
 
 def _get_reference(

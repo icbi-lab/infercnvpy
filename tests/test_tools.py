@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import numpy.testing as npt
 import pytest
 import scanpy as sc
@@ -45,9 +46,64 @@ def test_get_reference_given_reference(adata_mock):
         ("cell_type", ["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"]),
     ],
 )
-
 def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
+
+
+def test_running_mean_n_less_than_genes():
+    # Create a 2D numpy array
+    x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
+    n = 3
+    step = 1
+    gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
+
+    # Call the function with the test parameters
+    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list)
+
+    # Define the expected output
+    expected_result = np.array([[2, 3, 4], [7, 8, 9]])
+    expected_gene_values = pd.DataFrame(
+        {
+            "gene1": [2.0, 7.0],
+            "gene2": [2.5, 7.5],
+            "gene3": [3.0, 8.0],
+            "gene4": [3.5, 8.5],
+            "gene5": [4.0, 9.0],
+        }
+    )
+
+    # Assert that the function output is as expected
+    np.testing.assert_array_equal(result, expected_result)
+    # Assert that the gene dfs are equal
+    pd.testing.assert_frame_equal(convolved_gene_values, expected_gene_values)
+
+
+def test_running_mean_n_greater_than_genes():
+    # Create a 2D numpy array
+    x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
+    n = 7
+    step = 1
+    gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
+
+    # Call the function with the test parameters
+    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list)
+
+    # Define the expected output
+    expected_result = np.array([[3], [8]])
+    expected_gene_values = pd.DataFrame(
+        {
+            "gene1": [3.0, 8.0],
+            "gene2": [3.0, 8.0],
+            "gene3": [3.0, 8.0],
+            "gene4": [3.0, 8.0],
+            "gene5": [3.0, 8.0],
+        }
+    )
+
+    # Assert that the function output is as expected
+    np.testing.assert_array_equal(result, expected_result)
+    # Assert that the gene dfs are equal
+    pd.testing.assert_frame_equal(convolved_gene_values, expected_gene_values)
 
 
 @pytest.mark.skip(
