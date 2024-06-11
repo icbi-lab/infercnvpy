@@ -130,7 +130,7 @@ def infercnv(
     per_gene_df = pd.concat(convolved_dfs, axis=1)
     # Ensure the DataFrame has the correct index
     per_gene_df.index = adata.obs.index
-    
+
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
         adata.obsm[f"gene_values_{key_added}"] = per_gene_df
@@ -191,7 +191,7 @@ def _running_mean(
         convolved_gene_names = gene_list[convolution_indices]
         smoothed_x = smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
-        convolved_gene_values = calculate_gene_averages(convolved_gene_names, smoothed_x)
+        convolved_gene_values = _calculate_gene_averages(convolved_gene_names, smoothed_x)
 
         return smoothed_x, convolved_gene_values
 
@@ -214,7 +214,7 @@ def _running_mean(
         return smoothed_x, convolved_gene_values
 
 
-def calculate_gene_averages(convolved_gene_names, smoothed_x):
+def _calculate_gene_averages(convolved_gene_names, smoothed_x):
     ## create a dictionary to store the gene values per sample
     gene_to_values = {}
     # Calculate the number of genes in each convolution, will be same as the window size default=100
@@ -283,7 +283,7 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
     chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
 
     ## Concatenate the gene dfs
-    convolved_dfs = pd.concat(convolved_dfs, axis=1)  # since its a list of dfs before
+    convolved_dfs = pd.concat(convolved_dfs, axis=1)
 
     return chr_start_pos, np.hstack(running_means), convolved_dfs
 
@@ -372,14 +372,17 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
     chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(x_clipped, var, window_size=window_size, step=step)
     # Step 4 - center by cell
     x_cell_centered = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
+    conv_df_centered = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
 
     # Noise filtering
+    gene_res = conv_df_centered
     x_res = x_cell_centered
     # step 5 - standard deviation based noise filtering
     if dynamic_threshold is not None:
         noise_thres = dynamic_threshold * np.std(x_res)
         x_res[np.abs(x_res) < noise_thres] = 0
+        gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
 
-    return chr_pos, x_res, conv_df
+    return chr_pos, x_res, gene_res

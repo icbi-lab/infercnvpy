@@ -106,6 +106,29 @@ def test_running_mean_n_greater_than_genes():
     pd.testing.assert_frame_equal(convolved_gene_values, expected_gene_values)
 
 
+def test_calculate_gene_averages():
+    convolved_gene_names = np.array(
+        [["gene1", "gene2", "gene3"], ["gene2", "gene3", "gene4"], ["gene3", "gene4", "gene5"]]
+    )
+
+    smoothed_x = np.array([[2, 3, 4], [4, 4, 6], [6, 2, 1]])
+
+    convolved_gene_values = cnv.tl._infercnv._calculate_gene_averages(convolved_gene_names, smoothed_x)
+
+    pd.testing.assert_frame_equal(
+        convolved_gene_values,
+        pd.DataFrame(
+            {
+                "gene1": [2.0, 4.0, 6.0],
+                "gene2": [2.5, 4.0, 4.0],
+                "gene3": [3.000000, 4.666667, 3.000000],
+                "gene4": [3.5, 5.0, 1.5],
+                "gene5": [4.0, 6.0, 1.0],
+            }
+        )
+    )
+
+
 @pytest.mark.skip(
     reason="rpy2 segfaults on the CI. I don't know why and don't have the time for a painful debugging session."
 )
