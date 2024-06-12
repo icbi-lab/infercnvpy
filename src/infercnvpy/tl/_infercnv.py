@@ -127,7 +127,9 @@ def infercnv(
 
     res = scipy.sparse.vstack(chunks)
     chr_pos = chr_pos[0]
-    per_gene_df = scipy.sparse.vstack(convolved_dfs)
+    per_gene_df = pd.concat(convolved_dfs, axis=0)
+    # Ensure the DataFrame has the correct index
+    per_gene_df.index = adata.obs.index
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
@@ -135,7 +137,7 @@ def infercnv(
         adata.uns[key_added] = {"chr_pos": chr_pos}
 
     else:
-        return chr_pos, res, convolved_dfs
+        return chr_pos, res, per_gene_df
 
 
 def _natural_sort(l: Sequence):
@@ -369,12 +371,9 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
     # Step 3 - smooth by genomic position
     chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(x_clipped, var, window_size=window_size, step=step)
     # Step 4 - center by cell
-    x_cell_centered = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
-    conv_df_centered = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
+    x_res = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
+    gene_res = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
 
-    # Noise filtering
-    gene_res = conv_df_centered
-    x_res = x_cell_centered
     # step 5 - standard deviation based noise filtering
     if dynamic_threshold is not None:
         noise_thres = dynamic_threshold * np.std(x_res)
@@ -382,6 +381,5 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
         gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
-    gene_res = scipy.sparse.csr_matrix(gene_res)
 
     return chr_pos, x_res, gene_res

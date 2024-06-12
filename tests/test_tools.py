@@ -50,20 +50,6 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
 
-@pytest.mark.parametrize(
-    "reference_key,reference_cat",
-    [
-        (None, None),
-        ("cell_type", ["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"]),
-    ],
-)
-def test_infercnv_more_than_2_chunks(adata_oligodendroma, reference_key, reference_cat):
-    cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat, chunksize=50)
-
-    assert adata_oligodendroma.obsm["X_cnv"].shape == (184, 704)
-    assert adata_oligodendroma.obsm["gene_values_cnv"].shape == (184, 9012)
-
-
 def test_running_mean_n_less_than_genes():
     # Create a 2D numpy array
     x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
@@ -141,6 +127,41 @@ def test_calculate_gene_averages():
             }
         ),
     )
+
+
+def test_infercnv_chunk(adata_full_mock, gene_res_actual, x_res_actual):
+    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None)
+    var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
+    tmp_x = adata_full_mock.X
+
+    chr_pos, x_res, gene_res = cnv.tl._infercnv._infercnv_chunk(
+        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1
+    )
+
+    gene_res.index = gene_res.index.astype(str)
+    pd.testing.assert_frame_equal(gene_res, gene_res_actual)
+    np.testing.assert_array_equal(x_res.toarray(), x_res_actual)
+    assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
+
+
+def test_infercnv_more_than_2_chunks(adata_full_mock, gene_res_actual, x_res_actual):
+    chr_pos, res, per_gene_df = cnv.tl.infercnv(
+        adata_full_mock,
+        reference_key=None,
+        reference_cat=None,
+        reference=None,
+        chunksize=2,
+        lfc_clip=1,
+        window_size=3,
+        step=1,
+        dynamic_threshold=1,
+        inplace=False,
+    )
+
+    ## each chunk will contain 2 samples, this simulatanously tests the chunking and the merging
+    pd.testing.assert_frame_equal(per_gene_df, gene_res_actual)
+    np.testing.assert_array_equal(res.toarray(), x_res_actual)
+    assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
 @pytest.mark.skip(
