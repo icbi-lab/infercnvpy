@@ -127,9 +127,7 @@ def infercnv(
 
     res = scipy.sparse.vstack(chunks)
     chr_pos = chr_pos[0]
-    per_gene_df = pd.concat(convolved_dfs, axis=1)
-    # Ensure the DataFrame has the correct index
-    per_gene_df.index = adata.obs.index
+    per_gene_df = scipy.sparse.vstack(convolved_dfs)
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
@@ -384,5 +382,6 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
         gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
+    gene_res = scipy.sparse.csr_matrix(gene_res)
 
     return chr_pos, x_res, gene_res

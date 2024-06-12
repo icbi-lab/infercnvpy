@@ -50,6 +50,22 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
 
+
+@pytest.mark.parametrize(
+    "reference_key,reference_cat",
+    [
+        (None, None),
+        ("cell_type", ["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"]),
+    ],
+)
+
+def test_infercnv_more_than_2_chunks(adata_oligodendroma, reference_key, reference_cat):
+    cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat, chunksize=50)
+
+    assert adata_oligodendroma.obsm["X_cnv"].shape == (184, 704)
+    assert adata_oligodendroma.obsm["gene_values_cnv"].shape == (184, 9012)
+
+
 def test_running_mean_n_less_than_genes():
     # Create a 2D numpy array
     x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
