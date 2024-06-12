@@ -30,3 +30,6 @@ __pycache__/
 infercnv_env/
 # Notebooks
 .ipynb_checkpoints
+
+# Node.js
+node_modules/

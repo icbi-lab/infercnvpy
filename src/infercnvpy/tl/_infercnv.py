@@ -2,7 +2,7 @@ import itertools
 import re
 from collections.abc import Sequence
 from multiprocessing import cpu_count
-from typing import Sequence, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -278,7 +278,7 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
 
     running_means, convolved_dfs = zip(*running_means)
 
-    chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}
+    chr_start_pos = {chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]))}  # noqa: C416
 
     ## Concatenate the gene dfs
     convolved_dfs = pd.concat(convolved_dfs, axis=1)

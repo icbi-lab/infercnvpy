@@ -1,6 +1,6 @@
 import numpy as np
-import pandas as pd
 import numpy.testing as npt
+import pandas as pd
 import pytest
 import scanpy as sc
 
@@ -50,7 +50,6 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
 
-
 @pytest.mark.parametrize(
     "reference_key,reference_cat",
     [
@@ -58,7 +57,6 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
         ("cell_type", ["Microglia/Macrophage", "Oligodendrocytes (non-malignant)"]),
     ],
 )
-
 def test_infercnv_more_than_2_chunks(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat, chunksize=50)
 
@@ -141,7 +139,7 @@ def test_calculate_gene_averages():
                 "gene4": [3.5, 5.0, 1.5],
                 "gene5": [4.0, 6.0, 1.0],
             }
-        )
+        ),
     )
 
 
