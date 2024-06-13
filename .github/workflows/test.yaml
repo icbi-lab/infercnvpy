@@ -24,13 +24,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: "3.9"
+            python: "3.10"
             r: release
           - os: ubuntu-latest
-            python: "3.11"
+            python: "3.12"
             r: release
           - os: ubuntu-latest
-            python: "3.11"
+            python: "3.12"
             r: release
             pip-flags: "--pre"
 

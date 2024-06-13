@@ -8,7 +8,7 @@ name = "infercnvpy"
 dynamic = ["version"]
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor Sturm"},
@@ -47,7 +47,7 @@ doc = [
     "docutils>=0.8,!=0.18.*,!=0.19.*",
     "sphinx>=4.2",
     "sphinx-book-theme>=1.0.0",
-    "myst-nb",
+    "myst-nb>=1.1.0",
     "sphinxcontrib-bibtex>=1.0.0",
     "sphinx-autodoc-typehints",
     "sphinxext-opengraph",
@@ -83,12 +83,15 @@ filterwarnings = [
     # "ignore:.*U.*mode is deprecated:DeprecationWarning",
 ]
 
-[tool.black]
-line-length = 120
-
 [tool.ruff]
 src = ["src"]
 line-length = 120
+extent-include = ["*.ipynb"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
