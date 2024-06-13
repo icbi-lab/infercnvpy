@@ -1,7 +1,6 @@
 """Read in result files from scevan."""
 
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -26,14 +25,14 @@ def _get_chr_pos_from_array(chr_pos_array):
 
 def read_scevan(
     adata: AnnData,
-    scevan_res_dir: Union[str, Path],
-    scevan_res_table: Optional[Union[str, Path]] = None,
+    scevan_res_dir: str | Path,
+    scevan_res_table: str | Path | None = None,
     *,
     subclones: bool = True,
     inplace: bool = True,
     subset: bool = True,
     key_added: str = "scevan",
-) -> Optional[AnnData]:
+) -> AnnData | None:
     """Load results from SCEVAN :cite:`DeFalco2021` for downstream analysis with infercnvpy.
 
     Requires that the cell barcodes used for SCEVAN and `adata.obs_names` match,
