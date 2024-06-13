@@ -41,16 +41,16 @@ def pca(
 ) -> Union[np.ndarray, None]:
     """Compute the PCA on the result of :func:`infercnvpy.tl.infercnv`.
 
-    Thin wrapper around :func:`scanpy.tl.pca`.
+    Thin wrapper around :func:`scanpy.pp.pca`.
 
     Parameters
     ----------
     adata
         annotated data matrix
     svd_solver
-        See :func:`scanpy.tl.pca`.
+        See :func:`scanpy.pp.pca`.
     zero_center
-        See :func:`scanpy.tl.pca`.
+        See :func:`scanpy.pp.pca`.
     inplace
         If True, store the result in adata.obsm. Otherwise return the PCA matrix.
     use_rep
@@ -58,7 +58,7 @@ def pca(
     key_added
         Key under which the result will be stored in adata.obsm if `inplace=True`.
     **kwargs
-        Additional arguments passed to :func:`scanpy.tl.pca`.
+        Additional arguments passed to :func:`scanpy.pp.pca`.
     """
     if f"X_{use_rep}" not in adata.obsm:
         raise KeyError(f"X_{use_rep} is not in adata.obsm. Did you run `tl.infercnv`?")
