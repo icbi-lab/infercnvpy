@@ -2,7 +2,7 @@
 
 import warnings
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import scipy.sparse as sp
@@ -19,7 +19,7 @@ def cnv_score(
     key_added: str = "cnv_score",
     inplace: bool = True,
     obs_key=None,
-) -> Optional[Mapping[Any, np.number]]:
+) -> Mapping[Any, np.number] | None:
     """Assign each cnv cluster a CNV score.
 
     Clusters with a high score are likely affected by copy number abberations.
@@ -78,11 +78,11 @@ def ithgex(
     adata: AnnData,
     groupby: str,
     *,
-    use_raw: Optional[bool] = None,
-    layer: Optional[str] = None,
+    use_raw: bool | None = None,
+    layer: str | None = None,
     inplace: bool = True,
     key_added: str = "ithgex",
-) -> Optional[Mapping[str, float]]:
+) -> Mapping[str, float] | None:
     """Compute the ITHGEX diversity score based on gene expression cite:`Wu2021`.
 
     A high score indicates a high diversity of gene expression profiles of cells
@@ -158,7 +158,7 @@ def ithcna(
     use_rep: str = "X_cnv",
     key_added: str = "ithcna",
     inplace: bool = True,
-) -> Optional[Mapping[str, float]]:
+) -> Mapping[str, float] | None:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
 
     A high score indicates a high diversity of CNV profiles of cells

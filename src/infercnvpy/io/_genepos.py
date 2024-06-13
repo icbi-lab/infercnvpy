@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import gtfparse
 import numpy as np
@@ -9,13 +9,13 @@ from scanpy import logging
 
 
 def genomic_position_from_gtf(
-    gtf_file: Union[Path, str],
-    adata: Union[AnnData, None] = None,
+    gtf_file: Path | str,
+    adata: AnnData | None = None,
     *,
     gtf_gene_id: Literal["gene_id", "gene_name"] = "gene_name",
-    adata_gene_id: Union[str, None] = None,
+    adata_gene_id: str | None = None,
     inplace: bool = True,
-) -> Union[pd.DataFrame, None]:
+) -> pd.DataFrame | None:
     """Get genomic gene positions from a GTF file.
 
     The GTF file needs to match the genome annotation used for your single cell dataset.

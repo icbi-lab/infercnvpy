@@ -38,7 +38,7 @@ def pca(
     use_rep: str = "cnv",
     key_added: str = "cnv_pca",
     **kwargs,
-) -> Union[np.ndarray, None]:
+) -> np.ndarray | None:
     """Compute the PCA on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.pp.pca`.

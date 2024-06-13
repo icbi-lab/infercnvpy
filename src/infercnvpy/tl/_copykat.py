@@ -1,6 +1,5 @@
 import os
 from multiprocessing import cpu_count
-from typing import Optional
 
 import pandas as pd
 from anndata import AnnData
@@ -18,8 +17,8 @@ def copykat(
     min_genes_chr: int = 5,
     key_added: str = "cnv",
     inplace: bool = True,
-    layer: Optional[str] = None,
-    n_jobs: Optional[int] = None,
+    layer: str | None = None,
+    n_jobs: int | None = None,
     norm_cell_names: str = "",
     cell_line="no",
     window_size=25,
@@ -172,7 +171,7 @@ def copykat(
 
     if inplace:
         adata.uns[key_added] = chrom_pos
-        adata.obsm["X_%s" % key_added] = new_cpkat_trans
+        adata.obsm[f"X_{key_added}"] = new_cpkat_trans
         adata.obs[key_added] = copyKAT_pred
     else:
         return new_cpkat_trans, copyKAT_pred

@@ -86,7 +86,7 @@ filterwarnings = [
 [tool.ruff]
 src = ["src"]
 line-length = 120
-extent-include = ["*.ipynb"]
+extend-include = ["*.ipynb"]
 
 [tool.ruff.format]
 docstring-code-format = true
