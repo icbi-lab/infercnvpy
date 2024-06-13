@@ -2,7 +2,6 @@ import itertools
 import re
 from collections.abc import Sequence
 from multiprocessing import cpu_count
-from typing import Union
 
 import numpy as np
 import scipy.ndimage
@@ -18,20 +17,20 @@ from infercnvpy._util import _ensure_array
 def infercnv(
     adata: AnnData,
     *,
-    reference_key: Union[str, None] = None,
-    reference_cat: Union[None, str, Sequence[str]] = None,
-    reference: Union[np.ndarray, None] = None,
+    reference_key: str | None = None,
+    reference_cat: None | str | Sequence[str] = None,
+    reference: np.ndarray | None = None,
     lfc_clip: float = 3,
     window_size: int = 100,
     step: int = 10,
-    dynamic_threshold: Union[float, None] = 1.5,
-    exclude_chromosomes: Union[Sequence[str], None] = ("chrX", "chrY"),
+    dynamic_threshold: float | None = 1.5,
+    exclude_chromosomes: Sequence[str] | None = ("chrX", "chrY"),
     chunksize: int = 5000,
-    n_jobs: Union[int, None] = None,
+    n_jobs: int | None = None,
     inplace: bool = True,
-    layer: Union[str, None] = None,
+    layer: str | None = None,
     key_added: str = "cnv",
-) -> Union[None, tuple[dict, scipy.sparse.csr_matrix]]:
+) -> None | tuple[dict, scipy.sparse.csr_matrix]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
@@ -121,7 +120,8 @@ def infercnv(
             itertools.repeat(dynamic_threshold),
             tqdm_class=tqdm,
             max_workers=cpu_count() if n_jobs is None else n_jobs,
-        )
+        ),
+        strict=False,
     )
     res = scipy.sparse.vstack(chunks)
 
@@ -148,7 +148,7 @@ def _natural_sort(l: Sequence):
     return sorted(l, key=alphanum_key)
 
 
-def _running_mean(x: Union[np.ndarray, scipy.sparse.spmatrix], n: int = 50, step: int = 10) -> np.ndarray:
+def _running_mean(x: np.ndarray | scipy.sparse.spmatrix, n: int = 50, step: int = 10) -> np.ndarray:
     """Compute a pyramidially weighted running mean.
 
     Densifies the matrix. Use `step` and `chunksize` to save memory.
@@ -213,16 +213,16 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
 
     running_means = [_running_mean_for_chromosome(chr) for chr in chromosomes]
 
-    chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means])))
+    chr_start_pos = dict(zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]), strict=False))
 
     return chr_start_pos, np.hstack(running_means)
 
 
 def _get_reference(
     adata: AnnData,
-    reference_key: Union[str, None],
-    reference_cat: Union[None, str, Sequence[str]],
-    reference: Union[np.ndarray, None],
+    reference_key: str | None,
+    reference_cat: None | str | Sequence[str],
+    reference: np.ndarray | None,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
