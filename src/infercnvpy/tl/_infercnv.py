@@ -287,9 +287,9 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
 
     running_means, convolved_dfs = zip(*running_means, strict=False)
 
-    chr_start_pos = {
-        chr: i for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]), strict=False)
-    }
+    chr_start_pos = {}
+    for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]), strict=False):
+        chr_start_pos[chr] = i
 
     ## Concatenate the gene dfs
     convolved_dfs = pd.concat(convolved_dfs, axis=1)
