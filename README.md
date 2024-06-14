@@ -32,7 +32,7 @@ Please refer to the [documentation][link-docs]. In particular, the
 
 ## Installation
 
-You need to have Python 3.9 or newer installed on your system. If you don't have
+You need to have Python 3.10 or newer installed on your system. If you don't have
 Python installed, we recommend installing [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).
 
 There are several alternative options to install infercnvpy:
@@ -81,4 +81,4 @@ n/a
 [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
 [changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
 [link-docs]: https://infercnvpy.readthedocs.io
-[link-api]: https://infercnvpy.readthedocs.io/latest/api.html
+[link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html

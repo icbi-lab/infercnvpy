@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 import matplotlib.axes
 import numpy as np
 import pandas as pd
@@ -15,12 +13,12 @@ def chromosome_heatmap(
     *,
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
-    cmap: Union[str, Colormap] = "bwr",
+    cmap: str | Colormap = "bwr",
     figsize: tuple[int, int] = (16, 10),
-    show: Optional[bool] = None,
-    save: Union[str, bool, None] = None,
+    show: bool | None = None,
+    save: str | bool | None = None,
     **kwargs,
-) -> Optional[dict[str, matplotlib.axes.Axes]]:
+) -> dict[str, matplotlib.axes.Axes] | None:
     """Plot a heatmap of smoothed gene expression by chromosome.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
@@ -71,7 +69,7 @@ def chromosome_heatmap(
     kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
-    var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
+    var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]], strict=False))
 
     return_ax_dic = sc.pl.heatmap(
         tmp_adata,
@@ -99,12 +97,12 @@ def chromosome_heatmap_summary(
     *,
     groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
-    cmap: Union[str, Colormap] = "bwr",
+    cmap: str | Colormap = "bwr",
     figsize: tuple[int, int] = (16, 10),
-    show: Optional[bool] = None,
-    save: Union[str, bool, None] = None,
+    show: bool | None = None,
+    save: str | bool | None = None,
     **kwargs,
-) -> Optional[dict[str, matplotlib.axes.Axes]]:
+) -> dict[str, matplotlib.axes.Axes] | None:
     """Plot a heatmap of average of the smoothed gene expression by chromosome per category in groupby.
 
     Wrapper around :func:`scanpy.pl.heatmap`.
@@ -172,7 +170,7 @@ def chromosome_heatmap_summary(
     kwargs["norm"] = TwoSlopeNorm(0, vmin=vmin, vmax=vmax)
 
     # add chromosome annotations
-    var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]]))
+    var_group_positions = list(zip(chr_pos, chr_pos[1:] + [tmp_adata.shape[1]], strict=False))
 
     return_ax_dic = sc.pl.heatmap(
         tmp_adata,

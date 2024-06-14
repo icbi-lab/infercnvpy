@@ -8,7 +8,7 @@ name = "infercnvpy"
 dynamic = ["version"]
 description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor Sturm"},
@@ -50,7 +50,7 @@ doc = [
     "docutils>=0.8,!=0.18.*,!=0.19.*",
     "sphinx>=4.2",
     "sphinx-book-theme>=1.0.0",
-    "myst-nb",
+    "myst-nb>=1.1.0",
     "sphinxcontrib-bibtex>=1.0.0",
     "sphinx-autodoc-typehints",
     "sphinxext-opengraph",
@@ -86,12 +86,15 @@ filterwarnings = [
     # "ignore:.*U.*mode is deprecated:DeprecationWarning",
 ]
 
-[tool.black]
-line-length = 120
-
 [tool.ruff]
 src = ["src"]
 line-length = 120
+extend-include = ["*.ipynb"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
@@ -106,7 +109,7 @@ select = [
     "RUF100",  # Report unused noqa directives
 ]
 ignore = [
-    # line too long -> we accept long comment lines; black gets rid of long code lines
+    # line too long -> we accept long comment lines; formatter gets rid of long code lines
     "E501",
     # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
     "E731",
@@ -120,7 +123,7 @@ ignore = [
     "D107",
     # Errors from function calls in argument defaults. These are fine when the result is immutable.
     "B008",
-    # __magic__ methods are are often self-explanatory, allow missing docstrings
+    # __magic__ methods are often self-explanatory, allow missing docstrings
     "D105",
     # first line should end with a period [Bug: doesn't work with single-line docstrings]
     "D400",
@@ -133,10 +136,10 @@ ignore = [
     "D213",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "docs/*" = ["I"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
@@ -150,5 +153,5 @@ skip = [
     "docs/changelog.md",
     "docs/references.bib",
     "docs/references.md",
-    "docs/notebooks/example.ipynb"
+    "docs/notebooks/example.ipynb",
 ]
