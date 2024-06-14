@@ -126,18 +126,25 @@ def infercnv(
     )
 
     res = scipy.sparse.vstack(chunks)
+    # per_gene_df = scipy.sparse.vstack(convolved_dfs)
     chr_pos = chr_pos[0]
+
     per_gene_df = pd.concat(convolved_dfs, axis=0)
-    # Ensure the DataFrame has the correct index
+    # Ensure the DataFrame has the correct row index
     per_gene_df.index = adata.obs.index
+    # Ensure the per gene CNV matches the adata var (genes) index, any genes
+    # that are not included in the CNV will be filled with NaN
+    per_gene_df = per_gene_df.reindex(columns=adata.var_names, fill_value=np.nan)
+    #This needs to be a sparse matrix otherwise the memory usage is too high
+    per_gene_mtx = scipy.sparse.csr_matrix(per_gene_df)
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.obsm[f"gene_values_{key_added}"] = per_gene_df
+        adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
         adata.uns[key_added] = {"chr_pos": chr_pos}
 
     else:
-        return chr_pos, res, per_gene_df
+        return chr_pos, res, per_gene_mtx
 
 
 def _natural_sort(l: Sequence):
@@ -381,5 +388,8 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
         gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
+    # Reindex column, filling unused columns with NA
+    # gene_res = gene_res.reindex(columns=var.index, fill_value=np.nan)
+    # gene_res = scipy.sparse.csr_matrix(gene_res)
 
     return chr_pos, x_res, gene_res
