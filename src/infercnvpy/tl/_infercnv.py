@@ -31,7 +31,8 @@ def infercnv(
     inplace: bool = True,
     layer: str | None = None,
     key_added: str = "cnv",
-) -> None | tuple[dict, scipy.sparse.csr_matrix]:
+    calculate_gene_values: bool = False,
+) -> None | tuple[dict, scipy.sparse.csr_matrix, np.ndarray]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
@@ -135,8 +136,8 @@ def infercnv(
     # Ensure the per gene CNV matches the adata var (genes) index, any genes
     # that are not included in the CNV will be filled with NaN
     per_gene_df = per_gene_df.reindex(columns=adata.var_names, fill_value=np.nan)
-    # This needs to be a sparse matrix otherwise the memory usage is too high
-    per_gene_mtx = scipy.sparse.csr_matrix(per_gene_df)
+    # This needs to be a numpy array as colnames are too large to save in anndata
+    per_gene_mtx = per_gene_df.values
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
@@ -180,7 +181,7 @@ def _running_mean(
     n
         Length of the running window
     step
-        only compute running windows ever `step` columns, e.g. if step is 10
+        only compute running windows every `step` columns, e.g. if step is 10
         0:99, 10:109, 20:119 etc. Saves memory.
     """
     if n < x.shape[1]:  # regular convolution: the filter is smaller than the #genes
@@ -390,8 +391,5 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
         gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
-    # Reindex column, filling unused columns with NA
-    # gene_res = gene_res.reindex(columns=var.index, fill_value=np.nan)
-    # gene_res = scipy.sparse.csr_matrix(gene_res)
 
     return chr_pos, x_res, gene_res

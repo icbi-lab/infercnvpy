@@ -159,10 +159,8 @@ def test_infercnv_more_than_2_chunks(adata_full_mock, gene_res_actual, x_res_act
     )
 
     ## each chunk will contain 2 samples, this simulatanously tests the chunking and the merging
-    np.testing.assert_array_equal(
-        per_gene_mtx.toarray()[0], np.array([0.75, 0.0, 0.0, 0.0, -0.75, 0.0, 0.0, 0.0, 0.0, 0.75])
-    )
-    np.testing.assert_array_equal(per_gene_mtx.toarray()[3], np.array([0, 0, 0, 0, 0, 0.921875, 0.703125, 0, 0, 0]))
+    np.testing.assert_array_equal(per_gene_mtx[0], np.array([0.75, 0.0, 0.0, 0.0, -0.75, 0.0, 0.0, 0.0, 0.0, 0.75]))
+    np.testing.assert_array_equal(per_gene_mtx[3], np.array([0, 0, 0, 0, 0, 0.921875, 0.703125, 0, 0, 0]))
     np.testing.assert_array_equal(res.toarray(), x_res_actual)
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
