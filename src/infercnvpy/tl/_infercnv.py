@@ -98,14 +98,14 @@ def infercnv(
         logging.warning(f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. ")  # type: ignore
     if exclude_chromosomes is not None:
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
+
     tmp_adata = adata[:, ~var_mask]
+    reference = _get_reference(adata, reference_key, reference_cat, reference)[:, ~var_mask]
 
     expr = tmp_adata.X if layer is None else tmp_adata.layers[layer]
 
     if scipy.sparse.issparse(expr):
         expr = expr.tocsr()
-
-    reference = _get_reference(tmp_adata, reference_key, reference_cat, reference)
 
     var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
 
