@@ -7,7 +7,6 @@ import scipy.sparse as sp
 import infercnvpy as cnv
 
 
-
 @pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])
 def adata_oligodendroma(request):
     """Adata with raw counts in .X parametrized to be either sparse or dense."""
@@ -16,7 +15,6 @@ def adata_oligodendroma(request):
     adata.X = request.param(adata.X.toarray())
 
     return adata
-
 
 
 @pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])
