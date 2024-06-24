@@ -49,6 +49,10 @@ def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
 
 
+def test_infercnv_manual_reference(adata_oligodendroma):
+    cnv.tl.infercnv(adata_oligodendroma, reference=np.ones(adata_oligodendroma.shape[1]))
+
+
 @pytest.mark.skip(
     reason="rpy2 segfaults on the CI. I don't know why and don't have the time for a painful debugging session."
 )
