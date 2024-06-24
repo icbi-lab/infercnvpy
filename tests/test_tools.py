@@ -48,6 +48,17 @@ def test_get_reference_given_reference(adata_mock):
 )
 def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
+    assert "X_cnv" in adata_oligodendroma.obsm_keys(), "cnv not in adata.obsm"
+    assert "cnv" in adata_oligodendroma.uns_keys(), "cnv not in adata.uns"
+    ## Test that the gene values are not calculated by default
+    assert "gene_values_cnv" not in adata_oligodendroma.layers.keys(), "gene_values_cnv in .layers"
+
+
+def test_infercnv_gene_values(adata_oligodendroma):
+    cnv.tl.infercnv(adata_oligodendroma, calculate_gene_values=True)
+    assert "X_cnv" in adata_oligodendroma.obsm_keys(), "cnv not in adata.obsm"
+    assert "cnv" in adata_oligodendroma.uns_keys(), "cnv not in adata.uns"
+    assert "gene_values_cnv" in adata_oligodendroma.layers.keys(), "gene_values_cnv not in .layers"
 
 
 def test_running_mean_n_less_than_genes():
@@ -58,7 +69,7 @@ def test_running_mean_n_less_than_genes():
     gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
 
     # Call the function with the test parameters
-    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list)
+    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list, calculate_gene_values=True)
 
     # Define the expected output
     expected_result = np.array([[2, 3, 4], [7, 8, 9]])
@@ -86,7 +97,7 @@ def test_running_mean_n_greater_than_genes():
     gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
 
     # Call the function with the test parameters
-    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list)
+    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list, calculate_gene_values=True)
 
     # Define the expected output
     expected_result = np.array([[3], [8]])
@@ -129,13 +140,13 @@ def test_calculate_gene_averages():
     )
 
 
-def test_infercnv_chunk(adata_full_mock, gene_res_actual, x_res_actual):
+def test_infercnv_chunk_with_gene_values(adata_full_mock, gene_res_actual, x_res_actual):
     reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None)
     var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
     tmp_x = adata_full_mock.X
 
     chr_pos, x_res, gene_res = cnv.tl._infercnv._infercnv_chunk(
-        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1
+        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1, calculate_gene_values=True
     )
 
     gene_res.index = gene_res.index.astype(str)
@@ -144,7 +155,21 @@ def test_infercnv_chunk(adata_full_mock, gene_res_actual, x_res_actual):
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
-def test_infercnv_more_than_2_chunks(adata_full_mock, gene_res_actual, x_res_actual):
+def test_infercnv_chunk_default(adata_full_mock, x_res_actual):
+    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None)
+    var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
+    tmp_x = adata_full_mock.X
+
+    chr_pos, x_res, gene_res = cnv.tl._infercnv._infercnv_chunk(
+        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1
+    )
+
+    assert gene_res is None
+    np.testing.assert_array_equal(x_res.toarray(), x_res_actual)
+    assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
+
+
+def test_infercnv_more_than_2_chunks(adata_full_mock, x_res_actual):
     chr_pos, res, per_gene_mtx = cnv.tl.infercnv(
         adata_full_mock,
         reference_key=None,
@@ -155,6 +180,7 @@ def test_infercnv_more_than_2_chunks(adata_full_mock, gene_res_actual, x_res_act
         window_size=3,
         step=1,
         dynamic_threshold=1,
+        calculate_gene_values=True,
         inplace=False,
     )
 
@@ -190,3 +216,20 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.tsne(adata_oligodendroma, color=["cnv_score", "cnv_leiden"], show=False)
     cnv.pl.chromosome_heatmap(adata_oligodendroma, show=False)
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
+
+
+def test_calculate_gene_values_speed(benchmark, adata_oligodendroma):
+    # Benchmark with calculate_gene_values=True
+    benchmark(
+        cnv.tl.infercnv,
+        adata_oligodendroma,
+        calculate_gene_values=True,
+    )
+
+
+def test_default_infercnv(benchmark, adata_oligodendroma):
+    benchmark(
+        cnv.tl.infercnv,
+        adata_oligodendroma,
+        calculate_gene_values=False,
+    )

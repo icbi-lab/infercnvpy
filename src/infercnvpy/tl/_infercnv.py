@@ -32,7 +32,7 @@ def infercnv(
     layer: str | None = None,
     key_added: str = "cnv",
     calculate_gene_values: bool = False,
-) -> None | tuple[dict, scipy.sparse.csr_matrix, np.ndarray]:
+) -> None | tuple[dict, scipy.sparse.csr_matrix, np.ndarray | None]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
@@ -81,6 +81,13 @@ def infercnv(
         Key under which the cnv matrix will be stored in adata if `inplace=True`.
         Will store the matrix in `adata.obsm["X_{key_added}"] and additional information
         in `adata.uns[key_added]`.
+    calculate_gene_values
+        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
+        As many genes will be included in each segment the resultant per gene value will be an average of the genes included in the segment.
+        Additionally not all genes will be included in the per gene CNV, due to the window size and step size not always being a multiple of
+        the number of genes. Any genes not included in the per gene CNV will be filled with NaN.
+        Note this will significantly increase the memory and computation time, it is recommended to decrease the chunksize to ~100 if this is set to True.
+
 
     Returns
     -------
@@ -120,6 +127,7 @@ def infercnv(
             itertools.repeat(window_size),
             itertools.repeat(step),
             itertools.repeat(dynamic_threshold),
+            itertools.repeat(calculate_gene_values),
             tqdm_class=tqdm,
             max_workers=cpu_count() if n_jobs is None else n_jobs,
         ),
@@ -127,22 +135,27 @@ def infercnv(
     )
 
     res = scipy.sparse.vstack(chunks)
-    # per_gene_df = scipy.sparse.vstack(convolved_dfs)
+
     chr_pos = chr_pos[0]
 
-    per_gene_df = pd.concat(convolved_dfs, axis=0)
-    # Ensure the DataFrame has the correct row index
-    per_gene_df.index = adata.obs.index
-    # Ensure the per gene CNV matches the adata var (genes) index, any genes
-    # that are not included in the CNV will be filled with NaN
-    per_gene_df = per_gene_df.reindex(columns=adata.var_names, fill_value=np.nan)
-    # This needs to be a numpy array as colnames are too large to save in anndata
-    per_gene_mtx = per_gene_df.values
+    if calculate_gene_values:
+        per_gene_df = pd.concat(convolved_dfs, axis=0)
+        # Ensure the DataFrame has the correct row index
+        per_gene_df.index = adata.obs.index
+        # Ensure the per gene CNV matches the adata var (genes) index, any genes
+        # that are not included in the CNV will be filled with NaN
+        per_gene_df = per_gene_df.reindex(columns=adata.var_names, fill_value=np.nan)
+        # This needs to be a numpy array as colnames are too large to save in anndata
+        per_gene_mtx = per_gene_df.values
+    else:
+        per_gene_mtx = None
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
         adata.uns[key_added] = {"chr_pos": chr_pos}
+
+        if calculate_gene_values:
+            adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
 
     else:
         return chr_pos, res, per_gene_mtx
@@ -168,7 +181,8 @@ def _running_mean(
     n: int = 50,
     step: int = 10,
     gene_list: list = None,
-) -> np.ndarray:
+    calculate_gene_values: bool = False,
+) -> tuple[np.ndarray, pd.DataFrame | None]:
     """
     Compute a pyramidially weighted running mean.
 
@@ -183,6 +197,10 @@ def _running_mean(
     step
         only compute running windows every `step` columns, e.g. if step is 10
         0:99, 10:109, 20:119 etc. Saves memory.
+    gene_list
+        List of gene names to be used in the convolution
+    calculate_gene_values
+        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
     """
     if n < x.shape[1]:  # regular convolution: the filter is smaller than the #genes
         r = np.arange(1, n + 1)
@@ -199,7 +217,10 @@ def _running_mean(
         convolved_gene_names = gene_list[convolution_indices]
         smoothed_x = smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
 
-        convolved_gene_values = _calculate_gene_averages(convolved_gene_names, smoothed_x)
+        if calculate_gene_values:
+            convolved_gene_values = _calculate_gene_averages(convolved_gene_names, smoothed_x)
+        else:
+            convolved_gene_values = None
 
         return smoothed_x, convolved_gene_values
 
@@ -208,21 +229,40 @@ def _running_mean(
         r = np.arange(1, n + 1)
         ## As we are only doing one convolution the values should be equal
         pyramid = np.array([1] * n)
-        # Old code to make the pyramid
-        # pyramid = np.minimum(r, r[::-1])
         smoothed_x = np.apply_along_axis(
             lambda row: np.convolve(row, pyramid, mode="valid"),
             axis=1,
             arr=x,
         ) / np.sum(pyramid)
 
-        ## As all genes are used the convolution the values are identical for all genes
-        convolved_gene_values = pd.DataFrame(np.repeat(smoothed_x, len(gene_list), axis=1), columns=gene_list)
+        if calculate_gene_values:
+            ## As all genes are used the convolution the values are identical for all genes
+            convolved_gene_values = pd.DataFrame(np.repeat(smoothed_x, len(gene_list), axis=1), columns=gene_list)
+        else:
+            convolved_gene_values = None
 
         return smoothed_x, convolved_gene_values
 
 
-def _calculate_gene_averages(convolved_gene_names, smoothed_x):
+def _calculate_gene_averages(
+    convolved_gene_names: np.ndarray,
+    smoothed_x: np.ndarray,
+) -> pd.DataFrame:
+    """
+    Calculate the average value of each gene in the convolution
+
+    Parameters
+    ----------
+    convolved_gene_names
+        A numpy array with the gene names used in the convolution
+    smoothed_x
+        A numpy array with the smoothed gene expression values
+
+    Returns
+    -------
+    convolved_gene_values
+        A DataFrame with the average value of each gene in the convolution
+    """
     ## create a dictionary to store the gene values per sample
     gene_to_values = {}
     # Calculate the number of genes in each convolution, will be same as the window size default=100
@@ -258,7 +298,9 @@ def get_convolution_indices(x, n):
     return np.array(indices)
 
 
-def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.ndarray, pd.DataFrame]:
+def _running_mean_by_chromosome(
+    expr, var, window_size, step, calculate_gene_values
+) -> tuple[dict, np.ndarray, pd.DataFrame | None]:
     """Compute the running mean for each chromosome independently. Stack the resulting arrays ordered by chromosome.
 
     Parameters
@@ -284,7 +326,9 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
     """
     chromosomes = _natural_sort([x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
 
-    running_means = [_running_mean_for_chromosome(chr, expr, var, window_size, step) for chr in chromosomes]
+    running_means = [
+        _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values) for chr in chromosomes
+    ]
 
     running_means, convolved_dfs = zip(*running_means, strict=False)
 
@@ -293,15 +337,18 @@ def _running_mean_by_chromosome(expr, var, window_size, step) -> tuple[dict, np.
         chr_start_pos[chr] = i
 
     ## Concatenate the gene dfs
-    convolved_dfs = pd.concat(convolved_dfs, axis=1)
+    if calculate_gene_values:
+        convolved_dfs = pd.concat(convolved_dfs, axis=1)
 
     return chr_start_pos, np.hstack(running_means), convolved_dfs
 
 
-def _running_mean_for_chromosome(chr, expr, var, window_size, step):
+def _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values):
     genes = var.loc[var["chromosome"] == chr].sort_values("start").index.values
     tmp_x = expr[:, var.index.get_indexer(genes)]
-    x_conv, convolved_gene_values = _running_mean(tmp_x, n=window_size, step=step, gene_list=genes)
+    x_conv, convolved_gene_values = _running_mean(
+        tmp_x, n=window_size, step=step, gene_list=genes, calculate_gene_values=calculate_gene_values
+    )
 
     return x_conv, convolved_gene_values
 
@@ -352,7 +399,7 @@ def _get_reference(
     return reference
 
 
-def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold):
+def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold, calculate_gene_values=False):
     """The actual infercnv work is happening here.
 
     Process chunks of serveral thousand genes independently since this
@@ -379,16 +426,22 @@ def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_t
     # Step 2 - clip log fold changes
     x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
     # Step 3 - smooth by genomic position
-    chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(x_clipped, var, window_size=window_size, step=step)
+    chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(
+        x_clipped, var, window_size=window_size, step=step, calculate_gene_values=calculate_gene_values
+    )
     # Step 4 - center by cell
     x_res = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
-    gene_res = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
+    if calculate_gene_values:
+        gene_res = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
+    else:
+        gene_res = None
 
     # step 5 - standard deviation based noise filtering
     if dynamic_threshold is not None:
         noise_thres = dynamic_threshold * np.std(x_res)
         x_res[np.abs(x_res) < noise_thres] = 0
-        gene_res[np.abs(gene_res) < noise_thres] = 0
+        if calculate_gene_values:
+            gene_res[np.abs(gene_res) < noise_thres] = 0
 
     x_res = scipy.sparse.csr_matrix(x_res)
 
