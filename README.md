@@ -5,6 +5,7 @@
 [![PyPI][badge-pypi]][link-pypi]
 
 [badge-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml/badge.svg
+
 [link-tests]: [https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml](https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml)
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
