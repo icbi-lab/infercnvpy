@@ -28,5 +28,9 @@ __pycache__/
 /.idea/
 /.vscode/
 
+infercnv_env/
 # Notebooks
 .ipynb_checkpoints
+
+# Node.js
+node_modules/

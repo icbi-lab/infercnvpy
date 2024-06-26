@@ -16,6 +16,9 @@ authors = [
 maintainers = [
     {name = "Gregor Sturm", email="gregor.sturm@i-med.ac.at"}
 ]
+contributors = [
+    {name = "Grant Neilson", email = "grant.neilson5@gmail.com"}
+]
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Source = "https://github.com/icbi-lab/infercnvpy"
 urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
@@ -30,6 +33,7 @@ dependencies = [
     'pycairo>=1.20; sys_platform == "win32"',
     'leidenalg',
     'pyreadr',
+    'pytest-benchmark',
     # for debug logging (referenced from the issue template)
     "session-info",
     "ipython"
