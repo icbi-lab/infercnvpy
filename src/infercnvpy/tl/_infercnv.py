@@ -98,7 +98,7 @@ def infercnv(
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
         raise ValueError(
-            "Genomic positions not found. There need to be `chromosome`, `start`, and " "`end` columns in `adata.var`. "
+            "Genomic positions not found. There need to be `chromosome`, `start`, and `end` columns in `adata.var`. "
         )
 
     var_mask = adata.var["chromosome"].isnull()
