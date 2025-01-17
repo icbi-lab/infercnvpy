@@ -44,7 +44,7 @@ def genomic_position_from_biomart(
             "end_position",
             "chromosome_name",
         ],
-        use_cache=True,
+        **kwargs,
     ).rename(
         columns={
             "ensembl_gene_id": "gene_ids",
