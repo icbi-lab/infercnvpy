@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Literal
 
-import gtfparse
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -38,6 +37,12 @@ def genomic_position_from_gtf(
     inplace
         If True, add the annotations directly to adata, otherwise return a dataframe.
     """
+    try:
+        import gtfparse
+    except ImportError:
+        raise ImportError(
+            "genomic_position_from_gtf requires gtfparse as optional dependency. Please install it using `pip install gtfparse`."
+        ) from None
     gtf = gtfparse.read_gtf(
         gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"]
     ).to_pandas()
@@ -76,6 +81,10 @@ def genomic_position_from_gtf(
     )
     var_annotated.set_index(TMP_INDEX_NAME, inplace=True)
     var_annotated.index.name = orig_index_name
+
+    if np.all(~var_annotated["chromosome"].str.startswith("chr")):
+        # not a gencode GTF, let's add 'chr' prefix:
+        var_annotated["chromosome"] = "chr" + var_annotated["chromosome"]
 
     if inplace:
         adata.var = var_annotated
