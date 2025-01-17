@@ -34,3 +34,6 @@ infercnv_env/
 
 # Node.js
 node_modules/
+
+# uv
+uv.lock
