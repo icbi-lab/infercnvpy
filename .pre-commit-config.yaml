@@ -2,8 +2,8 @@ fail_fast: false
 default_language_version:
   python: python3
 default_stages:
-  - commit
-  - push
+  - pre-commit
+  - pre-push
 minimum_pre_commit_version: 2.16.0
 repos:
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -13,7 +13,7 @@ repos:
         # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
         exclude: "docs/notebooks/.*\\.md"
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.4
+    rev: v0.9.1
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]
@@ -21,7 +21,7 @@ repos:
       - id: ruff-format
         types_or: [python, pyi, jupyter]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: detect-private-key
       - id: check-ast

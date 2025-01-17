@@ -14,7 +14,7 @@ def _choose_mtx_rep(adata, use_raw=False, layer=None):
     is_layer = layer is not None
     if use_raw and is_layer:
         raise ValueError(
-            "Cannot use expression from both layer and raw. You provided:" f"'use_raw={use_raw}' and 'layer={layer}'"
+            f"Cannot use expression from both layer and raw. You provided:'use_raw={use_raw}' and 'layer={layer}'"
         )
     if is_layer:
         return adata.layers[layer]

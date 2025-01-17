@@ -98,7 +98,7 @@ def infercnv(
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
         raise ValueError(
-            "Genomic positions not found. There need to be `chromosome`, `start`, and " "`end` columns in `adata.var`. "
+            "Genomic positions not found. There need to be `chromosome`, `start`, and `end` columns in `adata.var`. "
         )
 
     var_mask = adata.var["chromosome"].isnull()
@@ -388,7 +388,7 @@ def _get_reference(
                     f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-            reference = np.vstack([np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat])
+            reference = np.vstack([np.mean(adata.X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]

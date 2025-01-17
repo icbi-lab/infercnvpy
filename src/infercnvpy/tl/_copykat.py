@@ -100,7 +100,7 @@ def copykat(
         importr("stringr")
     except ImportError:
         raise ImportError(
-            "copyKAT requires a valid R installation with the following packages: " "copykat, stringr"
+            "copyKAT requires a valid R installation with the following packages: copykat, stringr"
         ) from None
 
     logging.info("Preparing R objects")
