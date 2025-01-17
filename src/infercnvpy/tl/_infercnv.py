@@ -388,7 +388,7 @@ def _get_reference(
                     f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-            reference = np.vstack([np.mean(adata.X[obs_col == cat, :], axis=0) for cat in reference_cat])
+            reference = np.vstack([np.mean(adata.X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
