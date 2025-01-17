@@ -147,7 +147,7 @@ def chromosome_heatmap_summary(
     tmp_obs.index = tmp_obs.index.astype(str)
 
     def _get_group_mean(group):
-        group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby] == group, :], axis=0)
+        group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == group, :], axis=0)
         if len(group_mean.shape) == 1:
             # derived from an array instead of sparse matrix -> 1 dim instead of 2
             group_mean = group_mean[np.newaxis, :]

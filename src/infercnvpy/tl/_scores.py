@@ -63,7 +63,7 @@ def cnv_score(
     if groupby not in adata.obs.columns and groupby == "cnv_leiden":
         raise ValueError("`cnv_leiden` not found in `adata.obs`. Did you run `tl.leiden`?")
     cluster_score = {
-        cluster: np.mean(np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[groupby] == cluster, :]))
+        cluster: np.mean(np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == cluster, :]))
         for cluster in adata.obs[groupby].unique()
     }
 
