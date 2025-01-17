@@ -3,9 +3,9 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+import scanpy.queries
 from anndata import AnnData
 from scanpy import logging
-import scanpy.queries
 
 
 def genomic_position_from_biomart(
