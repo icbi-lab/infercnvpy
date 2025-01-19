@@ -12,7 +12,7 @@ def genomic_position_from_biomart(
     adata: AnnData | None = None,
     *,
     adata_gene_id: str | None = None,
-    biomart_gene_identifier="ensembl_gene_id",
+    biomart_gene_id="ensembl_gene_id",
     species: str = "hsapiens",
     inplace: bool = True,
     **kwargs,
@@ -28,7 +28,7 @@ def genomic_position_from_biomart(
     adata_gene_id
         Column in `adata.var` that contains (ENSMBL) gene IDs. If not specified,
         use `adata.var_names`.
-    biomart_gene_identifier
+    biomart_gene_id
         The biomart column to use as gene identifier. Typically this would be `ensembl_gene_id` or `hgnc_symbol`,
         but could be different for other species.
     inplace
@@ -36,36 +36,39 @@ def genomic_position_from_biomart(
     **kwargs
         passed on to :func:`scanpy.queries.biomart_annotations`
     """
-    biomart_annot = scanpy.queries.biomart_annotations(
-        species,
-        [
-            biomart_gene_identifier,
-            "start_position",
-            "end_position",
-            "chromosome_name",
-        ],
-        **kwargs,
-    ).rename(
-        columns={
-            "ensembl_gene_id": "gene_ids",
-            "hgnc_symbol": "gene_symbol",
-            "start_position": "start",
-            "end_position": "end",
-            "chromosome_name": "chromosome",
-        }
+    biomart_annot = (
+        scanpy.queries.biomart_annotations(
+            species,
+            [
+                biomart_gene_id,
+                "start_position",
+                "end_position",
+                "chromosome_name",
+            ],
+            **kwargs,
+        )
+        .rename(
+            columns={
+                "start_position": "start",
+                "end_position": "end",
+                "chromosome_name": "chromosome",
+            }
+        )
+        # use chr prefix for chromosome
+        .assign(chromosome=lambda x: "chr" + x["chromosome"])
     )
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
-    missing_from_biomart = len(set(gene_ids_adata) - set(biomart_annot[biomart_gene_identifier].values))
+    missing_from_biomart = len(set(gene_ids_adata) - set(biomart_annot[biomart_gene_id].values))
     if missing_from_biomart:
         logging.warning(
             f"Biomart misses annotation for {missing_from_biomart} genes in adata. Did you use ENSEMBL ids?"
         )
 
-    duplicated_symbols = np.sum(biomart_annot[biomart_gene_identifier].duplicated())
+    duplicated_symbols = np.sum(biomart_annot[biomart_gene_id].duplicated())
     if duplicated_symbols:
         logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
-        biomart_annot = biomart_annot.loc[~biomart_annot[biomart_gene_identifier].duplicated(keep=False), :]
+        biomart_annot = biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
 
     tmp_var = adata.var.copy()
     orig_index_name = tmp_var.index.name
@@ -76,7 +79,7 @@ def genomic_position_from_biomart(
         biomart_annot,
         how="left",
         left_on=TMP_INDEX_NAME if adata_gene_id is None else adata_gene_id,
-        right_on=biomart_gene_identifier,
+        right_on=biomart_gene_id,
         validate="one_to_one",
     )
     var_annotated.set_index(TMP_INDEX_NAME, inplace=True)

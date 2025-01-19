@@ -24,7 +24,7 @@ urls.Source = "https://github.com/icbi-lab/infercnvpy"
 urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
 dependencies = [
     'anndata>=0.7.3',
-    "scanpy>=1.9",
+    "scanpy>=1.10",
     'pandas>=1',
     'numpy>=1.20', # includes type annotations
     'tqdm>=4.63.0', # fixes tqdm.auto
@@ -67,6 +67,7 @@ doc = [
 test = [
     "pytest",
     "coverage",
+    "syrupy",
 ]
 
 [tool.hatch.version]
