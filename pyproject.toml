@@ -36,7 +36,6 @@ dependencies = [
     # for debug logging (referenced from the issue template)
     "session-info",
     "pybiomart>=0.2.0",
-    "gtfparse",
 ]
 
 [project.optional-dependencies]
