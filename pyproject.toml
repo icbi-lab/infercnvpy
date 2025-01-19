@@ -36,6 +36,7 @@ dependencies = [
     # for debug logging (referenced from the issue template)
     "session-info",
     "pybiomart>=0.2.0",
+    "gtfparse",
 ]
 
 [project.optional-dependencies]
@@ -67,7 +68,7 @@ doc = [
 test = [
     "pytest",
     "coverage",
-    "syrupy",
+    "openpyxl", # required for one of the scanpy datasets used in the tests
 ]
 
 [tool.hatch.version]
@@ -159,3 +160,6 @@ skip = [
     "docs/references.md",
     "docs/notebooks/example.ipynb",
 ]
+
+[tool.uv.sources]
+gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }

@@ -139,6 +139,8 @@ def genomic_position_from_gtf(
         .drop_duplicates()
         .rename(columns={"seqname": "chromosome"})
     )
+    # remove ensembl versions
+    gtf["gene_id"] = gtf["gene_id"].str.replace(r"\.\d+$", "", regex=True)
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     gtf = gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :]
@@ -168,7 +170,7 @@ def genomic_position_from_gtf(
     var_annotated.index.name = orig_index_name
 
     # if not a gencode GTF, let's add 'chr' prefix:
-    if np.all(~var_annotated["chromosome"].str.startswith("chr")):
+    if np.all(~var_annotated["chromosome"].dropna().str.startswith("chr")):
         var_annotated["chromosome"] = "chr" + var_annotated["chromosome"]
 
     if inplace:

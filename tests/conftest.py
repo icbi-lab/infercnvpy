@@ -7,7 +7,10 @@ import scipy.sparse as sp
 import infercnvpy as cnv
 from pathlib import Path
 
-TESTDATA = Path(__file__).parent / "data"
+
+@pytest.fixture()
+def testdata():
+    return Path(__file__).parent / "data"
 
 
 @pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])
