@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -5,6 +7,11 @@ import scanpy as sc
 import scipy.sparse as sp
 
 import infercnvpy as cnv
+
+
+@pytest.fixture()
+def testdata():
+    return Path(__file__).parent / "data"
 
 
 @pytest.fixture(params=[np.array, sp.csr_matrix, sp.csc_matrix])

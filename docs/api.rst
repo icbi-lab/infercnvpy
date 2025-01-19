@@ -21,6 +21,7 @@ Input/Output: `io`
 .. autosummary::
    :toctree: ./generated
 
+   genomic_position_from_biomart
    genomic_position_from_gtf
    read_scevan
 

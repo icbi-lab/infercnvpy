@@ -2,6 +2,7 @@
 .DS_Store
 *~
 buck-out/
+.pybiomart.sqlite
 
 # Compiled files
 .venv/
