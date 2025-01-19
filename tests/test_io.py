@@ -1,9 +1,10 @@
-import pytest
-import scanpy.datasets
-from infercnvpy.io import genomic_position_from_gtf, genomic_position_from_biomart
-from infercnvpy.tl import infercnv
 import numpy as np
 import numpy.testing as npt
+import pytest
+import scanpy.datasets
+
+from infercnvpy.io import genomic_position_from_biomart, genomic_position_from_gtf
+from infercnvpy.tl import infercnv
 
 
 @pytest.mark.parametrize(

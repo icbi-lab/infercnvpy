@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -5,7 +7,6 @@ import scanpy as sc
 import scipy.sparse as sp
 
 import infercnvpy as cnv
-from pathlib import Path
 
 
 @pytest.fixture()

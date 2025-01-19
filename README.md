@@ -29,7 +29,7 @@ except in that they look similar, but not identical, to the results of InferCNV.
 
 Please refer to the [documentation][link-docs]. In particular, the
 
-- [API documentation][link-api].
+-   [API documentation][link-api].
 
 ## Installation
 
