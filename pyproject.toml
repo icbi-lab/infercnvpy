@@ -24,21 +24,24 @@ urls.Source = "https://github.com/icbi-lab/infercnvpy"
 urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
 dependencies = [
     'anndata>=0.7.3',
-    "scanpy>=1.9",
+    "scanpy>=1.10",
     'pandas>=1',
     'numpy>=1.20', # includes type annotations
     'tqdm>=4.63.0', # fixes tqdm.auto
     'pytoml',
-    'gtfparse>=2.1',
     'pycairo>=1.20; sys_platform == "win32"',
     'leidenalg',
     'pyreadr',
     'pytest-benchmark',
     # for debug logging (referenced from the issue template)
     "session-info",
+    "pybiomart>=0.2.0",
 ]
 
 [project.optional-dependencies]
+gtf = [
+    'gtfparse>=2.1'
+]
 copykat = [
     'rpy2'
 ]
@@ -60,10 +63,12 @@ doc = [
     'pycairo',
     'jupyter_client',
     "pandas",
+    "setuptools", # required for sphinxcontrib-bibtex
 ]
 test = [
     "pytest",
     "coverage",
+    "openpyxl", # required for one of the scanpy datasets used in the tests
 ]
 
 [tool.hatch.version]
@@ -155,3 +160,6 @@ skip = [
     "docs/references.md",
     "docs/notebooks/example.ipynb",
 ]
+
+[tool.uv.sources]
+gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }

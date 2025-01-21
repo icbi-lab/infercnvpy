@@ -4,7 +4,7 @@
 [![Documentation][badge-docs]][link-docs]
 [![PyPI][badge-pypi]][link-pypi]
 
-[badge-tests]: https://img.shields.io/github/actions/workflow/status/icbi-lab/infercnvpy/test.yaml?branch=main
+[badge-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml/badge.svg
 [link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
@@ -80,5 +80,5 @@ n/a
 [scverse-discourse]: https://discourse.scverse.org/
 [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
 [changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
-[link-docs]: https://infercnvpy.readthedocs.io
+[link-docs]: https://infercnvpy.readthedocs.io/
 [link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html
