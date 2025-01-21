@@ -5,8 +5,7 @@
 [![PyPI][badge-pypi]][link-pypi]
 
 [badge-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml/badge.svg
-
-[link-tests]: [https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml](https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml)
+[link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
 [link-pypi]: https://pypi.org/project/infercnvpy/
@@ -29,7 +28,7 @@ except in that they look similar, but not identical, to the results of InferCNV.
 
 Please refer to the [documentation][link-docs]. In particular, the
 
-- [API documentation][link-api].
+-   [API documentation][link-api].
 
 ## Installation
 
@@ -81,5 +80,5 @@ n/a
 [scverse-discourse]: https://discourse.scverse.org/
 [issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
 [changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
-[link-docs]: https://infercnvpy.readthedocs.io
+[link-docs]: https://infercnvpy.readthedocs.io/
 [link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html

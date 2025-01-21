@@ -63,6 +63,7 @@ doc = [
     'pycairo',
     'jupyter_client',
     "pandas",
+    "setuptools", # required for sphinxcontrib-bibtex
 ]
 test = [
     "pytest",
