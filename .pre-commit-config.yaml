@@ -13,7 +13,7 @@ repos:
         # doesn't work in combination with jupytext hook yet. See https://github.com/mwouts/jupytext/issues/580
         exclude: "docs/notebooks/.*\\.md"
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.0
+    rev: v0.11.2
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]
