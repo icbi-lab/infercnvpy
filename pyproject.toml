@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
   "anndata",
   # for debug logging (referenced from the issue template)
-  "session-info",
+  "session-info2",
 ]
 optional-dependencies.dev = [
   "pre-commit",

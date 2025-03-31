@@ -1,7 +1,7 @@
 {
   "template": "https://github.com/scverse/cookiecutter-scverse",
-  "commit": "50944ecb0cd73d4c142345be0624d44fce9c463c",
-  "checkout": "test3",
+  "commit": "497afeaf179fe5c1144c4503046efa494586cc3d",
+  "checkout": "test4",
   "context": {
     "cookiecutter": {
       "project_name": "infercnvpy",
@@ -18,25 +18,13 @@
         ".github/workflows/test.yaml",
         "docs/_templates/autosummary/**.rst"
       ],
-      "_exclude_on_template_update": [
-        "CHANGELOG.md",
-        "LICENSE",
-        "README.md",
-        "docs/api.md",
-        "docs/index.md",
-        "docs/notebooks/example.ipynb",
-        "docs/references.bib",
-        "docs/references.md",
-        "src/**",
-        "tests/**"
-      ],
       "_render_devdocs": false,
       "_jinja2_env_vars": {
         "lstrip_blocks": true,
         "trim_blocks": true
       },
       "_template": "https://github.com/scverse/cookiecutter-scverse",
-      "_commit": "50944ecb0cd73d4c142345be0624d44fce9c463c"
+      "_commit": "497afeaf179fe5c1144c4503046efa494586cc3d"
     }
   },
   "directory": null
