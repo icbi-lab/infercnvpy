@@ -6,7 +6,8 @@ on:
 
 defaults:
   run:
-    shell: bash -e {0} # -e to fail on error
+    # to fail on error in multiline statements (-e), in pipes (-o pipefail), and on unset variables (-u).
+    shell: bash -euo pipefail {0}
 
 # Use "trusted publishing", see https://docs.pypi.org/trusted-publishers/
 jobs:
