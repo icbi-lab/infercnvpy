@@ -372,7 +372,7 @@ def _get_reference(
         X = adata.layers[layer]
     else:
         X = adata.X
-        
+
     if reference is None:
         if reference_key is None or reference_cat is None:
             logging.warning(
@@ -401,7 +401,7 @@ def _get_reference(
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
-    
+
     return reference
 
 

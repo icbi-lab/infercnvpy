@@ -217,6 +217,7 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.chromosome_heatmap(adata_oligodendroma, show=False)
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
 
+
 def test_layer_parameter(adata_oligodendroma):
     adata_oligodendroglioma = cnv.datasets.oligodendroglioma()
 
@@ -227,15 +228,16 @@ def test_layer_parameter(adata_oligodendroma):
 
     # copy to test if results change with layer option
     adata_oligodendroglioma2 = adata_oligodendroglioma.copy()
-    adata_oligodendroglioma2.X = adata_oligodendroglioma.layers['LogNormalize']
+    adata_oligodendroglioma2.X = adata_oligodendroglioma.layers["LogNormalize"]
 
-    cnv.tl.infercnv(adata_oligodendroglioma,  layer="LogNormalize")
+    cnv.tl.infercnv(adata_oligodendroglioma, layer="LogNormalize")
     cnv.tl.infercnv(adata_oligodendroglioma2, layer=None)
 
-    X_cnv = adata_oligodendroglioma.obsm['X_cnv'].toarray()
-    X_cnv2 = adata_oligodendroglioma2.obsm['X_cnv'].toarray()
+    X_cnv = adata_oligodendroglioma.obsm["X_cnv"].toarray()
+    X_cnv2 = adata_oligodendroglioma2.obsm["X_cnv"].toarray()
 
-    assert np.all(X_cnv==X_cnv2), 'Different results found with infercnv layer parameter'
+    assert np.all(X_cnv == X_cnv2), "Different results found with infercnv layer parameter"
+
 
 def test_calculate_gene_values_speed(benchmark, adata_oligodendroma):
     # Benchmark with calculate_gene_values=True
