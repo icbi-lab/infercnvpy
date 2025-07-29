@@ -108,7 +108,7 @@ def infercnv(
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
 
     tmp_adata = adata[:, ~var_mask]
-    reference = _get_reference(adata, reference_key, reference_cat, reference)[:, ~var_mask]
+    reference = _get_reference(adata, reference_key, reference_cat, reference, layer)[:, ~var_mask]
 
     expr = tmp_adata.X if layer is None else tmp_adata.layers[layer]
 
@@ -358,6 +358,7 @@ def _get_reference(
     reference_key: str | None,
     reference_cat: None | str | Sequence[str],
     reference: np.ndarray | None,
+    layer: str | None,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
@@ -367,13 +368,18 @@ def _get_reference(
     Returns a 2D array with reference categories in rows, cells in columns.
     If there's just one category, it's still a 2D array.
     """
+    if layer is not None:
+        X = adata.layers[layer]
+    else:
+        X = adata.X
+        
     if reference is None:
         if reference_key is None or reference_cat is None:
             logging.warning(
                 "Using mean of all cells as reference. For better results, "
                 "provide either `reference`, or both `reference_key` and `reference_cat`. "
             )  # type: ignore
-            reference = np.mean(adata.X, axis=0)
+            reference = np.mean(X, axis=0)
 
         else:
             obs_col = adata.obs[reference_key]
@@ -388,14 +394,14 @@ def _get_reference(
                     f"{reference_cat[~reference_cat_in_obs]}"
                 )
 
-            reference = np.vstack([np.mean(adata.X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
+            reference = np.vstack([np.mean(X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
+    else:
+        if reference.shape[1] != adata.shape[1]:
+            raise ValueError("Reference must match the number of genes in AnnData. ")
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
-
-    if reference.shape[1] != adata.shape[1]:
-        raise ValueError("Reference must match the number of genes in AnnData. ")
-
+    
     return reference
 
 
