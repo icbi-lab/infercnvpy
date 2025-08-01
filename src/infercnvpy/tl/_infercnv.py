@@ -358,7 +358,7 @@ def _get_reference(
     reference_key: str | None,
     reference_cat: None | str | Sequence[str],
     reference: np.ndarray | None,
-    layer: str | None,
+    layer: str | None = None,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
