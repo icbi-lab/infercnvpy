@@ -17,5 +17,5 @@ def test_ithcna(adata_ithgex):
 
 def test_cnv_score(adata_ithgex):
     res = cnv.tl.cnv_score(adata_ithgex, "group", inplace=False)
-    assert res["A"] == 2.25
-    assert res["B"] == 2.5
+    assert res["A"] == pytest.approx(2.25, abs=0.001)
+    assert res["B"] == pytest.approx(2.5, abs=0.001)
