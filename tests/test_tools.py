@@ -10,7 +10,7 @@ from infercnvpy.tl._infercnv import _get_reference
 
 def test_get_reference_key_and_cat(adata_mock):
     """Test that reference is correctly calculated given a reference key and category"""
-    actual = _get_reference(adata_mock, "cat", ["foo", "baz"], None)
+    actual = _get_reference(adata_mock, "cat", ["foo", "baz"], None, layer=None)
     npt.assert_almost_equal(
         actual,
         np.array(
@@ -24,19 +24,19 @@ def test_get_reference_key_and_cat(adata_mock):
 
 def test_get_reference_no_reference(adata_mock):
     """If no reference is specified, the mean of the entire adata object is taken"""
-    actual = _get_reference(adata_mock, None, None, None)
+    actual = _get_reference(adata_mock, None, None, None, layer=None)
     npt.assert_almost_equal(actual, np.array([[4.8, 4.2, 4.4, 5]]), decimal=5)
 
 
 def test_get_reference_given_reference(adata_mock):
     """Predefined reference takes precendence over reference_key and reference_cat"""
     reference = np.array([1, 2, 3, 4])
-    actual = _get_reference(adata_mock, "foo", "bar", reference)
+    actual = _get_reference(adata_mock, "foo", "bar", reference, layer=None)
     npt.assert_equal(reference, actual[0, :])
 
     with pytest.raises(ValueError):
         reference = np.array([1, 2, 3])
-        actual = _get_reference(adata_mock, "foo", "bar", reference)
+        actual = _get_reference(adata_mock, "foo", "bar", reference, layer=None)
 
 
 @pytest.mark.parametrize(
@@ -141,7 +141,7 @@ def test_calculate_gene_averages():
 
 
 def test_infercnv_chunk_with_gene_values(adata_full_mock, gene_res_actual, x_res_actual):
-    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None)
+    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None, layer=None)
     var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
     tmp_x = adata_full_mock.X
 
@@ -156,7 +156,7 @@ def test_infercnv_chunk_with_gene_values(adata_full_mock, gene_res_actual, x_res
 
 
 def test_infercnv_chunk_default(adata_full_mock, x_res_actual):
-    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None)
+    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None, layer=None)
     var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
     tmp_x = adata_full_mock.X
 

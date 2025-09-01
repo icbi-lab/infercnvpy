@@ -358,7 +358,7 @@ def _get_reference(
     reference_key: str | None,
     reference_cat: None | str | Sequence[str],
     reference: np.ndarray | None,
-    layer: str | None = None,
+    layer: str | None,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
@@ -395,12 +395,12 @@ def _get_reference(
                 )
 
             reference = np.vstack([np.mean(X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
-    else:
-        if reference.shape[1] != adata.shape[1]:
-            raise ValueError("Reference must match the number of genes in AnnData. ")
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
+
+    if reference.shape[1] != adata.shape[1]:
+        raise ValueError("Reference must match the number of genes in AnnData. ")
 
     return reference
 
