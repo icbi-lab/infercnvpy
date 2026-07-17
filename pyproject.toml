@@ -1,11 +1,11 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [ "hatchling" ]
+requires = [ "hatchling", "hatch-vcs" ]
 
 [project]
 name = "infercnvpy"
-version = "0.0.1"
-description = "Infer copy number variation (CNV) from scRNA-seq data. Plays nicely with Scanpy. "
+dynamic = [ "version" ]
+description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
 readme = "README.md"
 license = { file = "LICENSE" }
 maintainers = [
@@ -13,6 +13,9 @@ maintainers = [
 ]
 authors = [
   { name = "Gregor Sturm" },
+]
+contributors = [
+  { name = "Grant Neilson", email = "grant.neilson5@gmail.com" },
 ]
 requires-python = ">=3.12"
 classifiers = [
@@ -22,14 +25,28 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "anndata",
+  "anndata>=0.7.3",
+  "scanpy>=1.10",
+  "pandas>=1",
+  "numpy>=1.20",             # includes type annotations
+  "tqdm>=4.63.0",            # fixes tqdm.auto
+  "pytoml",
+  "pycairo>=1.20; sys_platform == 'win32'",
+  "leidenalg",
+  "pyreadr",
+  "pytest-benchmark",
   # for debug logging (referenced from the issue template)
   "session-info2",
+  "pybiomart>=0.2.0",
 ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
-urls.Homepage = "https://github.com/grst/infercnvpy"
-urls.Source = "https://github.com/grst/infercnvpy"
+urls.Homepage = "https://github.com/icbi-lab/infercnvpy"
+urls.Source = "https://github.com/icbi-lab/infercnvpy"
+
+[project.optional-dependencies]
+gtf = [ "gtfparse>=2.1" ]
+copykat = [ "rpy2" ]
 
 [dependency-groups]
 dev = [
@@ -39,7 +56,8 @@ dev = [
 test = [
   "coverage>=7.10",
   "pytest",
-  "pytest-cov",     # For VS Code’s coverage functionality
+  "pytest-cov",              # For VS Code’s coverage functionality
+  "openpyxl",               # required for one of the scanpy datasets used in the tests
 ]
 doc = [
   "ipykernel",
@@ -58,6 +76,7 @@ doc = [
 ]
 
 [tool.hatch]
+version.source = "vcs"
 envs.default.installer = "uv"
 envs.default.dependency-groups = [ "dev" ]
 envs.docs.scripts.build = "sphinx-build -M html docs docs/_build -W {args}"
@@ -76,6 +95,10 @@ envs.hatch-test.overrides.matrix.deps.env-vars = [
   { value = "allow", key = "UV_PRERELEASE", if = [ "pre" ] },
 ]
 envs.hatch-test.dependency-groups = [ "dev", "test" ]
+# Install the `gtf` extra so `tests/test_io.py::test_get_genomic_position_from_gtf` can run.
+# The `copykat` extra (rpy2 + R) is intentionally omitted: `test_copykat` is skipped on CI
+# and both rpy2 and gtfparse are imported lazily, so the base import works without them.
+envs.hatch-test.features = [ "gtf" ]
 
 [tool.ruff]
 line-length = 120
@@ -115,12 +138,16 @@ lint.per-file-ignores."docs/*" = [ "I" ]
 lint.per-file-ignores."tests/*" = [ "D" ]
 lint.pydocstyle.convention = "numpy"
 
-[tool.pytest]
+[tool.pytest.ini_options]
+testpaths = [ "tests" ]
+xfail_strict = true
 addopts = [
+  # "-Werror",  # if 3rd party libs raise DeprecationWarnings, just use filterwarnings below
   "--import-mode=importlib", # allow using test files with same name
 ]
-strict = true
-testpaths = [ "tests" ]
+filterwarnings = [
+  # "ignore:.*U.*mode is deprecated:DeprecationWarning",
+]
 
 [tool.coverage]
 run.omit = [
@@ -141,3 +168,6 @@ skip = [
   "docs/references.md",
   "docs/notebooks/example.ipynb",
 ]
+
+[tool.uv.sources]
+gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }

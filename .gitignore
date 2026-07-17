@@ -2,6 +2,7 @@
 .DS_Store
 *~
 buck-out/
+.pybiomart.sqlite
 
 # Compiled files
 .venv/
@@ -9,7 +10,9 @@ __pycache__/
 .*cache/
 
 # Distribution / packaging
+/build/
 /dist/
+/*.egg-info/
 
 # Tests and coverage
 /data/
@@ -19,3 +22,18 @@ __pycache__/
 # docs
 /docs/generated/
 /docs/_build/
+
+# IDEs
+/.idea/
+/.vscode/
+
+infercnv_env/
+
+# Notebooks
+.ipynb_checkpoints
+
+# Node.js
+node_modules/
+
+# uv
+uv.lock
