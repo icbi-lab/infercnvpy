@@ -1,165 +1,174 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling", "hatch-vcs"]
-
+requires = [ "hatch-vcs", "hatchling" ]
 
 [project]
 name = "infercnvpy"
-dynamic = ["version"]
-description = "Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable."
+description = """\
+  Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics \
+  data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable.\
+  """
 readme = "README.md"
-requires-python = ">=3.10"
-license = {file = "LICENSE"}
-authors = [
-    {name = "Gregor Sturm"},
-]
+license = { file = "LICENSE" }
 maintainers = [
-    {name = "Gregor Sturm", email="gregor.sturm@i-med.ac.at"}
+  { name = "Gregor Sturm", email = "mail@gregor-sturm.de" },
 ]
-contributors = [
-    {name = "Grant Neilson", email = "grant.neilson5@gmail.com"}
+authors = [
+  { name = "Gregor Sturm" },
 ]
-urls.Documentation = "https://infercnvpy.readthedocs.io/"
-urls.Source = "https://github.com/icbi-lab/infercnvpy"
-urls.Home-page = "https://github.com/icbi-lab/infercnvpy"
+requires-python = ">=3.12"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dynamic = [ "version" ]
 dependencies = [
-    'anndata>=0.7.3',
-    "scanpy>=1.10",
-    'pandas>=1',
-    'numpy>=1.20', # includes type annotations
-    'tqdm>=4.63.0', # fixes tqdm.auto
-    'pytoml',
-    'pycairo>=1.20; sys_platform == "win32"',
-    'leidenalg',
-    'pyreadr',
-    'pytest-benchmark',
-    # for debug logging (referenced from the issue template)
-    "session-info",
-    "pybiomart>=0.2.0",
+  "anndata>=0.7.3",
+  "leidenalg",
+  "numpy>=1.20",                          # includes type annotations
+  "pandas>=1",
+  "pybiomart>=0.2",
+  "pycairo>=1.20; sys_platform=='win32'",
+  "pyreadr",
+  "pytest-benchmark",
+  "pytoml",
+  "scanpy>=1.10",
+  # for debug logging (referenced from the issue template)
+  "session-info2",
+  "tqdm>=4.63",                           # fixes tqdm.auto
+]
+optional-dependencies.copykat = [ "rpy2" ]
+optional-dependencies.gtf = [ "gtfparse>=2.1" ]
+# https://docs.pypi.org/project_metadata/#project-urls
+urls.Documentation = "https://infercnvpy.readthedocs.io/"
+urls.Homepage = "https://github.com/icbi-lab/infercnvpy"
+urls.Source = "https://github.com/icbi-lab/infercnvpy"
+contributors = [
+  { name = "Grant Neilson", email = "grant.neilson5@gmail.com" },
 ]
 
-[project.optional-dependencies]
-gtf = [
-    'gtfparse>=2.1'
-]
-copykat = [
-    'rpy2'
-]
+[dependency-groups]
 dev = [
-    # CLI for managing the python project
-    "pre-commit",
-]
-doc = [
-    "docutils>=0.8,!=0.18.*,!=0.19.*",
-    "sphinx>=4.2",
-    "sphinx-book-theme>=1.0.0",
-    "myst-nb>=1.1.0",
-    "sphinxcontrib-bibtex>=1.0.0",
-    "sphinx-autodoc-typehints",
-    "sphinxext-opengraph",
-    # for tutorial
-    "ipykernel",
-    "sphinx-copybutton",
-    'pycairo',
-    'jupyter_client',
-    "pandas",
-    "setuptools", # required for sphinxcontrib-bibtex
+  "prek",
+  "twine>=4.0.2",
 ]
 test = [
-    "pytest",
-    "coverage",
-    "openpyxl", # required for one of the scanpy datasets used in the tests
+  "coverage>=7.10",
+  "openpyxl",       # required for one of the scanpy datasets used in the tests
+  "pytest",
+  "pytest-cov",     # For VS Code’s coverage functionality
+]
+doc = [
+  "ipykernel",
+  "ipython",
+  "myst-nb>=1.1",
+  "pandas",
+  "scverse-misc[sphinx]>=0.1.2",
+  "sphinx>=8.1",
+  "sphinx-autodoc-typehints",
+  "sphinx-book-theme>=1",
+  "sphinx-copybutton",
+  "sphinx-design",
+  "sphinxcontrib-bibtex>=1",
+  "sphinxcontrib-katex",
+  "sphinxext-opengraph",
 ]
 
-[tool.hatch.version]
-source = "vcs"
+[tool.hatch]
+version.source = "vcs"
+envs.default.installer = "uv"
+envs.default.dependency-groups = [ "dev" ]
+envs.docs.scripts.build = "sphinx-build -M html docs docs/_build -W {args}"
+envs.docs.scripts.clean = "git clean -fdX -- {args:docs}"
+envs.docs.scripts.open = "python -m webbrowser -t docs/_build/html/index.html"
+envs.docs.dependency-groups = [ "doc" ]
+# Install the `gtf` extra so `tests/test_io.py::test_get_genomic_position_from_gtf` can run.
+# The `copykat` extra (rpy2 + R) is intentionally omitted: `test_copykat` is skipped on CI
+# and both rpy2 and gtfparse are imported lazily, so the base import works without them.
+envs.hatch-test.features = [ "gtf" ]
+envs.hatch-test.matrix = [
+  # Test the lowest and highest supported Python versions with normal deps
+  { deps = [ "stable" ], python = [ "3.12", "3.14" ] },
+  # Test the newest supported Python version also with pre-release deps
+  { deps = [ "pre" ], python = [ "3.14" ] },
+]
+# If the matrix variable `deps` is set to "pre",
+# set the environment variable `UV_PRERELEASE` to "allow".
+envs.hatch-test.overrides.matrix.deps.env-vars = [
+  { value = "allow", key = "UV_PRERELEASE", if = [ "pre" ] },
+]
+envs.hatch-test.dependency-groups = [ "dev", "test" ]
 
-[tool.coverage.run]
-source = ["infercnvpy"]
-omit = [
-    "**/test_*.py",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-xfail_strict = true
-addopts = [
-    # "-Werror",  # if 3rd party libs raise DeprecationWarnings, just use filterwarnings below
-    "--import-mode=importlib",  # allow using test files with same name
-]
-filterwarnings = [
-    # "ignore:.*U.*mode is deprecated:DeprecationWarning",
-]
+[tool.uv]
+sources.gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }
 
 [tool.ruff]
-src = ["src"]
 line-length = 120
-extend-include = ["*.ipynb"]
-
-[tool.ruff.format]
-docstring-code-format = true
-
-[tool.ruff.lint]
-select = [
-    "F",  # Errors detected by Pyflakes
-    "E",  # Error detected by Pycodestyle
-    "W",  # Warning detected by Pycodestyle
-    "I",  # isort
-    "D",  # pydocstyle
-    "B",  # flake8-bugbear
-    "TID",  # flake8-tidy-imports
-    "C4",  # flake8-comprehensions
-    "BLE",  # flake8-blind-except
-    "UP",  # pyupgrade
-    "RUF100",  # Report unused noqa directives
+src = [ "src" ]
+extend-include = [ "*.ipynb" ]
+format.docstring-code-format = true
+lint.select = [
+  "B",      # flake8-bugbear
+  "BLE",    # flake8-blind-except
+  "C4",     # flake8-comprehensions
+  "D",      # pydocstyle
+  "E",      # Error detected by Pycodestyle
+  "F",      # Errors detected by Pyflakes
+  "I",      # isort
+  "RUF100", # Report unused noqa directives
+  "TID",    # flake8-tidy-imports
+  "UP",     # pyupgrade
+  "W",      # Warning detected by Pycodestyle
 ]
-ignore = [
-    # line too long -> we accept long comment lines; formatter gets rid of long code lines
-    "E501",
-    # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
-    "E731",
-    # allow I, O, l as variable names -> I is the identity matrix
-    "E741",
-    # Missing docstring in public package
-    "D104",
-    # Missing docstring in public module
-    "D100",
-    # Missing docstring in __init__
-    "D107",
-    # Errors from function calls in argument defaults. These are fine when the result is immutable.
-    "B008",
-    # __magic__ methods are often self-explanatory, allow missing docstrings
-    "D105",
-    # first line should end with a period [Bug: doesn't work with single-line docstrings]
-    "D400",
-    # First line should be in imperative mood; try rephrasing
-    "D401",
-    ## Disable one in each pair of mutually incompatible rules
-    # We don’t want a blank line before a class docstring
-    "D203",
-    # We want docstrings to start immediately after the opening triple quote
-    "D213",
+lint.ignore = [
+  "B008", # Errors from function calls in argument defaults. These are fine when the result is immutable.
+  "D100", # Missing docstring in public module
+  "D104", # Missing docstring in public package
+  "D105", # __magic__ methods are often self-explanatory, allow missing docstrings
+  "D107", # Missing docstring in __init__
+  # Disable one in each pair of mutually incompatible rules
+  "D203", # We don’t want a blank line before a class docstring
+  "D213", # <> We want docstrings to start immediately after the opening triple quote
+  "D400", # first line should end with a period [Bug: doesn’t work with single-line docstrings]
+  "D401", # First line should be in imperative mood; try rephrasing
+  "E501", # line too long -> we accept long comment lines; formatter gets rid of long code lines
+  "E731", # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
+  "E741", # allow I, O, l as variable names -> I is the identity matrix
+]
+lint.per-file-ignores."*/__init__.py" = [ "F401" ]
+lint.per-file-ignores."docs/*" = [ "I" ]
+lint.per-file-ignores."tests/*" = [ "D" ]
+lint.pydocstyle.convention = "numpy"
+
+[tool.pytest]
+ini_options.testpaths = [ "tests" ]
+ini_options.addopts = [
+  # "-Werror",  # if 3rd party libs raise DeprecationWarnings, just use filterwarnings below
+  "--import-mode=importlib", # allow using test files with same name
+]
+ini_options.xfail_strict = true
+ini_options.filterwarnings = [
+  # "ignore:.*U.*mode is deprecated:DeprecationWarning",
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
-
-[tool.ruff.lint.per-file-ignores]
-"docs/*" = ["I"]
-"tests/*" = ["D"]
-"*/__init__.py" = ["F401"]
+[tool.coverage]
+run.omit = [
+  "**/test_*.py",
+]
+run.patch = [ "subprocess" ]
+run.source = [ "infercnvpy" ]
 
 [tool.cruft]
 skip = [
-    "tests",
-    "src/**/__init__.py",
-    "src/**/basic.py",
-    "docs/api.md",
-    "docs/changelog.md",
-    "docs/references.bib",
-    "docs/references.md",
-    "docs/notebooks/example.ipynb",
+  ".git",
+  "tests",
+  "src/**/__init__.py",
+  "src/**/basic.py",
+  "docs/api.md",
+  "docs/changelog.md",
+  "docs/references.bib",
+  "docs/references.md",
+  "docs/notebooks/example.ipynb",
 ]
-
-[tool.uv.sources]
-gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }
