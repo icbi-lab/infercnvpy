@@ -154,11 +154,11 @@ ini_options.filterwarnings = [
 ]
 
 [tool.coverage]
+run.source = [ "infercnvpy" ]
 run.omit = [
   "**/test_*.py",
 ]
 run.patch = [ "subprocess" ]
-run.source = [ "infercnvpy" ]
 
 [tool.cruft]
 skip = [
