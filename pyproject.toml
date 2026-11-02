@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
 ]
 dynamic = [ "version" ]
 dependencies = [
@@ -154,11 +155,11 @@ ini_options.filterwarnings = [
 ]
 
 [tool.coverage]
+run.source = [ "infercnvpy" ]
 run.omit = [
   "**/test_*.py",
 ]
 run.patch = [ "subprocess" ]
-run.source = [ "infercnvpy" ]
 
 [tool.cruft]
 skip = [
