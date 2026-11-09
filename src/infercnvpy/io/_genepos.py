@@ -128,9 +128,9 @@ def genomic_position_from_gtf(
         raise ImportError(
             "genomic_position_from_gtf requires gtfparse as optional dependency. Please install it using `pip install gtfparse`."
         ) from None
-    gtf = gtfparse.read_gtf(
-        gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"]
-    ).to_pandas()
+    gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
+    if hasattr(gtf, "to_pandas"):  # gtfparse 2.x returns a polars data frame, 3.x a pandas one
+        gtf = gtf.to_pandas()
     gtf = (
         gtf.loc[
             gtf["feature"] == "gene",
@@ -149,7 +149,8 @@ def genomic_position_from_gtf(
     if missing_from_gtf:
         logging.warning(f"GTF file misses annotation for {missing_from_gtf} genes in adata.")
 
-    duplicated_symbols = np.sum(gtf["gene_name"].duplicated())
+    # duplicates have to be detected in the column that is used for matching
+    duplicated_symbols = np.sum(gtf[gtf_gene_id].duplicated())
     if duplicated_symbols:
         logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
         gtf = gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :]
@@ -170,8 +171,9 @@ def genomic_position_from_gtf(
     var_annotated.index.name = orig_index_name
 
     # if not a gencode GTF, let's add 'chr' prefix:
-    if np.all(~var_annotated["chromosome"].dropna().str.startswith("chr")):
-        var_annotated["chromosome"] = "chr" + var_annotated["chromosome"]
+    if np.all(~var_annotated["chromosome"].dropna().astype(str).str.startswith("chr")):
+        chromosome = var_annotated["chromosome"].astype(object)  # can be categorical, depending on gtfparse
+        var_annotated["chromosome"] = chromosome.where(chromosome.isna(), "chr" + chromosome.astype(str))
 
     if inplace:
         adata.var = var_annotated
