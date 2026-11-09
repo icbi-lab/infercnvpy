@@ -32,7 +32,6 @@ dependencies = [
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
   "pyreadr",
-  "pytest-benchmark",
   "pytoml",
   "scanpy>=1.10",
   # for debug logging (referenced from the issue template)
@@ -40,6 +39,7 @@ dependencies = [
   "tqdm>=4.63",                           # fixes tqdm.auto
 ]
 optional-dependencies.copykat = [ "rpy2" ]
+optional-dependencies.dask = [ "dask[array]" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
@@ -56,8 +56,10 @@ dev = [
 ]
 test = [
   "coverage>=7.10",
+  "dask[array]",
   "openpyxl",       # required for one of the scanpy datasets used in the tests
   "pytest",
+  "pytest-benchmark",
   "pytest-cov",     # For VS Code’s coverage functionality
 ]
 doc = [
