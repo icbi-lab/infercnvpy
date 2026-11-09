@@ -37,7 +37,8 @@ The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
 4. Center the smoothed gene expression by cell, by subtracting the median of each cell
    from each cell.
 5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
-   where `STDDEV` is the standard deviation of the smoothed gene expression
+   where `STDDEV` is the standard deviation of the smoothed gene expression of all cells
+   (estimated from a sample of cells for very large datasets, see :ref:`large-data`).
 6. Smooth the final result using a median filter.
 
 .. _input-data:
