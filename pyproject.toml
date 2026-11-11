@@ -40,7 +40,7 @@ dependencies = [
 ]
 optional-dependencies.copykat = [ "rpy2" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
-optional-dependencies.scevan = [ "pyreadr" ]
+optional-dependencies.pyreadr = [ "pyreadr" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Homepage = "https://github.com/icbi-lab/infercnvpy"

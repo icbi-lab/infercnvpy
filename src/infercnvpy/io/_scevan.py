@@ -89,7 +89,7 @@ def read_scevan(
     except ImportError:
         raise ImportError(
             "read_scevan requires pyreadr as an optional dependency. "
-            "Please install it using `pip install 'infercnvpy[scevan]'`."
+            "Please install it using `pip install 'infercnvpy[pyreadr]'`."
         ) from None
     scevan_res = pyreadr.read_r(scevan_res_file[0])["CNA_mtx_relat"].T
     scevan_anno = pyreadr.read_r(scevan_anno_file[0])["count_mtx_annot"]
