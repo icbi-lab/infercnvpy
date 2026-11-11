@@ -57,10 +57,10 @@ dev = [
 test = [
   "coverage>=7.10",
   "dask[array]",
-  "openpyxl",       # required for one of the scanpy datasets used in the tests
+  "openpyxl",         # required for one of the scanpy datasets used in the tests
   "pytest",
   "pytest-benchmark",
-  "pytest-cov",     # For VS Code’s coverage functionality
+  "pytest-cov",       # For VS Code’s coverage functionality
 ]
 doc = [
   "ipykernel",
