@@ -7,6 +7,8 @@ from matplotlib.colors import Colormap, TwoSlopeNorm
 from scanpy.plotting._utils import savefig_or_show
 from scipy.sparse import issparse
 
+from infercnvpy._util import _group_codes, _group_means, _group_members, _subsample
+
 
 def chromosome_heatmap(
     adata: AnnData,
@@ -15,6 +17,8 @@ def chromosome_heatmap(
     use_rep: str = "cnv",
     cmap: str | Colormap = "bwr",
     figsize: tuple[int, int] = (16, 10),
+    max_cells_per_group: int | None = 2000,
+    random_state: int | None = 0,
     show: bool | None = None,
     save: str | bool | None = None,
     **kwargs,
@@ -37,6 +41,12 @@ def chromosome_heatmap(
         colormap to use
     figsize
         (width, height) tuple in inches
+    max_cells_per_group
+        Plot at most this many randomly selected cells of every group. A heatmap of hundreds of thousands
+        of cells is slow, needs a lot of memory and cannot be resolved by the eye anyway. The color scale is
+        always determined from all cells. Set to `None` to plot all cells.
+    random_state
+        Seed for the selection of cells if a group has more than `max_cells_per_group` cells.
     show
         Whether to show the figure or to return the axes objects.
     save
@@ -52,14 +62,26 @@ def chromosome_heatmap(
     """
     if groupby == "cnv_leiden" and "cnv_leiden" not in adata.obs.columns:
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
-    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs, uns=adata.uns)
+    X_cnv = adata.obsm[f"X_{use_rep}"]
+    obs = adata.obs.to_memory() if hasattr(adata.obs, "to_memory") else adata.obs  # lazy obs (`read_lazy`)
+    rng = np.random.default_rng(random_state)
+    codes, groups = _group_codes(obs[groupby])
+    keep = np.concatenate(
+        [_subsample(members, max_cells_per_group, rng) for members in _group_members(codes, len(groups))]
+        + [np.flatnonzero(codes < 0)]
+    )
+    keep.sort()
+    if len(keep) < adata.shape[0]:
+        tmp_adata = AnnData(X=X_cnv[keep], obs=obs.iloc[keep], uns=adata.uns)
+    else:
+        tmp_adata = AnnData(X=X_cnv, obs=obs, uns=adata.uns)
 
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
 
-    # center color map at 0
-    tmp_data = tmp_adata.X.data if issparse(tmp_adata.X) else tmp_adata.X
+    # center color map at 0 (using all cells, also if only some of them are plotted)
+    tmp_data = X_cnv.data if issparse(X_cnv) else X_cnv
     vmin = kwargs.pop("vmin", None)
     vmax = kwargs.pop("vmax", None)
     if vmin is None:
@@ -141,21 +163,14 @@ def chromosome_heatmap_summary(
     # heatmap cannot really handle it if there's just one observation
     # per row. Scanpy matrixplot is not an option, since it plots each
     # gene individually.
-    groups = adata.obs[groupby].unique()
+    codes, groups = _group_codes(adata.obs[groupby])
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
     tmp_obs.index = tmp_obs.index.astype(str)
 
-    def _get_group_mean(group):
-        group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == group, :], axis=0)
-        if len(group_mean.shape) == 1:
-            # derived from an array instead of sparse matrix -> 1 dim instead of 2
-            group_mean = group_mean[np.newaxis, :]
-        return group_mean
-
-    tmp_adata = sc.AnnData(
-        X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]), obs=tmp_obs, uns=adata.uns
-    )
+    # mean of each group with a single pass over the data
+    group_means = _group_means(adata.obsm[f"X_{use_rep}"], codes, len(groups))
+    tmp_adata = sc.AnnData(X=np.repeat(group_means, 10, axis=0), obs=tmp_obs, uns=adata.uns)
 
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
