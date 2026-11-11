@@ -4,9 +4,20 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyreadr
+import rdata
 from anndata import AnnData
 from scanpy import logging
+
+
+def _read_rdata_frame(path: Path, name: str) -> pd.DataFrame:
+    """Read object `name` from an `.RData` file as a DataFrame (keeping row/column names)."""
+    obj = rdata.read_rda(path, default_encoding="utf-8")[name]
+    if isinstance(obj, pd.DataFrame):
+        return obj
+    # matrices with dimnames can be returned as xarray DataArray
+    if hasattr(obj, "to_pandas"):
+        return obj.to_pandas()
+    return pd.DataFrame(obj)
 
 
 def _get_chr_pos_from_array(chr_pos_array):
@@ -85,11 +96,11 @@ def read_scevan(
     else:
         tumor_normal_call = None
         logging.warning("No `scevan_res_table` specified. Will not add tumor/normal classification.")
-    scevan_res = pyreadr.read_r(scevan_res_file[0])["CNA_mtx_relat"].T
-    scevan_anno = pyreadr.read_r(scevan_anno_file[0])["count_mtx_annot"]
+    scevan_res = _read_rdata_frame(scevan_res_file[0], "CNA_mtx_relat").T
+    scevan_anno = _read_rdata_frame(scevan_anno_file[0], "count_mtx_annot")
     scevan_subclone_res = None
     if subclones and len(scevan_subclones_file):
-        scevan_subclone_res = pyreadr.read_r(scevan_subclones_file[0])["results.com"].T
+        scevan_subclone_res = _read_rdata_frame(scevan_subclones_file[0], "results.com").T
 
     if not inplace:
         adata = adata.copy()

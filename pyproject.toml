@@ -31,9 +31,9 @@ dependencies = [
   "pandas>=1",
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
-  "pyreadr",
   "pytest-benchmark",
   "pytoml",
+  "rdata",                                # MIT; reads SCEVAN .RData files
   "scanpy>=1.10",
   # for debug logging (referenced from the issue template)
   "session-info2",
