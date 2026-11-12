@@ -4,10 +4,15 @@ import pandas as pd
 import scanpy as sc
 from anndata import AnnData
 from matplotlib.colors import Colormap, TwoSlopeNorm
-from scanpy.plotting._utils import savefig_or_show
 from scipy.sparse import issparse
 
 from infercnvpy._util import _group_codes, _group_means, _group_members, _subsample
+# TODO should not use private scanpy functions
+try:
+    from scanpy.plotting._utils import savefig_or_show
+except ImportError:
+    # scanpy >= 1.13
+    from scanpy.plotting.legacy._utils import savefig_or_show
 
 
 def chromosome_heatmap(
