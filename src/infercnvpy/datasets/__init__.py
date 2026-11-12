@@ -4,8 +4,6 @@ import importlib.resources as pkg_resources
 
 import scanpy as sc
 from anndata import AnnData
-from scanpy import settings
-from scanpy.readwrite import read
 
 from . import data
 
@@ -36,6 +34,6 @@ def maynard2020_3k() -> AnnData:
     A UMAP for the 3000 cells is precomputed.
     """
     url = "https://github.com/icbi-lab/infercnvpy/releases/download/d0.1.0/maynard2020_3k.h5ad"
-    filename = settings.datasetdir / "maynard2020_3k.h5ad"
-    adata = read(filename, backup_url=url)
+    filename = sc.settings.datasetdir / "maynard2020_3k.h5ad"
+    adata = sc.read(filename, backup_url=url)
     return adata
