@@ -35,6 +35,7 @@ dependencies = [
   "pycairo>=1.20; sys_platform=='win32'",
   "pytest-benchmark",
   "pytoml",
+  "rdata",                                # MIT; reads SCEVAN .RData files
   "scanpy>=1.10",
   # for debug logging (referenced from the issue template)
   "session-info2",
@@ -42,7 +43,6 @@ dependencies = [
 ]
 optional-dependencies.copykat = [ "rpy2" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
-optional-dependencies.scevan = [ "pyreadr" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Homepage = "https://github.com/icbi-lab/infercnvpy"
