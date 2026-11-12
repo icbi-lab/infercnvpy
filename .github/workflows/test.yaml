@@ -32,7 +32,7 @@ jobs:
                   fetch-depth: 0
                   persist-credentials: false
             - name: Install uv
-              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+              uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
             - name: Get test environments
               id: get-envs
               run: |
@@ -45,24 +45,24 @@ jobs:
                             python: .value.python
                           }
                       )')
-                  echo "envs=${ENVS_JSON}" | tee $GITHUB_OUTPUT
+                  echo "envs=${ENVS_JSON}" | tee "$GITHUB_OUTPUT"
 
-        # Run tests through hatch. Spawns a separate runner for each environment defined in the hatch matrix obtained above.
-        test:
-            needs: get-environments
-            permissions:
-                id-token: write # for codecov OIDC
-                contents: read
+    # Run tests through hatch. Spawns a separate runner for each environment defined in the hatch matrix obtained above.
+    test:
+        needs: get-environments
+        permissions:
+            id-token: write # for codecov OIDC
+            contents: read
 
-            strategy:
-                fail-fast: false
-                matrix:
-                    os: [ubuntu-latest]
-                    env: ${{ fromJSON(needs.get-environments.outputs.envs) }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest]
+                env: ${{ fromJSON(needs.get-environments.outputs.envs) }}
 
-            name: ${{ matrix.env.label }}
-            runs-on: ${{ matrix.os }}
-            continue-on-error: ${{ contains(matrix.env.name, 'pre') }} # make "all-green" pass even if pre-release job fails
+        name: ${{ matrix.env.label }}
+        runs-on: ${{ matrix.os }}
+        continue-on-error: ${{ contains(matrix.env.name, 'pre') }} # make "all-green" pass even if pre-release job fails
 
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,7 +71,7 @@ jobs:
                   fetch-depth: 0
                   persist-credentials: false
             - name: Install uv
-              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+              uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
               with:
                   python-version: ${{ matrix.env.python }}
             - name: create hatch environment
