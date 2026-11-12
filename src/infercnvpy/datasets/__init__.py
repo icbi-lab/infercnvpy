@@ -1,13 +1,39 @@
 """Example datasets."""
 
 import importlib.resources as pkg_resources
+from os import PathLike
+from textwrap import dedent, indent
+from typing import cast
 
-import scanpy as sc
-from anndata import AnnData
-from scanpy import settings
-from scanpy.readwrite import read
+import pooch
+from anndata import AnnData, read_h5ad
 
 from . import data
+
+DATASET_ENV_VAR = "INFERCNVPY_DATA_DIR"
+
+_EXAMPLEDATA = pooch.create(
+    path=pooch.os_cache("infercnvpy"),
+    base_url="https://github.com/icbi-lab/infercnvpy/releases/download/d0.1.0/",
+    env=DATASET_ENV_VAR,
+    registry={
+        "maynard2020_3k.h5ad": "md5:8a97c55dd72fb92d8e5ab72a52e23679",
+    },
+)
+
+_POOCH_INFO = dedent(
+    f"""\
+    .. note::
+        infercnvpy datasets are managed through `Pooch <https://github.com/fatiando/pooch>`_.
+
+        By default, the dataset will be downloaded into your operating system's default
+        cache directory (See :func:`pooch.os_cache` for more details). If it has already been
+        downloaded, it will be retrieved from the cache.
+
+        You can override the default cache dir by setting the `{DATASET_ENV_VAR}` environment variable
+        to a path of your preference.
+    """
+)
 
 
 def oligodendroglioma() -> AnnData:
@@ -16,7 +42,7 @@ def oligodendroglioma() -> AnnData:
     Derived from :cite:`Tirosh2016`.
     """
     with pkg_resources.path(data, "oligodendroglioma.h5ad") as p:
-        return sc.read_h5ad(p)
+        return read_h5ad(p)
 
 
 def maynard2020_3k() -> AnnData:
@@ -34,8 +60,11 @@ def maynard2020_3k() -> AnnData:
     `adata.X` contains the `log1p` transformed, cpm-normalized raw counts.
     The `scVI` latent representation is stored in `adata.obsm["X_scVI"]`.
     A UMAP for the 3000 cells is precomputed.
+
+    {pooch_info}
     """
-    url = "https://github.com/icbi-lab/infercnvpy/releases/download/d0.1.0/maynard2020_3k.h5ad"
-    filename = settings.datasetdir / "maynard2020_3k.h5ad"
-    adata = read(filename, backup_url=url)
-    return adata
+    fname = cast(PathLike, _EXAMPLEDATA.fetch("maynard2020_3k.h5ad", progressbar=True))
+    return read_h5ad(fname)
+
+
+maynard2020_3k.__doc__ = maynard2020_3k.__doc__.format(pooch_info=indent(_POOCH_INFO, " " * 4).lstrip())
