@@ -111,6 +111,7 @@ intersphinx_mapping = {
     "seaborn": ("https://seaborn.pydata.org/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "networkx": ("https://networkx.org/documentation/networkx-1.10/", None),
+    "pooch": ("https://www.fatiando.org/pooch/latest", None),
 }
 
 # List of patterns, relative to source directory, that match files and
