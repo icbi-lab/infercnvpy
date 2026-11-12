@@ -7,8 +7,15 @@ from typing import Any
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
+from scanpy import logging
 
-from infercnvpy._util import _choose_mtx_rep
+from infercnvpy._util import (
+    _choose_mtx_rep,
+    _group_codes,
+    _group_members,
+    _subsample,
+    _take_rows,
+)
 
 
 def cnv_score(
@@ -62,14 +69,22 @@ def cnv_score(
 
     if groupby not in adata.obs.columns and groupby == "cnv_leiden":
         raise ValueError("`cnv_leiden` not found in `adata.obs`. Did you run `tl.leiden`?")
-    cluster_score = {
-        cluster: np.mean(np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == cluster, :]))
-        for cluster in adata.obs[groupby].unique()
-    }
+    X = adata.obsm[f"X_{use_rep}"]
+    codes, groups = _group_codes(adata.obs[groupby])
+    # mean(|X|) per group = sum of the per-cell sums of |X| / (cells * columns): one pass over the stored values
+    abs_x = abs(X) if sp.issparse(X) else np.abs(X)
+    # (summed in the dtype of the data: upcasting all stored values first would copy the whole matrix)
+    row_sums = np.asarray(abs_x.sum(axis=1)).ravel().astype(np.float64)
+    valid = codes >= 0
+    sums = np.bincount(codes[valid], weights=row_sums[valid], minlength=len(groups))
+    counts = np.bincount(codes[valid], minlength=len(groups))
+    means = sums / (counts * X.shape[1])
+    cluster_score = dict(zip(groups, means, strict=True))
+    if not valid.all():  # cells without a group: the mean of an empty selection
+        cluster_score[np.nan] = np.nan
 
     if inplace:
-        score_array = np.array([cluster_score[c] for c in adata.obs[groupby]])
-        adata.obs[key_added] = score_array
+        adata.obs[key_added] = np.where(valid, means[np.maximum(codes, 0)], np.nan)
     else:
         return cluster_score
 
@@ -82,6 +97,8 @@ def ithgex(
     layer: str | None = None,
     inplace: bool = True,
     key_added: str = "ithgex",
+    max_cells: int | None = 5000,
+    random_state: int | None = 0,
 ) -> Mapping[str, float] | None:
     """Compute the ITHGEX diversity score based on gene expression cite:`Wu2021`.
 
@@ -119,34 +136,23 @@ def ithgex(
         If True, store the result in adata, otherwise return it.
     key_added
         Key under which the score will be stored in `adata.obs`.
+    max_cells
+        The score is based on the cell x cell correlation matrix of each group, which needs memory
+        quadratic in the group size. Groups with more cells are randomly subsampled to this number of
+        cells (the score is then an estimate). Set to `None` to always use all cells.
+    random_state
+        Seed for the subsampling.
 
     Returns
     -------
     Depending of the value of `inplace` either returns a dictionary
     with one value per group or `None`.
     """
-    groups = adata.obs[groupby].unique()
-    ithgex = {}
-    for group in groups:
-        tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = _choose_mtx_rep(tmp_adata, use_raw, layer)
-        if sp.issparse(X):
-            X = X.todense()
-        if X.shape[0] <= 1:
-            continue
-        pcorr = np.corrcoef(X, rowvar=True)
-        assert pcorr.shape == (
-            tmp_adata.shape[0],
-            tmp_adata.shape[0],
-        ), f"pcorr is a cell x cell matrix {tmp_adata.shape[0]} {pcorr.shape}"
-        q75, q25 = np.percentile(pcorr, [75, 25])
-        ithgex[group] = q75 - q25
+    X = _choose_mtx_rep(adata, use_raw, layer)
+    ithgex = _pairwise_correlation_iqr(X, adata.obs[groupby], max_cells, random_state)
 
     if inplace:
-        ithgex_obs = np.empty(adata.shape[0])
-        for group in groups:
-            ithgex_obs[adata.obs[groupby] == group] = ithgex[group]
-        adata.obs[key_added] = ithgex_obs
+        adata.obs[key_added] = _per_cell(ithgex, adata.obs[groupby])
     else:
         return ithgex
 
@@ -158,6 +164,8 @@ def ithcna(
     use_rep: str = "X_cnv",
     key_added: str = "ithcna",
     inplace: bool = True,
+    max_cells: int | None = 5000,
+    random_state: int | None = 0,
 ) -> Mapping[str, float] | None:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
 
@@ -189,33 +197,51 @@ def ithcna(
         Key under which the score will be stored in `adata.obs`.
     inplace
         If True, store the result in adata, otherwise return it.
+    max_cells
+        The score is based on the cell x cell correlation matrix of each group, which needs memory
+        quadratic in the group size. Groups with more cells are randomly subsampled to this number of
+        cells (the score is then an estimate). Set to `None` to always use all cells.
+    random_state
+        Seed for the subsampling.
 
     Returns
     -------
     Depending of the value of `inplace` either returns a dictionary
     with one value per group or `None`.
     """
-    groups = adata.obs[groupby].unique()
-    ithcna = {}
-    for group in groups:
-        tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = tmp_adata.obsm[use_rep]
-        if sp.issparse(X):
-            X = X.todense()
-        if X.shape[0] <= 1:
-            continue
-        pcorr = np.corrcoef(X, rowvar=True)
-        assert pcorr.shape == (
-            tmp_adata.shape[0],
-            tmp_adata.shape[0],
-        ), "pcorr is a cell x cell matrix"
-        q75, q25 = np.percentile(pcorr, [75, 25])
-        ithcna[group] = q75 - q25
+    ithcna = _pairwise_correlation_iqr(adata.obsm[use_rep], adata.obs[groupby], max_cells, random_state)
 
     if inplace:
-        ithcna_obs = np.empty(adata.shape[0])
-        for group in groups:
-            ithcna_obs[adata.obs[groupby] == group] = ithcna[group]
-        adata.obs[key_added] = ithcna_obs
+        adata.obs[key_added] = _per_cell(ithcna, adata.obs[groupby])
     else:
         return ithcna
+
+
+def _pairwise_correlation_iqr(X, groupby_values, max_cells: int | None, random_state: int | None) -> dict:
+    """IQR of the cell-cell Pearson correlations (all entries of the correlation matrix) per group.
+
+    Groups with a single cell are skipped. The correlation matrix has `n_cells_in_group ** 2` entries, so
+    groups with more than `max_cells` cells are randomly subsampled to `max_cells` cells. Only the rows
+    of the group (or of its subsample) are read from `X`, which can therefore also be a lazy matrix.
+    """
+    rng = np.random.default_rng(random_state)
+    codes, groups = _group_codes(groupby_values)
+    result = {}
+    for group, members in zip(groups, _group_members(codes, len(groups)), strict=True):
+        if len(members) <= 1:
+            continue
+        if max_cells is not None and len(members) > max_cells:
+            logging.info(f"Group {group!r}: using a random subsample of {max_cells} of {len(members)} cells.")
+        rows = _take_rows(X, _subsample(members, max_cells, rng))
+        rows = rows.toarray() if sp.issparse(rows) else rows
+        pcorr = np.corrcoef(rows, rowvar=True)
+        q75, q25 = np.percentile(pcorr, [75, 25])
+        result[group] = q75 - q25
+    return result
+
+
+def _per_cell(per_group: Mapping, groupby_values) -> np.ndarray:
+    """Value of the group of each cell; NaN for groups without a value (and cells without a group)."""
+    codes, groups = _group_codes(groupby_values)
+    values = np.array([per_group.get(g, np.nan) for g in groups], dtype=float)
+    return np.where(codes >= 0, values[np.maximum(codes, 0)], np.nan)

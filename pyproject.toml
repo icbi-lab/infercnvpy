@@ -33,7 +33,6 @@ dependencies = [
   "pooch>=1.7",
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
-  "pytest-benchmark",
   "pytoml",
   "scanpy>=1.10",
   # for debug logging (referenced from the issue template)
@@ -41,6 +40,7 @@ dependencies = [
   "tqdm>=4.63",                           # fixes tqdm.auto
 ]
 optional-dependencies.copykat = [ "rpy2" ]
+optional-dependencies.dask = [ "dask[array]" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
 optional-dependencies.scevan = [ "pyreadr" ]
 # https://docs.pypi.org/project_metadata/#project-urls
@@ -58,9 +58,11 @@ dev = [
 ]
 test = [
   "coverage>=7.10",
-  "openpyxl",       # required for one of the scanpy datasets used in the tests
+  "dask[array]",
+  "openpyxl",         # required for one of the scanpy datasets used in the tests
   "pytest",
-  "pytest-cov",     # For VS Code’s coverage functionality
+  "pytest-benchmark",
+  "pytest-cov",       # For VS Code’s coverage functionality
 ]
 doc = [
   "ipykernel",
