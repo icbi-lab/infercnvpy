@@ -29,9 +29,9 @@ dependencies = [
   "leidenalg",
   "numpy>=1.20",                          # includes type annotations
   "pandas>=1",
+  "pooch>=1.7",
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
-  "pyreadr",
   "pytest-benchmark",
   "pytoml",
   "scanpy>=1.10",
@@ -41,6 +41,7 @@ dependencies = [
 ]
 optional-dependencies.copykat = [ "rpy2" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
+optional-dependencies.scevan = [ "pyreadr" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
 urls.Homepage = "https://github.com/icbi-lab/infercnvpy"
