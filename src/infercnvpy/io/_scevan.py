@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyreadr
 from anndata import AnnData
 from scanpy import logging
 
@@ -85,6 +84,13 @@ def read_scevan(
     else:
         tumor_normal_call = None
         logging.warning("No `scevan_res_table` specified. Will not add tumor/normal classification.")
+    try:
+        import pyreadr
+    except ImportError:
+        raise ImportError(
+            "read_scevan requires pyreadr as an optional dependency. "
+            "Please install it using `pip install 'infercnvpy[scevan]'`."
+        ) from None
     scevan_res = pyreadr.read_r(scevan_res_file[0])["CNA_mtx_relat"].T
     scevan_anno = pyreadr.read_r(scevan_anno_file[0])["count_mtx_annot"]
     scevan_subclone_res = None
