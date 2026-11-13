@@ -54,8 +54,16 @@ def leiden(
 
     Returns
     -------
-    Depending on the value of `inplace`, either returns `None` or a copy of `adata`
-    with the cluster labels in `adata.obs[key_added]`.
+    None | anndata.AnnData
+        If `inplace=True`, returns `None` and sets the fields below on adata.
+        Otherwise returns a copy of adata with these fields.
+
+    Sets the following fields
+    -------------------------
+    `adata.obs[key_added]` : :class:`pandas.Categorical`
+        Cluster label of each cell.
+    `adata.uns[key_added]["params"]` : :class:`dict`
+        Parameters of the clustering, as recorded by :func:`scanpy.tl.leiden`.
     """
     if flavor == "igraph":
         n_iterations = 2 if n_iterations is None else n_iterations
@@ -103,6 +111,17 @@ def pca(
         Key under which the result will be stored in adata.obsm if `inplace=True`.
     **kwargs
         Additional arguments passed to :func:`scanpy.pp.pca`.
+
+    Returns
+    -------
+    None | numpy.ndarray
+        If `inplace=True`, returns `None` and sets the field below.
+        Otherwise returns the PCA coordinates.
+
+    Sets the following fields
+    -------------------------
+    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+        PCA coordinates of the CNV matrix, cells x components.
     """
     if f"X_{use_rep}" not in adata.obsm:
         raise KeyError(f"X_{use_rep} is not in adata.obsm. Did you run `tl.infercnv`?")
@@ -143,6 +162,17 @@ def umap(
         If True, store the result in adata.obsm, otherwise return the result of UMAP.
     **kwargs
         Additional arguments passed to :func:`scanpy.tl.umap`.
+
+    Returns
+    -------
+    None | numpy.ndarray
+        If `inplace=True`, returns `None` and sets the field below.
+        Otherwise returns the UMAP coordinates.
+
+    Sets the following fields
+    -------------------------
+    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+        UMAP coordinates, cells x `n_components` (default 2).
     """
     tmp_adata = sc.tl.umap(adata, neighbors_key=neighbors_key, copy=True, **kwargs)
 
@@ -176,6 +206,21 @@ def tsne(
         If True, store the result in adata.obsm, otherwise return the result of t-SNE.
     **kwargs
         Additional arguments passed to :func:`scanpy.tl.tsne`.
+
+    Returns
+    -------
+    None | numpy.ndarray
+        If `inplace=True`, returns `None` and sets the field below.
+        Otherwise returns the t-SNE coordinates.
+
+    Sets the following fields
+    -------------------------
+    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+        t-SNE coordinates, cells x 2.
+    `adata.obsm["X_cnv_pca"]` : :class:`numpy.ndarray`
+        Only if `use_rep="cnv_pca"` and it is missing: the PCA computed with
+        :func:`infercnvpy.tl.pca` at default settings. This is set even if
+        `inplace=False`.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
         pca(adata)

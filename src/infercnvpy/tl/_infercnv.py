@@ -94,8 +94,24 @@ def infercnv(
 
     Returns
     -------
-    Depending on inplace, either return the smoothed and denoised gene expression
-    matrix sorted by genomic position, or add it to adata.
+    None | tuple
+        If `inplace=True`, returns `None` and sets the fields below. Otherwise
+        returns a tuple `(chr_pos, cnv_matrix, gene_values)` with the same values;
+        `gene_values` is `None` unless `calculate_gene_values=True`.
+
+    Sets the following fields
+    -------------------------
+    `adata.obsm["X_{key_added}"]` : :class:`scipy.sparse.csr_matrix`
+        Smoothed and denoised CNV values, cells x genomic windows, ordered by
+        chromosome and genomic position.
+    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_{key_added}` where it starts.
+    `adata.uns[key_added]["params"]` : :class:`dict`
+        Parameters of this call (`None` values are left out). `reference_key` and
+        `reference_cat` are left out when an explicit `reference` is passed.
+    `adata.layers["gene_values_{key_added}"]` : :class:`numpy.ndarray`
+        Only if `calculate_gene_values=True`: CNV values per gene, `NaN` for genes
+        that are in no window.
     """
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")

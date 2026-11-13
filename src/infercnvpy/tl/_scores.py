@@ -49,8 +49,16 @@ def cnv_score(
 
     Returns
     -------
-    Depending on the value of `inplace`, either returns `None` or
-    dictionary with the score per group.
+    None | dict
+        If `inplace=True`, returns `None` and sets the fields below.
+        Otherwise returns a dictionary with the score per group.
+
+    Sets the following fields
+    -------------------------
+    `adata.obs[key_added]` : float
+        Score of the group each cell belongs to.
+    `adata.uns[key_added]["params"]` : :class:`dict`
+        Parameters of this call (`groupby`, `use_rep`).
     """
     if obs_key is not None:
         warnings.warn(
@@ -125,9 +133,15 @@ def ithgex(
 
     Returns
     -------
-    Depending of the value of `inplace` either returns a dictionary
-    with one value per group or `None`. Groups with a single cell have no
-    cell pairs to correlate and get a score of `NaN`.
+    None | dict
+        If `inplace=True`, returns `None` and sets the field below.
+        Otherwise returns a dictionary with one value per group. Groups with a
+        single cell have no cell pairs to correlate and get a score of `NaN`.
+
+    Sets the following fields
+    -------------------------
+    `adata.obs[key_added]` : float
+        Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
     groups = adata.obs[groupby].unique()
     ithgex = {}
@@ -198,9 +212,15 @@ def ithcna(
 
     Returns
     -------
-    Depending of the value of `inplace` either returns a dictionary
-    with one value per group or `None`. Groups with a single cell have no
-    cell pairs to correlate and get a score of `NaN`.
+    None | dict
+        If `inplace=True`, returns `None` and sets the field below.
+        Otherwise returns a dictionary with one value per group. Groups with a
+        single cell have no cell pairs to correlate and get a score of `NaN`.
+
+    Sets the following fields
+    -------------------------
+    `adata.obs[key_added]` : float
+        Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
     groups = adata.obs[groupby].unique()
     ithcna = {}

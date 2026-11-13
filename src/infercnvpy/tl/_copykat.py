@@ -52,7 +52,8 @@ def copykat(
     adata
         annotated data matrix
     key_added
-        Key under which the copyKAT scores will be stored in `adata.obsm` and `adata.uns`.
+        Key under which the copyKAT results will be stored in `adata.obsm`, `adata.obs`
+        and `adata.uns`.
     inplace
         If True, store the result in adata, otherwise return it.
     layer
@@ -82,7 +83,21 @@ def copykat(
 
     Returns
     -------
-    Depending on the value of `inplace`, either returns `None` or a tuple (`CNV Matrix`,`CopyKat prediction`)
+    None | tuple
+        If `inplace=True`, returns `None` and sets the fields below. Otherwise
+        returns a tuple (`CNV Matrix`, `CopyKat prediction`).
+
+    Sets the following fields
+    -------------------------
+    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+        CopyKAT copy number values, cells x genomic bins.
+    `adata.obs[key_added]` : :class:`pandas.Series`
+        CopyKAT prediction per cell (e.g. "aneuploid" or "diploid").
+    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_{key_added}` where it starts.
+
+    With the default `key_added="cnv"`, these fields replace the results of
+    :func:`infercnvpy.tl.infercnv` stored under the same default key.
     """
     if n_jobs is None:
         n_jobs = cpu_count()

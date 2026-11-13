@@ -35,8 +35,23 @@ def neighbors(
 
     Returns
     -------
-    Depending on the value of inplace, updates adata and returns `None`, or
-    returns a copy of adata with the neighborhood graph.
+    None | anndata.AnnData
+        If `inplace=True`, returns `None` and sets the fields below on adata.
+        Otherwise returns a copy of adata with these fields.
+
+    Sets the following fields
+    -------------------------
+    `adata.obsp["{key_added}_distances"]` : :class:`scipy.sparse.csr_matrix`
+        Distances between each cell and its nearest neighbors.
+    `adata.obsp["{key_added}_connectivities"]` : :class:`scipy.sparse.csr_matrix`
+        Weighted adjacency matrix of the neighborhood graph.
+    `adata.uns[key_added]` : :class:`dict`
+        Keys of the two matrices and the parameters, as recorded by
+        :func:`scanpy.pp.neighbors`.
+    `adata.obsm["X_cnv_pca"]` : :class:`numpy.ndarray`
+        Only if `use_rep="cnv_pca"` and it is missing: the PCA computed with
+        :func:`infercnvpy.tl.pca` at default settings. This is set on adata even
+        if `inplace=False`.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
         tl.pca(adata)

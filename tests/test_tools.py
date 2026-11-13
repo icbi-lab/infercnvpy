@@ -1,3 +1,4 @@
+import inspect
 import warnings
 
 import numpy as np
@@ -245,6 +246,26 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.tsne(adata_oligodendroma, color=["cnv_score", "cnv_leiden"], show=False)
     cnv.pl.chromosome_heatmap(adata_oligodendroma, show=False)
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        cnv.tl.infercnv,
+        cnv.tl.pca,
+        cnv.tl.umap,
+        cnv.tl.tsne,
+        cnv.tl.leiden,
+        cnv.tl.cnv_score,
+        cnv.tl.ithgex,
+        cnv.tl.ithcna,
+        cnv.tl.copykat,
+        cnv.pp.neighbors,
+    ],
+)
+def test_docstring_lists_fields(func):
+    """Every public tl/pp function documents the adata fields it writes."""
+    assert "Sets the following fields\n-------------------------\n`adata." in inspect.getdoc(func)
 
 
 def test_tsne_use_rep():
