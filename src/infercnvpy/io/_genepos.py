@@ -128,9 +128,7 @@ def genomic_position_from_gtf(
         raise ImportError(
             "genomic_position_from_gtf requires gtfparse as optional dependency. Please install it using `pip install gtfparse`."
         ) from None
-    gtf = gtfparse.read_gtf(
-        gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"]
-    ).to_pandas()
+    gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
     gtf = (
         gtf.loc[
             gtf["feature"] == "gene",

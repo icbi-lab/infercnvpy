@@ -16,33 +16,31 @@ maintainers = [
 authors = [
   { name = "Gregor Sturm" },
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
-  "Programming Language :: Python :: 3.15",
 ]
 dynamic = [ "version" ]
 dependencies = [
-  "anndata>=0.7.3",
-  "leidenalg",
-  "matplotlib",
-  "numpy>=1.20",                          # includes type annotations
-  "pandas>=1",
-  "pooch>=1.7",
+  "anndata>=0.12",
+  "leidenalg>=0.11",
+  "matplotlib>=3.10",
+  "numpy>=2.2",
+  "pandas>=2.3",
+  "pooch>=1.8",
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
-  "rdata",                                # MIT; reads SCEVAN .RData files
-  "scanpy>=1.10",
-  "scipy",
+  "rdata>=1",                             # MIT; reads SCEVAN .RData files
+  "scanpy>=1.11",
+  "scipy>=1.15",
   # for debug logging (referenced from the issue template)
-  "session-info2",
-  "tqdm>=4.63",                           # fixes tqdm.auto
+  "session-info2>=0.2",
+  "tqdm>=4.67",
 ]
 optional-dependencies.copykat = [ "rpy2" ]
-optional-dependencies.gtf = [ "gtfparse>=2.1" ]
+optional-dependencies.gtf = [ "gtfparse>=3" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Changelog = "https://github.com/scverse/infercnvpy/releases"
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
@@ -56,15 +54,15 @@ contributors = [
 
 [dependency-groups]
 dev = [
-  "prek",
+  "prek>=0.2",
   "twine>=4.0.2",
 ]
 test = [
   "coverage>=7.10",
-  "openpyxl",         # required for one of the scanpy datasets used in the tests
-  "pytest",
-  "pytest-benchmark",
-  "pytest-cov",       # For VS Code’s coverage functionality
+  "openpyxl>=3.1",         # required for one of the scanpy datasets used in the tests
+  "pytest>=8.4",
+  "pytest-benchmark>=5.1",
+  "pytest-cov>=6",         # For VS Code’s coverage functionality
 ]
 doc = [
   "ipykernel",
@@ -96,19 +94,18 @@ envs.docs.dependency-groups = [ "doc" ]
 envs.hatch-test.features = [ "gtf" ]
 envs.hatch-test.matrix = [
   # Test the lowest and highest supported Python versions with normal deps
-  { deps = [ "stable" ], python = [ "3.12", "3.14" ] },
+  { deps = [ "stable" ], python = [ "3.13", "3.14" ] },
   # Test the newest supported Python version also with pre-release deps
   { deps = [ "pre" ], python = [ "3.14" ] },
+  # Test the lowest supported Python version with the minimum versions of direct deps (SPEC 0)
+  { deps = [ "min" ], python = [ "3.13" ] },
 ]
-# If the matrix variable `deps` is set to "pre",
-# set the environment variable `UV_PRERELEASE` to "allow".
+# `pre` allows pre-releases, `min` resolves every direct dependency to its lower bound.
 envs.hatch-test.overrides.matrix.deps.env-vars = [
   { value = "allow", key = "UV_PRERELEASE", if = [ "pre" ] },
+  { value = "lowest-direct", key = "UV_RESOLUTION", if = [ "min" ] },
 ]
 envs.hatch-test.dependency-groups = [ "dev", "test" ]
-
-[tool.uv]
-sources.gtfparse = { git = "https://github.com/lrauschning/gtfparse.git", rev = "dev" }
 
 [tool.ruff]
 line-length = 120
