@@ -1,25 +1,53 @@
 """Scores to summarize and assess copy number variation."""
 
-import warnings
 from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
-import scipy.sparse as sp
 from anndata import AnnData
+from anndata.acc import A
+from scverse_misc import Deprecation, deprecated_arg
 
+from infercnvpy._acc import (
+    DEPR_INPLACE,
+    DEPR_KEY_ADDED,
+    DEPR_LAYER,
+    DEPR_USE_REP,
+    _get,
+    _key,
+    _legacy,
+    _obsm_key,
+    _spec,
+)
 from infercnvpy._logging import log_result
-from infercnvpy._util import _as_matrix, _choose_mtx_rep, _params_for_uns
+from infercnvpy._util import _as_matrix, _params_for_uns
 
 
+def _legacy_out(out: Any, key_added: str | None, inplace: bool | None) -> Any:
+    out = _legacy(out, key_added, A.obs[key_added] if key_added else None, name="key_added", default=False)
+    return True if inplace is False else out
+
+
+def _write_obs(adata: AnnData, val: Any, out: Any, default: str) -> str:
+    key = default if out is False else _key(out, "obs")
+    adata.obs[key] = val
+    return key
+
+
+@deprecated_arg("use_rep", DEPR_USE_REP)
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE)
+@deprecated_arg("obs_key", Deprecation("0.7.0", "Use `groupby` instead."))
 def cnv_score(
     adata: AnnData,
     groupby: str = "cnv_leiden",
     *,
-    use_rep: str = "cnv",
-    key_added: str = "cnv_score",
-    inplace: bool = True,
-    obs_key=None,
+    use: Any = None,
+    out: Any = False,
+    use_rep: str | None = None,
+    key_added: str | None = None,
+    inplace: bool | None = None,
+    obs_key: str | None = None,
 ) -> Mapping[Any, np.number] | None:
     """Assign each cnv cluster a CNV score.
 
@@ -37,60 +65,64 @@ def cnv_score(
         Key under which the clustering is stored in adata.obs. Usually
         the result of :func:`infercnvpy.tl.leiden`, but could also be
         other grouping information, e.g. sample or patient information.
+    use
+        The CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). Strings are resolved by
+        :meth:`anndata.acc.AdAcc.resolve`, e.g. `"obsm.X_cnv"`.
+    out
+        Where to write the score, e.g. `A.obs["cnv_score"]` (the default).
+        If `True`, return the score per group instead of writing it.
     use_rep
-        Key under which the result of :func:`infercnvpy.tl.infercnv` is stored
-        in adata.
+        Deprecated, use `use`.
     key_added
-        Key under which the score will be stored in `adata.obs`.
+        Deprecated, use `out`.
     inplace
-        If True, store the result in adata, otherwise return it.
+        Deprecated, use `out=True` to return the result.
     obs_key
-        Deprecated alias for `groupby`.
+        Deprecated, use `groupby`.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the fields below.
-    Otherwise returns a dictionary with the score per group.
-    Sets the following fields:
+    A dictionary with the score per group if `out=True`, else `None`.
+    By default sets the following fields:
 
-    `adata.obs[key_added]` : float
+    `adata.obs["cnv_score"]` : float
         Score of the group each cell belongs to.
-    `adata.uns[key_added]["params"]` : :class:`dict`
-        Parameters of this call (`groupby`, `use_rep`).
+    `adata.uns["cnv_score"]["params"]` : :class:`dict`
+        Parameters of this call (`groupby`, `use`).
     """
-    if obs_key is not None:
-        warnings.warn(
-            "The obs_key argument has been renamed to `groupby` for consistency with "
-            "other functions and will be removed in the future. ",
-            category=FutureWarning,
-            stacklevel=2,
-        )
-        groupby = obs_key
+    groupby = groupby if obs_key is None else obs_key
+    use = _legacy(use, use_rep, A.obsm[f"X_{use_rep}"], name="use_rep")
+    use = A.obsm[_obsm_key("cnv")] if use is None else use
+    out = _legacy_out(out, key_added, inplace)
 
     if groupby not in adata.obs.columns and groupby == "cnv_leiden":
         raise ValueError("`cnv_leiden` not found in `adata.obs`. Did you run `tl.leiden`?")
+    X = _get(adata, use)
     cluster_score = {
-        cluster: np.mean(np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == cluster, :]))
-        for cluster in adata.obs[groupby].unique()
+        cluster: np.mean(np.abs(X[adata.obs[groupby].values == cluster, :])) for cluster in adata.obs[groupby].unique()
     }
     log_result("cnv_score", "scored %d groups of %r", len(cluster_score), groupby)
 
-    if inplace:
-        score_array = np.array([cluster_score[c] for c in adata.obs[groupby]])
-        adata.obs[key_added] = score_array
-        adata.uns[key_added] = {"params": _params_for_uns(groupby=groupby, use_rep=use_rep)}
-        return None
-    return cluster_score
+    if out is True:
+        return cluster_score
+    key = _write_obs(adata, np.array([cluster_score[c] for c in adata.obs[groupby]]), out, "cnv_score")
+    adata.uns[key] = {"params": _params_for_uns(groupby=groupby, use=_spec(use))}
+    return None
 
 
+@deprecated_arg("layer", DEPR_LAYER)
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE)
 def ithgex(
     adata: AnnData,
     groupby: str,
     *,
+    use: Any = None,
+    out: Any = False,
     use_raw: bool | None = None,
     layer: str | None = None,
-    inplace: bool = True,
-    key_added: str = "ithgex",
+    inplace: bool | None = None,
+    key_added: str | None = None,
 ) -> Mapping[str, float] | None:
     """Compute the ITHGEX diversity score based on gene expression :cite:`Wu2021`.
 
@@ -119,32 +151,42 @@ def ithgex(
         annotated data matrix
     groupby
         calculate diversity for each group defined in this category.
+    use
+        The gene expression, e.g. `A.X` (the default) or `A.layers["counts"]`.
+        Strings are resolved by :meth:`anndata.acc.AdAcc.resolve`.
+    out
+        Where to write the score, e.g. `A.obs["ithgex"]` (the default).
+        If `True`, return the score per group instead of writing it.
     use_raw
-        If `True`, use gene expression from `adata.raw.X`. Default: use `adata.X`
-        (or `layer`, if given), even when `adata.raw` is present.
+        If `True`, use gene expression from `adata.raw.X`. Default: use `use`,
+        even when `adata.raw` is present.
     layer
-        Use gene expression from `adata.layers[layer]`
+        Deprecated, use `use`.
     inplace
-        If True, store the result in adata, otherwise return it.
+        Deprecated, use `out=True` to return the result.
     key_added
-        Key under which the score will be stored in `adata.obs`.
+        Deprecated, use `out`.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the field below.
-    Otherwise returns a dictionary with one value per group. Groups with a
+    A dictionary with one value per group if `out=True`, else `None`. Groups with a
     single cell have no cell pairs to correlate and get a score of `NaN`.
-    Sets the following fields:
+    By default sets the following field:
 
-    `adata.obs[key_added]` : float
+    `adata.obs["ithgex"]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
+    use = _legacy(use, layer, A.layers[layer], name="layer")
+    if use_raw and use is not None:
+        raise ValueError(f"Cannot use expression from both `use` and raw. You provided: use_raw={use_raw}, use={use!r}")
+    use = A.X if use is None else use
+    out = _legacy_out(out, key_added, inplace)
     groups = adata.obs[groupby].unique()
     ithgex = {}
     for group in groups:
         tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = _choose_mtx_rep(tmp_adata, use_raw, layer)
-        if sp.issparse(X):
+        X = _as_matrix(tmp_adata.raw.X if use_raw else _get(tmp_adata, use))
+        if not isinstance(X, np.ndarray):
             X = X.todense()
         if X.shape[0] <= 1:
             # a single cell has no cell pairs to correlate
@@ -158,22 +200,24 @@ def ithgex(
         q75, q25 = np.percentile(pcorr, [75, 25])
         ithgex[group] = q75 - q25
 
-    if inplace:
-        ithgex_obs = np.full(adata.shape[0], np.nan)
-        for group in groups:
-            ithgex_obs[adata.obs[groupby] == group] = ithgex[group]
-        adata.obs[key_added] = ithgex_obs
-        return None
-    return ithgex
+    if out is True:
+        return ithgex
+    _write_obs(adata, adata.obs[groupby].map(ithgex).to_numpy(dtype=float), out, "ithgex")
+    return None
 
 
+@deprecated_arg("use_rep", DEPR_USE_REP)
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE)
 def ithcna(
     adata: AnnData,
     groupby: str,
     *,
-    use_rep: str = "X_cnv",
-    key_added: str = "ithcna",
-    inplace: bool = True,
+    use: Any = None,
+    out: Any = False,
+    use_rep: str | None = None,
+    key_added: str | None = None,
+    inplace: bool | None = None,
 ) -> Mapping[str, float] | None:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
 
@@ -198,29 +242,37 @@ def ithcna(
         annotated data matrix
     groupby
         calculate diversity for each group defined in this category.
+    use
+        The CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). Strings are resolved by
+        :meth:`anndata.acc.AdAcc.resolve`.
+    out
+        Where to write the score, e.g. `A.obs["ithcna"]` (the default).
+        If `True`, return the score per group instead of writing it.
     use_rep
-        Key under which the result of :func:`infercnvpy.tl.infercnv` is stored
-        in adata.
+        Deprecated, use `use`.
     key_added
-        Key under which the score will be stored in `adata.obs`.
+        Deprecated, use `out`.
     inplace
-        If True, store the result in adata, otherwise return it.
+        Deprecated, use `out=True` to return the result.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the field below.
-    Otherwise returns a dictionary with one value per group. Groups with a
+    A dictionary with one value per group if `out=True`, else `None`. Groups with a
     single cell have no cell pairs to correlate and get a score of `NaN`.
-    Sets the following fields:
+    By default sets the following field:
 
-    `adata.obs[key_added]` : float
+    `adata.obs["ithcna"]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
+    # unlike the other functions, `use_rep` was the full `.obsm` key here
+    use = _legacy(use, use_rep, A.obsm[use_rep] if use_rep else None, name="use_rep")
+    use = A.obsm[_obsm_key("cnv")] if use is None else use
+    out = _legacy_out(out, key_added, inplace)
     groups = adata.obs[groupby].unique()
     ithcna = {}
     for group in groups:
         tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = _as_matrix(tmp_adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
+        X = _as_matrix(_get(tmp_adata, use), repr(use))
         if not isinstance(X, np.ndarray):
             X = X.todense()
         if X.shape[0] <= 1:
@@ -235,10 +287,7 @@ def ithcna(
         q75, q25 = np.percentile(pcorr, [75, 25])
         ithcna[group] = q75 - q25
 
-    if inplace:
-        ithcna_obs = np.full(adata.shape[0], np.nan)
-        for group in groups:
-            ithcna_obs[adata.obs[groupby] == group] = ithcna[group]
-        adata.obs[key_added] = ithcna_obs
-        return None
-    return ithcna
+    if out is True:
+        return ithcna
+    _write_obs(adata, adata.obs[groupby].map(ithcna).to_numpy(dtype=float), out, "ithcna")
+    return None

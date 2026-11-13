@@ -1,24 +1,34 @@
 import os
 from multiprocessing import cpu_count
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from anndata import AnnData
+from anndata.acc import A
+from scverse_misc import deprecated_arg
 
+from infercnvpy._acc import DEPR_INPLACE, DEPR_KEY_ADDED, DEPR_LAYER, _get, _key, _legacy, _obsm_key
 from infercnvpy._logging import log, log_result
 from infercnvpy._util import _as_df, _as_matrix
 
 
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE)
+@deprecated_arg("layer", DEPR_LAYER)
 def copykat(
     adata: AnnData,
+    *,
+    use: Any = None,
+    out: Any = False,
     gene_ids: str = "S",
     organism: str = "human",
     segmentation_cut: float = 0.1,
     distance: str = "euclidean",
     s_name: str = "copykat_result",
     min_genes_chr: int = 5,
-    key_added: str = "cnv",
-    inplace: bool = True,
+    key_added: str | None = None,
+    inplace: bool | None = None,
     layer: str | None = None,
     n_jobs: int | None = None,
     norm_cell_names: str = "",
@@ -51,13 +61,19 @@ def copykat(
     ----------
     adata
         annotated data matrix
+    use
+        The raw counts, e.g. `A.X` (the default) or `A.layers["counts"]`.
+        Strings are resolved by :meth:`anndata.acc.AdAcc.resolve`.
+    out
+        Where to write the copy number matrix, e.g. `A.obsm["X_copykat"]` (the default).
+        The prediction and chromosome positions go to `adata.obs` and `adata.uns` under
+        the same name without the `X_` prefix. If `True`, return the results instead.
     key_added
-        Key under which the copyKAT results will be stored in `adata.obsm`, `adata.obs`
-        and `adata.uns`.
+        Deprecated, use `out`.
     inplace
-        If True, store the result in adata, otherwise return it.
+        Deprecated, use `out=True` to return the result.
     layer
-        AnnData layer to use for running copykat
+        Deprecated, use `use`.
     gene_ids
         gene id type: Symbol ("S") or Ensemble ("E").
     segmentation_cut
@@ -83,20 +99,24 @@ def copykat(
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the fields below. Otherwise
-    returns a tuple (`CNV Matrix`, `CopyKat prediction`).
-    Sets the following fields:
+    A tuple (`CNV Matrix`, `CopyKat prediction`) if `out=True`, else `None`.
+    By default sets the following fields:
 
-    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+    `adata.obsm["X_copykat"]` : :class:`numpy.ndarray`
         CopyKAT copy number values, cells x genomic bins.
-    `adata.obs[key_added]` : :class:`pandas.Series`
+    `adata.obs["copykat"]` : :class:`pandas.Series`
         CopyKAT prediction per cell (e.g. "aneuploid" or "diploid").
-    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
-        Maps each chromosome to the column of `X_{key_added}` where it starts.
+    `adata.uns["copykat"]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_copykat` where it starts.
 
-    With the default `key_added="cnv"`, these fields replace the results of
-    :func:`infercnvpy.tl.infercnv` stored under the same default key.
+    .. versionchanged:: 0.7.0
+        Results are stored under `copykat` instead of `cnv`, so they no longer
+        replace the results of :func:`infercnvpy.tl.infercnv`.
     """
+    use = _legacy(use, layer, A.layers[layer], name="layer")
+    use = A.X if use is None else use
+    out = _legacy(out, key_added, A.obsm[f"X_{key_added}"], name="key_added", default=False)
+    out = True if inplace is False else out
     if n_jobs is None:
         n_jobs = cpu_count()
     if os.name != "posix":
@@ -120,7 +140,7 @@ def copykat(
 
     start = log.debug("copykat: preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
-        expr = _as_matrix(adata.X if layer is None else adata.layers[layer])
+        expr = _as_matrix(_get(adata, use), repr(use))
         if not isinstance(expr, np.ndarray):
             expr = expr.T.toarray()
         else:
@@ -185,9 +205,10 @@ def copykat(
     new_cpkat_trans = new_cpkat.T.values
     log_result("copykat", "%d cells x %d bins", *new_cpkat_trans.shape, time=start)
 
-    if inplace:
-        adata.uns[key_added] = chrom_pos
-        adata.obsm[f"X_{key_added}"] = new_cpkat_trans
-        adata.obs[key_added] = copyKAT_pred
-        return None
-    return new_cpkat_trans, copyKAT_pred
+    if out is True:
+        return new_cpkat_trans, copyKAT_pred
+    key = _obsm_key("copykat") if out is False else _key(out, "obsm")
+    adata.obsm[key] = new_cpkat_trans
+    adata.obs[key.removeprefix("X_")] = copyKAT_pred
+    adata.uns[key.removeprefix("X_")] = chrom_pos
+    return None

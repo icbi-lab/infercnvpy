@@ -1,23 +1,39 @@
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 import scanpy.queries
 from anndata import AnnData
+from scverse_misc import Deprecation, deprecated_arg
 
+from infercnvpy._acc import DEPR_INPLACE, _key
 from infercnvpy._logging import log_result
 from infercnvpy._util import _as_df
 
+DEPR_ADATA_GENE_ID = Deprecation("0.7.0", "Use `use` instead, e.g. `use=A.var['gene_ids']`.")
 
+
+def _legacy_args(use: Any, out: bool, adata_gene_id: str | None, inplace: bool | None) -> tuple[str | None, bool]:
+    """Column with the gene ids (`None` for `var_names`) and `out`, from the new and deprecated arguments."""
+    if adata_gene_id is not None and use is not None:
+        raise TypeError("Pass either `use` or `adata_gene_id`, not both.")
+    col = adata_gene_id if use is None else _key(use, "var")
+    return col, True if inplace is False else out
+
+
+@deprecated_arg("adata_gene_id", DEPR_ADATA_GENE_ID)
+@deprecated_arg("inplace", DEPR_INPLACE)
 def genomic_position_from_biomart(
     adata: AnnData | None = None,
     *,
-    adata_gene_id: str | None = None,
+    use: Any = None,
+    out: bool = False,
     biomart_gene_id="ensembl_gene_id",
     species: str = "hsapiens",
-    inplace: bool = True,
+    adata_gene_id: str | None = None,
+    inplace: bool | None = None,
     **kwargs,
 ) -> pd.DataFrame | None:
     """
@@ -28,17 +44,22 @@ def genomic_position_from_biomart(
     adata
         Adds the genomic positions to `adata.var`. If adata is None, returns
         a data frame with the genomic positions instead.
-    adata_gene_id
-        Column in `adata.var` that contains (ENSMBL) gene IDs. If not specified,
-        use `adata.var_names`.
+    use
+        Column in `adata.var` that contains (ENSMBL) gene IDs, e.g. `A.var["gene_ids"]`.
+        Default: `adata.var_names`.
+    out
+        If `True`, return the annotated `var` data frame instead of replacing `adata.var`.
     biomart_gene_id
         The biomart column to use as gene identifier. Typically this would be `ensembl_gene_id` or `hgnc_symbol`,
         but could be different for other species.
+    adata_gene_id
+        Deprecated, use `use`.
     inplace
-        If True, add the annotations directly to adata, otherwise return a dataframe.
+        Deprecated, use `out=True` to return the result.
     **kwargs
         passed on to :func:`scanpy.queries.biomart_annotations`
     """
+    adata_gene_id, out = _legacy_args(use, out, adata_gene_id, inplace)
     biomart_annot = (
         scanpy.queries.biomart_annotations(
             species,
@@ -71,7 +92,7 @@ def genomic_position_from_biomart(
         biomart_gene_id,
         gene_ids_adata,
         source="BioMart",
-        remedy=f"check that the gene ids in adata are {biomart_gene_id} values (see `adata_gene_id`)",
+        remedy=f"check that the gene ids in adata are {biomart_gene_id} values (see `use`)",
     )
 
     tmp_var = _as_df(adata.var).copy()
@@ -89,19 +110,23 @@ def genomic_position_from_biomart(
     var_annotated.set_index(TMP_INDEX_NAME, inplace=True)
     var_annotated.index.name = orig_index_name
 
-    if inplace:
-        adata.var = var_annotated
-        return None
-    return var_annotated
+    if out:
+        return var_annotated
+    adata.var = var_annotated
+    return None
 
 
+@deprecated_arg("adata_gene_id", DEPR_ADATA_GENE_ID)
+@deprecated_arg("inplace", DEPR_INPLACE)
 def genomic_position_from_gtf(
     gtf_file: Path | str,
     adata: AnnData | None = None,
     *,
+    use: Any = None,
+    out: bool = False,
     gtf_gene_id: Literal["gene_id", "gene_name"] = "gene_name",
     adata_gene_id: str | None = None,
-    inplace: bool = True,
+    inplace: bool | None = None,
 ) -> pd.DataFrame | None:
     """
     Get genomic gene positions from a GTF file.
@@ -118,14 +143,19 @@ def genomic_position_from_gtf(
     adata
         Adds the genomic positions to `adata.var`. If adata is None, returns
         a data frame with the genomic positions instead.
+    use
+        Column in `adata.var` to match to the gene ids from the GTF file,
+        e.g. `A.var["gene_ids"]`. Default: `adata.var_names`.
+    out
+        If `True`, return the annotated `var` data frame instead of replacing `adata.var`.
     gtf_gene_id
         Use this GTF column to match it to anndata
     adata_gene_id
-        Match this column to the gene ids from the GTF file. Default: use
-        adata.var_names.
+        Deprecated, use `use`.
     inplace
-        If True, add the annotations directly to adata, otherwise return a dataframe.
+        Deprecated, use `out=True` to return the result.
     """
+    adata_gene_id, out = _legacy_args(use, out, adata_gene_id, inplace)
     try:
         import gtfparse
     except ImportError:
@@ -154,7 +184,7 @@ def genomic_position_from_gtf(
         gtf_gene_id,
         gene_ids_adata,
         source="the GTF file",
-        remedy="check `gtf_gene_id` and `adata_gene_id`, and that the GTF file matches the genome build of the data",
+        remedy="check `gtf_gene_id` and `use`, and that the GTF file matches the genome build of the data",
     )
 
     tmp_var = _as_df(adata.var).copy()
@@ -174,10 +204,10 @@ def genomic_position_from_gtf(
 
     var_annotated = _add_chr_prefix(var_annotated)
 
-    if inplace:
-        adata.var = var_annotated
-        return None
-    return var_annotated
+    if out:
+        return var_annotated
+    adata.var = var_annotated
+    return None
 
 
 def _drop_duplicates_and_report(

@@ -26,7 +26,7 @@ classifiers = [
 ]
 dynamic = [ "version" ]
 dependencies = [
-  "anndata>=0.12",
+  "anndata>=0.13.2",                      # anndata.acc accessors for `use`/`out`
   "leidenalg>=0.11",
   "matplotlib>=3.10",
   "numpy>=2.2",
@@ -35,7 +35,7 @@ dependencies = [
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
   "rdata>=1",                             # MIT; reads SCEVAN .RData files
-  "scanpy>=1.11",
+  "scanpy>=1.13",
   "scipy>=1.15",
   # the shared `scverse` logger and the example dataset registry
   "scverse-misc[datasets]>=0.1.8",

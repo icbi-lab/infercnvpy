@@ -1,58 +1,77 @@
+from typing import Any
+
 import scanpy as sc
 from anndata import AnnData
+from anndata.acc import A
+from scverse_misc import deprecated_arg
 
 from infercnvpy import tl
-from infercnvpy._logging import log
+from infercnvpy._acc import DEPR_INPLACE_COPY, DEPR_KEY_ADDED, DEPR_USE_REP, _legacy, _obsm_key
 
 __all__ = ["neighbors"]
 
 
+@deprecated_arg("use_rep", DEPR_USE_REP)
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE_COPY)
 def neighbors(
     adata: AnnData,
-    use_rep: str = "cnv_pca",
-    key_added: str = "cnv_neighbors",
-    inplace: bool = True,
+    *,
+    use: Any = None,
+    out: Any = False,
+    use_rep: str | None = None,
+    key_added: str | None = None,
+    inplace: bool | None = None,
     **kwargs,
 ):
     """Compute the neighborhood graph based on the result from :func:`infercnvpy.tl.infercnv`.
 
+    Thin wrapper around :func:`scanpy.pp.neighbors`.
+
+    .. versionchanged:: 0.7.0
+        The connectivities are stored in `adata.obsp["cnv_neighbors"]` instead of
+        `adata.obsp["cnv_neighbors_connectivities"]`, as in scanpy>=1.13.
+
     Parameters
     ----------
     adata
-        AnnData object
+        Annotated data matrix.
+    use
+        The representation to compute neighbors on, e.g. `A.obsm["X_cnv_pca"]` (the default;
+        computed with :func:`infercnvpy.tl.pca` at default settings if missing).
+        Strings are resolved by :meth:`anndata.acc.AdAcc.resolve`, e.g. `"obsm.X_cnv_pca"`.
+    out
+        Where to write the graph, e.g. `A.obsp["cnv_neighbors"]` (the default), see
+        :func:`scanpy.pp.neighbors`. If `True`, return it instead of writing it.
     use_rep
-        Key under which the PCA of the results of :func:`infercnvpy.tl.infercnv`
-        are stored in anndata. If not present, attempts to run :func:`infercnvpy.tl.pca`
-        with default parameters.
+        Deprecated, use `use`.
     key_added
-        Distances are stored in .obsp[key_added+’_distances’] and connectivities in
-        .obsp[key_added+’_connectivities’].
+        Deprecated, use `out`.
     inplace
-        If `True`, store the neighborhood graph in adata, otherwise return
-        a copy of adata that holds the graph.
+        Deprecated, copy `adata` before calling this function instead.
     **kwargs
         Arguments passed to :func:`scanpy.pp.neighbors`.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the fields below on adata.
-    Otherwise returns a copy of adata with these fields.
-    Sets the following fields:
+    The graph if `out=True`, else `None`. By default sets the following fields:
 
-    `adata.obsp["{key_added}_distances"]` : :class:`scipy.sparse.csr_matrix`
-        Distances between each cell and its nearest neighbors.
-    `adata.obsp["{key_added}_connectivities"]` : :class:`scipy.sparse.csr_matrix`
+    `adata.obsp["cnv_neighbors"]` : :class:`scipy.sparse.csr_matrix`
         Weighted adjacency matrix of the neighborhood graph.
-    `adata.uns[key_added]` : :class:`dict`
-        Keys of the two matrices and the parameters, as recorded by
-        :func:`scanpy.pp.neighbors`.
+    `adata.obsp["cnv_neighbors_distances"]` : :class:`scipy.sparse.csr_matrix`
+        Distances between each cell and its nearest neighbors.
+    `adata.uns["cnv_neighbors"]` : :class:`dict`
+        Keys of the two matrices and the parameters, as recorded by :func:`scanpy.pp.neighbors`.
     `adata.obsm["X_cnv_pca"]` : :class:`numpy.ndarray`
-        Only if `use_rep="cnv_pca"` and it is missing: the PCA computed with
-        :func:`infercnvpy.tl.pca` at default settings. This is set on adata even
-        if `inplace=False`.
+        Only if `use` is the default and it is missing: the PCA computed with
+        :func:`infercnvpy.tl.pca` at default settings. This is set on adata even if
+        `inplace=False`.
     """
-    if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
-        tl.pca(adata)
-        log.info("neighbors: computed X_cnv_pca with default parameters, as it was not in adata.obsm")
-
-    return sc.pp.neighbors(adata, use_rep=f"X_{use_rep}", key_added=key_added, copy=not inplace, **kwargs)
+    use = _legacy(use, use_rep, A.obsm[f"X_{use_rep}"], name="use_rep")
+    out = _legacy(out, key_added, A.obsp[key_added] if key_added else None, name="key_added", default=False)
+    use = A.obsm[_obsm_key("cnv_pca")] if use is None else use
+    tl._ensure_pca(adata, use, "neighbors")
+    if inplace is False:
+        adata = adata.copy()
+    res = sc.pp.neighbors(adata, use=use, out=A.obsp["cnv_neighbors"] if out is False else out, **kwargs)
+    return adata if inplace is False else res
