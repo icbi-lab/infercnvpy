@@ -29,14 +29,14 @@ def neighbors(
         .obsp[key_added+’_connectivities’].
     inplace
         If `True`, store the neighborhood graph in adata, otherwise return
-        the distance and connectivity matrices.
+        a copy of adata that holds the graph.
     **kwargs
         Arguments passed to :func:`scanpy.pp.neighbors`.
 
     Returns
     -------
-    Depending on the value of inplace, updates anndata or returns the distance
-    and connectivity matrices.
+    Depending on the value of inplace, updates adata and returns `None`, or
+    returns a copy of adata with the neighborhood graph.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
         tl.pca(adata)

@@ -64,9 +64,10 @@ def infercnv(
         only compute every nth running window where n = `step`. Set to 1 to compute
         all windows.
     dynamic_threshold
-        Values `< dynamic threshold * STDDEV` will be set to 0, where STDDEV is
-        the stadard deviation of the smoothed gene expression. Set to `None` to disable
-        this step.
+        Values with an absolute value `< dynamic_threshold * STDDEV` will be set to 0,
+        where STDDEV is the standard deviation of the smoothed, cell-centered gene
+        expression, computed separately for each chunk of `chunksize` cells. Set to
+        `None` to disable this step.
     exclude_chromosomes
         List of chromosomes to exclude. The default is to exclude genosomes.
     chunksize

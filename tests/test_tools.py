@@ -264,6 +264,14 @@ def adata_cnv_neighbors():
     return adata
 
 
+def test_neighbors_not_inplace_returns_copy(adata_cnv_neighbors):
+    """As documented, `inplace=False` returns a copy of adata with the graph and leaves adata unchanged."""
+    res = cnv.pp.neighbors(adata_cnv_neighbors, key_added="other", inplace=False)
+    assert isinstance(res, sc.AnnData)
+    assert "other_connectivities" in res.obsp
+    assert "other_connectivities" not in adata_cnv_neighbors.obsp
+
+
 def test_leiden_defaults_to_igraph(adata_cnv_neighbors, monkeypatch):
     calls = []
     monkeypatch.setattr(sc.tl, "leiden", lambda adata, **kwargs: calls.append(kwargs))
