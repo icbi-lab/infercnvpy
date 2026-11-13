@@ -39,7 +39,7 @@ needs_sphinx = "4.0"
 
 html_context = {
     "display_github": True,  # Integrate GitHub
-    "github_user": "icbi-lab",
+    "github_user": "scverse",
     "github_repo": project,
     "github_version": "main",
     "conf_py_path": "/docs/",

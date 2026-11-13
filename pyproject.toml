@@ -44,9 +44,12 @@ dependencies = [
 optional-dependencies.copykat = [ "rpy2" ]
 optional-dependencies.gtf = [ "gtfparse>=2.1" ]
 # https://docs.pypi.org/project_metadata/#project-urls
+urls.Changelog = "https://github.com/scverse/infercnvpy/releases"
 urls.Documentation = "https://infercnvpy.readthedocs.io/"
-urls.Homepage = "https://github.com/icbi-lab/infercnvpy"
-urls.Source = "https://github.com/icbi-lab/infercnvpy"
+urls.Forum = "https://discourse.scverse.org/"
+urls.Homepage = "https://github.com/scverse/infercnvpy"
+urls.Issues = "https://github.com/scverse/infercnvpy/issues"
+urls.Source = "https://github.com/scverse/infercnvpy"
 contributors = [
   { name = "Grant Neilson", email = "grant.neilson5@gmail.com" },
 ]
@@ -168,6 +171,7 @@ skip = [
   "tests",
   "src/**/__init__.py",
   "src/**/basic.py",
+  "CHANGELOG.md",
   "docs/api.md",
   "docs/changelog.md",
   "docs/references.bib",

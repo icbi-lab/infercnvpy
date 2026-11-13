@@ -9,7 +9,7 @@
       "project_description": "Infer copy number variation (CNV) from scRNA-seq data. Plays nicely with Scanpy. ",
       "author_full_name": "Gregor Sturm",
       "author_email": "mail@gregor-sturm.de",
-      "github_user": "grst",
+      "github_user": "scverse",
       "github_repo": "infercnvpy",
       "license": "BSD 3-Clause License",
       "ide_integration": true,
