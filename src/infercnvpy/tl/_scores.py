@@ -8,7 +8,7 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
-from infercnvpy._util import _choose_mtx_rep
+from infercnvpy._util import _as_matrix, _choose_mtx_rep
 
 
 def cnv_score(
@@ -70,8 +70,8 @@ def cnv_score(
     if inplace:
         score_array = np.array([cluster_score[c] for c in adata.obs[groupby]])
         adata.obs[key_added] = score_array
-    else:
-        return cluster_score
+        return None
+    return cluster_score
 
 
 def ithgex(
@@ -147,8 +147,8 @@ def ithgex(
         for group in groups:
             ithgex_obs[adata.obs[groupby] == group] = ithgex[group]
         adata.obs[key_added] = ithgex_obs
-    else:
-        return ithgex
+        return None
+    return ithgex
 
 
 def ithcna(
@@ -199,8 +199,8 @@ def ithcna(
     ithcna = {}
     for group in groups:
         tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = tmp_adata.obsm[use_rep]
-        if sp.issparse(X):
+        X = _as_matrix(tmp_adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
+        if not isinstance(X, np.ndarray):
             X = X.todense()
         if X.shape[0] <= 1:
             continue
@@ -217,5 +217,5 @@ def ithcna(
         for group in groups:
             ithcna_obs[adata.obs[groupby] == group] = ithcna[group]
         adata.obs[key_added] = ithcna_obs
-    else:
-        return ithcna
+        return None
+    return ithcna

@@ -117,10 +117,12 @@ def read_scevan(
     if subset:
         adata._inplace_subset_obs(scevan_res.index.values)
 
-    adata.obsm[f"X_{key_added}"] = scevan_res.reindex(adata.obs_names).values
+    cna = scevan_res.reindex(adata.obs_names)
     if scevan_subclone_res is not None:
-        adata.obsm[f"X_{key_added}"].loc[scevan_subclone_res.index, :] = scevan_subclone_res
+        cna.loc[scevan_subclone_res.index, :] = scevan_subclone_res
+    adata.obsm[f"X_{key_added}"] = cna.values
     adata.uns[key_added] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
 
     if not inplace:
         return adata
+    return None

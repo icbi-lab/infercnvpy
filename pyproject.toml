@@ -162,6 +162,10 @@ lint.pydocstyle.convention = "numpy"
 
 [tool.mypy]
 files = [ "src", "tests" ]
+overrides = [
+  # Third-party packages that ship no type information (scipy-stubs types sparse matrices without their methods)
+  { module = [ "anndata.*", "gtfparse.*", "pooch.*", "rpy2.*", "scanpy.*", "scipy.*", "tqdm.*" ], ignore_missing_imports = true },
+]
 
 [tool.pytest]
 addopts = [

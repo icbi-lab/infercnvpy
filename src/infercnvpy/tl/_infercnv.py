@@ -12,7 +12,7 @@ from scanpy import logging
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
-from infercnvpy._util import _ensure_array
+from infercnvpy._util import _as_matrix, _ensure_array
 
 
 def infercnv(
@@ -110,9 +110,9 @@ def infercnv(
     tmp_adata = adata[:, ~var_mask]
     reference = _get_reference(adata, reference_key, reference_cat, reference, layer)[:, ~var_mask]
 
-    expr = tmp_adata.X if layer is None else tmp_adata.layers[layer]
+    expr = _as_matrix(tmp_adata.X if layer is None else tmp_adata.layers[layer])
 
-    if scipy.sparse.issparse(expr):
+    if not isinstance(expr, np.ndarray):
         expr = expr.tocsr()
 
     var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
@@ -156,9 +156,8 @@ def infercnv(
 
         if calculate_gene_values:
             adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
-
-    else:
-        return chr_pos, res, per_gene_mtx
+        return None
+    return chr_pos, res, per_gene_mtx
 
 
 def _natural_sort(l: Sequence):
@@ -177,10 +176,10 @@ def _natural_sort(l: Sequence):
 
 
 def _running_mean(
-    x: np.ndarray | scipy.sparse.spmatrix,
+    x: np.ndarray,
     n: int = 50,
     step: int = 10,
-    gene_list: list = None,
+    gene_list: Sequence | np.ndarray | None = None,
     calculate_gene_values: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame | None]:
     """
@@ -202,6 +201,7 @@ def _running_mean(
     calculate_gene_values
         If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
     """
+    gene_list = np.arange(x.shape[1]) if gene_list is None else np.asarray(gene_list)
     if n < x.shape[1]:  # regular convolution: the filter is smaller than the #genes
         r = np.arange(1, n + 1)
         pyramid = np.minimum(r, r[::-1])
@@ -264,7 +264,7 @@ def _calculate_gene_averages(
         A DataFrame with the average value of each gene in the convolution
     """
     ## create a dictionary to store the gene values per sample
-    gene_to_values = {}
+    gene_to_values: dict = {}
     # Calculate the number of genes in each convolution, will be same as the window size default=100
     length = len(convolved_gene_names[0])
     # Convert the flattened convolved gene names to a list
@@ -330,17 +330,16 @@ def _running_mean_by_chromosome(
         _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values) for chr in chromosomes
     ]
 
-    running_means, convolved_dfs = zip(*running_means, strict=False)
+    means, gene_dfs = zip(*running_means, strict=False)
 
     chr_start_pos = {}
-    for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in running_means]), strict=False):
+    for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in means]), strict=False):
         chr_start_pos[chr] = i
 
     ## Concatenate the gene dfs
-    if calculate_gene_values:
-        convolved_dfs = pd.concat(convolved_dfs, axis=1)
+    convolved_dfs = pd.concat(gene_dfs, axis=1) if calculate_gene_values else None
 
-    return chr_start_pos, np.hstack(running_means), convolved_dfs
+    return chr_start_pos, np.hstack(means), convolved_dfs
 
 
 def _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values):
@@ -386,18 +385,15 @@ def _get_reference(
 
         else:
             obs_col = adata.obs[reference_key]
-            if isinstance(reference_cat, str):
-                reference_cat = [reference_cat]
-            reference_cat = np.array(reference_cat)
-            reference_cat_in_obs = np.isin(reference_cat, obs_col)
-            if not np.all(reference_cat_in_obs):
+            cats = np.array([reference_cat] if isinstance(reference_cat, str) else reference_cat)
+            cats_in_obs = np.isin(cats, obs_col)
+            if not np.all(cats_in_obs):
                 raise ValueError(
                     "The following reference categories were not found in "
-                    "adata.obs[reference_key]: "
-                    f"{reference_cat[~reference_cat_in_obs]}"
+                    f"adata.obs[reference_key]: {cats[~cats_in_obs]}"
                 )
 
-            reference = np.vstack([np.mean(X[obs_col.values == cat, :], axis=0) for cat in reference_cat])
+            reference = np.vstack([np.mean(X[obs_col.values == cat, :], axis=0) for cat in cats])
 
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]

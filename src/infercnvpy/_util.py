@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import scipy.sparse as sp
 
 
 def _ensure_array(a):
@@ -7,6 +9,22 @@ def _ensure_array(a):
         return a.A
     else:
         return a
+
+
+def _as_matrix(x, what: str = "the expression matrix") -> np.ndarray | sp.spmatrix | sp.sparray:
+    """Narrow an AnnData array to an in-memory numpy array or scipy sparse matrix."""
+    if isinstance(x, np.ndarray) or sp.issparse(x):
+        return x
+    raise TypeError(
+        f"infercnvpy needs {what} as a numpy array or scipy sparse matrix in memory, got {type(x).__name__}."
+    )
+
+
+def _as_df(df) -> pd.DataFrame:
+    """Narrow `obs`/`var` to a pandas DataFrame (AnnData also allows lazy `Dataset2D`)."""
+    if isinstance(df, pd.DataFrame):
+        return df
+    raise TypeError(f"infercnvpy needs `obs` and `var` as pandas DataFrames, got {type(df).__name__}.")
 
 
 def _choose_mtx_rep(adata, use_raw=False, layer=None):

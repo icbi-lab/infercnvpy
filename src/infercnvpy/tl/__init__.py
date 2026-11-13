@@ -71,8 +71,8 @@ def pca(
     )
     if inplace:
         adata.obsm[f"X_{key_added}"] = pca_res
-    else:
-        return pca_res
+        return None
+    return pca_res
 
 
 def umap(
@@ -104,8 +104,8 @@ def umap(
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = tmp_adata.obsm["X_umap"]
-    else:
-        return tmp_adata.obsm["X_umap"]
+        return None
+    return tmp_adata.obsm["X_umap"]
 
 
 def tsne(
@@ -140,5 +140,5 @@ def tsne(
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = tmp_adata.obsm["X_tsne"]
-    else:
-        return tmp_adata.obsm["X_tsne"]
+        return None
+    return tmp_adata.obsm["X_tsne"]
