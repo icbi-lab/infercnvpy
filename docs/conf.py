@@ -29,7 +29,12 @@ bibtex_bibfiles = ["references.bib"]
 typehints_defaults = "braces"
 always_use_bars_union = True  # use `|` instead of `Union` in types even when building with Python ≤3.14
 
-intersphinx_mapping = intersphinx() | {"pooch": ("https://www.fatiando.org/pooch/latest/", None)}
+intersphinx_mapping = intersphinx() | {
+    "dask": ("https://docs.dask.org/en/stable/", None),
+    "distributed": ("https://distributed.dask.org/en/stable/", None),
+    "numba": ("https://numba.readthedocs.io/en/stable/", None),
+    "pooch": ("https://www.fatiando.org/pooch/latest/", None),
+}
 
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]

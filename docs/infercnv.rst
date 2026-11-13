@@ -7,8 +7,10 @@ Essentially, this package is a Python reimplementation of
 `infercnv <https://github.com/broadinstitute/inferCNV/>`_. It mostly follows the computation steps
 outlined `here <https://github.com/broadinstitute/inferCNV/wiki/Running-InferCNV>`_,
 with minor modifications. The computation steps are outlined below.
-By making use of `numpy`, `scipy`, and sparse matrices,
-it is a lot more computationally efficient.
+The steps run in compiled `numba` code, one block of cells at a time and on all
+cores, and the input matrix is never densified, so it is a lot more
+computationally efficient. The input can also be a dask array or a backed
+AnnData, see :ref:`large-data`.
 
 Computation steps
 -----------------
@@ -43,10 +45,21 @@ with `chr` are used, and `chrM` is skipped.
    single, unweighted mean.
 4. Center the smoothed gene expression by cell, by subtracting the median of each cell
    from each cell.
-5. Perform noise filtering. Values with an absolute value `< dynamic_threshold * STDDEV`
-   are set to 0, where `STDDEV` is the standard deviation of the centered, smoothed
-   gene expression. The standard deviation is computed separately for each chunk of
-   `chunksize` cells.
+5. Perform noise filtering. Values within a band around a center are set to 0.
+   By default (`noise_reference="reference"`), the band follows R inferCNV and is computed
+   from the reference cells. Its center is the mean of the centered, smoothed gene
+   expression of the reference cells, and its half-width is `dynamic_threshold` times the
+   mean of the standard deviations of the individual reference cells. Without reference
+   cells (no `reference_key`, or an explicit `reference`), all cells are used instead.
+   With `noise_reference="all"`, the band is centered at 0 and its half-width is
+   `dynamic_threshold` times the standard deviation over all cells. That standard
+   deviation grows with the fraction of tumor cells, so it removes more of the tumor
+   signal in samples with many tumor cells. Neither band depends on `chunksize`.
+
+   .. versionchanged:: 0.7.0
+      infercnvpy 0.6 and earlier computed the standard deviation of all values
+      separately for every chunk of `chunksize` cells, so the result depended on
+      `chunksize` and on the order of the cells.
 
 .. _input-data:
 

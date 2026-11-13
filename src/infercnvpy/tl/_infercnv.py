@@ -1,25 +1,33 @@
-import itertools
-import logging
 import re
+import sys
 import warnings
-from collections.abc import Sequence
-from multiprocessing import cpu_count
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass
+from functools import partial
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-import scipy.ndimage
-import scipy.sparse
+import scipy.sparse as sp
 from anndata import AnnData
-from tqdm.auto import tqdm
-from tqdm.contrib.concurrent import process_map
+from anndata.acc import A
+from scverse_misc import deprecated_arg
 
+from infercnvpy._acc import DEPR_INPLACE, DEPR_KEY_ADDED, DEPR_LAYER, _dest, _key, _legacy, _obsm_key
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
-from infercnvpy._util import _as_matrix, _ensure_array, _params_for_uns
+from infercnvpy._numba import n_kernel_chunks, numba_threads
+from infercnvpy._util import _as_matrix, _is_backed, _is_dask, _params_for_uns
+from infercnvpy.tl._infercnv_kernels import _cnv_csr, _cnv_dense, _count_kept, _fill_kept, _gene_values
 
 
+@deprecated_arg("inplace", DEPR_INPLACE)
+@deprecated_arg("layer", DEPR_LAYER)
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
 def infercnv(
     adata: AnnData,
     *,
+    use: Any = None,
+    out: Any = False,
     reference_key: str | None = None,
     reference_cat: None | str | Sequence[str] = None,
     reference: np.ndarray | None = None,
@@ -27,14 +35,16 @@ def infercnv(
     window_size: int = 100,
     step: int = 10,
     dynamic_threshold: float | None = 1.5,
+    noise_reference: Literal["reference", "all"] = "reference",
     exclude_chromosomes: Sequence[str] | None = ("chrX", "chrY"),
     chunksize: int = 5000,
     n_jobs: int | None = None,
-    inplace: bool = True,
-    layer: str | None = None,
-    key_added: str = "cnv",
+    lazy: bool | None = None,
     calculate_gene_values: bool = False,
-) -> None | tuple[dict, scipy.sparse.csr_matrix, np.ndarray | None]:
+    inplace: bool | None = None,
+    layer: str | None = None,
+    key_added: str | None = None,
+) -> None | tuple[dict, sp.csr_matrix, np.ndarray | None]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
@@ -43,10 +53,30 @@ def infercnv(
 
     There, you can also find instructions on how to :ref:`prepare input data <input-data>`.
 
+    The expression matrix can be in memory (numpy array or scipy sparse matrix), a
+    :class:`dask.array.Array` (also with sparse blocks), or the matrix of a backed AnnData
+    (`anndata.read_h5ad(..., backed="r")`). Lazy matrices are read block by block and never
+    loaded entirely, see :ref:`large-data`. By default, the blocks are read one after another
+    and each is processed with `n_jobs` threads; the result is in memory. With `lazy`, the
+    result of a dask array stays a dask array instead.
+
+    .. versionchanged:: 0.7.0
+        By default, the noise threshold is computed from the reference cells (`noise_reference`),
+        not separately for each chunk of `chunksize` cells, so the result no longer depends on
+        `chunksize`. The CNV matrix and the gene values are float32.
+
     Parameters
     ----------
     adata
         annotated data matrix
+    use
+        The log-normalized gene expression, e.g. `A.X` (the default) or
+        `A.layers["lognorm"]`. Strings are resolved by :meth:`anndata.acc.AdAcc.resolve`.
+    out
+        Where to write the CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). The chromosome
+        positions and parameters go to `adata.uns` and the gene values to
+        `adata.layers["gene_values_..."]`, named after it without the `X_` prefix.
+        If `True`, return the results instead of writing them.
     reference_key
         Column name in adata.obs that contains tumor/normal annotations.
         If this is set to None, the average of all cells is used as reference.
@@ -64,59 +94,86 @@ def infercnv(
         only compute every nth running window where n = `step`. Set to 1 to compute
         all windows.
     dynamic_threshold
-        Values with an absolute value `< dynamic_threshold * STDDEV` will be set to 0,
-        where STDDEV is the standard deviation of the smoothed, cell-centered gene
-        expression, computed separately for each chunk of `chunksize` cells. Set to
-        `None` to disable this step.
+        Remove noise: values within `dynamic_threshold` standard deviations of the
+        center of the smoothed, cell-centered gene expression are set to 0, see
+        `noise_reference`. Set to `None` to disable this step.
+    noise_reference
+        Which cells define the noise band of `dynamic_threshold`.
+
+        `"reference"`
+            The band follows R inferCNV. It is `mean ± dynamic_threshold * sd`, where
+            `mean` is the mean over the reference cells (`reference_cat`) and `sd` is
+            the mean of the standard deviations of the individual reference cells.
+            Without reference cells (`reference_key` not set, or an explicit
+            `reference`), all cells are used.
+        `"all"`
+            The band is `0 ± dynamic_threshold * sd`, where `sd` is the standard
+            deviation over all cells. It grows with the fraction of tumor cells.
     exclude_chromosomes
         List of chromosomes to exclude. The default is to exclude genosomes.
     chunksize
-        Process dataset in chunks of cells. This allows to run infercnv on
-        datasets with many cells, where the dense matrix would not fit into memory.
+        Number of cells processed at a time for in-memory and backed data. It bounds
+        the memory of the intermediate dense matrix (`chunksize` x windows) and does not
+        change the result. For a dask array, its blocks are processed instead.
     n_jobs
-        Number of jobs for parallel processing. Default: use all cores.
-        Data will be submitted to workers in chunks, see `chunksize`.
-    inplace
-        If True, save the results in adata.obsm, otherwise return the CNV matrix.
-    layer
-        Layer from adata to use. If `None`, use `X`.
-    key_added
-        Key under which the cnv matrix will be stored in adata if `inplace=True`.
-        Will store the matrix in `adata.obsm["X_{key_added}"] and additional information
-        in `adata.uns[key_added]`.
+        Number of threads. Default: all cores (numba's setting, see
+        :func:`numba.set_num_threads`). Ignored with `lazy`, where the dask scheduler
+        decides and each block runs in a single thread.
+    lazy
+        Only for a dask array: return the CNV matrix (and the gene values) as lazy dask
+        arrays, computed by :meth:`dask.array.Array.map_blocks` with the current dask
+        scheduler. The noise band is computed up front with one dask computation.
+        Default: `True` if a :class:`distributed.Client` is active, otherwise `False`:
+        the blocks are read one after another with the synchronous scheduler and the
+        result is in memory.
     calculate_gene_values
-        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
-        As many genes will be included in each segment the resultant per gene value will be an average of the genes included in the segment.
-        Additionally not all genes will be included in the per gene CNV, due to the window size and step size not always being a multiple of
-        the number of genes. Any genes not included in the per gene CNV will be filled with NaN.
-        Note this will significantly increase the memory and computation time, it is recommended to decrease the chunksize to ~100 if this is set to True.
-
+        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_cnv"]`.
+        The value of a gene is the mean of all windows that contain it, so many genes share
+        similar values. Not all genes are in a window, because the window size and step
+        size are not always a multiple of the number of genes; these and the dropped genes
+        are NaN. This needs a dense float32 cells x genes matrix in memory.
+    inplace
+        Deprecated, use `out=True` to return the result.
+    layer
+        Deprecated, use `use`.
+    key_added
+        Deprecated, use `out`.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the fields below. Otherwise
-    returns a tuple `(chr_pos, cnv_matrix, gene_values)` with the same values;
-    `gene_values` is `None` unless `calculate_gene_values=True`.
-    Sets the following fields:
+    If `out=True`, a tuple `(chr_pos, cnv_matrix, gene_values)` with the values below;
+    `gene_values` is `None` unless `calculate_gene_values=True`. Otherwise `None`.
+    By default sets the following fields:
 
-    `adata.obsm["X_{key_added}"]` : :class:`scipy.sparse.csr_matrix`
-        Smoothed and denoised CNV values, cells x genomic windows, ordered by
-        chromosome and genomic position.
-    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
-        Maps each chromosome to the column of `X_{key_added}` where it starts.
-    `adata.uns[key_added]["params"]` : :class:`dict`
+    `adata.obsm["X_cnv"]` : :class:`scipy.sparse.csr_matrix`
+        Smoothed and denoised CNV values (float32), cells x genomic windows, ordered by
+        chromosome and genomic position. With `lazy`, a :class:`dask.array.Array` of
+        CSR blocks.
+    `adata.uns["cnv"]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_cnv` where it starts.
+    `adata.uns["cnv"]["params"]` : :class:`dict`
         Parameters of this call, stored as given. `reference_key` and `reference_cat`
         are `None` when an explicit `reference` is passed.
-    `adata.layers["gene_values_{key_added}"]` : :class:`numpy.ndarray`
-        Only if `calculate_gene_values=True`: CNV values per gene, `NaN` for genes
-        that are in no window.
+    `adata.layers["gene_values_cnv"]` : :class:`numpy.ndarray`
+        Only if `calculate_gene_values=True`: CNV values per gene (float32), `NaN` for
+        genes that are in no window. With `lazy`, a :class:`dask.array.Array`.
     """
+    use = _legacy(use, layer, A.layers[layer] if layer else None, name="layer")
+    layer = None if use is None or _dest(use)[0] == "X" else _key(use, "layers")
+    out = _legacy(out, key_added, A.obsm[f"X_{key_added}"] if key_added else None, name="key_added", default=False)
+    out = True if inplace is False else out
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
         raise ValueError(
             "Genomic positions not found. There need to be `chromosome`, `start`, and `end` columns in `adata.var`. "
         )
+    if noise_reference not in ("reference", "all"):
+        raise ValueError(f'`noise_reference` must be "reference" or "all", got {noise_reference!r}.')
+    if window_size < 1 or step < 1 or chunksize < 1:
+        raise ValueError("`window_size`, `step` and `chunksize` must be at least 1.")
+    if adata.n_obs == 0:
+        raise ValueError("infercnv needs at least one cell.")
 
     params = _params_for_uns(
         # an explicit `reference` overrides `reference_key` and `reference_cat`
@@ -126,70 +183,59 @@ def infercnv(
         window_size=window_size,
         step=step,
         dynamic_threshold=dynamic_threshold,
+        noise_reference=noise_reference,
         exclude_chromosomes=exclude_chromosomes,
         chunksize=chunksize,
-        layer=layer,
+        use="X" if layer is None else f"layers.{layer}",
         calculate_gene_values=calculate_gene_values,
     )
 
-    var_mask = adata.var["chromosome"].isnull()
+    positions: Any = adata.var[["chromosome", "start", "end"]]
+    # the lazy `var` of `anndata.experimental.read_lazy` has to be loaded
+    var: pd.DataFrame = positions.to_memory() if hasattr(positions, "to_memory") else positions
+    var_mask = var["chromosome"].isnull()
     n_unplaced = int(var_mask.sum())
     if exclude_chromosomes is not None:
-        var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
-
-    tmp_adata = adata[:, ~var_mask]
-    if not tmp_adata.var["chromosome"].astype(str).str.startswith("chr").any():
+        var_mask = var_mask | var["chromosome"].isin(exclude_chromosomes)
+    if not var.loc[~var_mask, "chromosome"].astype(str).str.startswith("chr").any():
         raise ValueError(
             'None of the chromosome names in `adata.var["chromosome"]` start with "chr". '
             'infercnvpy only uses chromosomes named like "chr1". Add the prefix, e.g. with '
             '`adata.var["chromosome"] = "chr" + adata.var["chromosome"].astype(str)`.'
         )
-    reference = _get_reference(adata, reference_key, reference_cat, reference, layer)[:, ~var_mask]
+    expr = _as_matrix(adata.X if layer is None else adata.layers[layer], lazy=True)
+    if lazy is None:
+        lazy = _is_dask(expr) and _distributed_client_active()
+    elif lazy and not _is_dask(expr):
+        raise ValueError("`lazy=True` needs the expression matrix as a dask array.")
 
-    expr = _as_matrix(tmp_adata.X if layer is None else tmp_adata.layers[layer])
+    with numba_threads(n_jobs):
+        source = _Rows(expr, chunksize)
+        start = log.debug(
+            "infercnv: %d cells x %d genes in %d blocks (%s%s)",
+            *(adata.n_obs, adata.n_vars, source.n_blocks, source.kind, ", lazy" if lazy else ""),
+        )
+        layout = _Layout(var, var_mask.to_numpy(), window_size, step)
+        ref = _get_reference(adata, reference_key, reference_cat, reference, layer, chunksize=chunksize, lazy=lazy)
+        plan = _Plan.build(layout, ref, lfc_clip, dynamic_threshold, noise_reference)
+        band_rows = None
+        if (
+            noise_reference == "reference"
+            and reference is None
+            and reference_key is not None
+            and reference_cat is not None
+        ):
+            band_rows = np.flatnonzero(np.isin(np.asarray(adata.obs[reference_key]), _categories(reference_cat)))
+        res, per_gene_mtx, band = (_run_lazy if lazy else _run)(plan, source, band_rows, calculate_gene_values)
 
-    if not isinstance(expr, np.ndarray):
-        expr = expr.tocsr()
-
-    var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
-
-    n_chunks = -(-adata.n_obs // chunksize)
-    start = log.debug("infercnv: %d cells x %d genes in %d chunks", adata.n_obs, var.shape[0], n_chunks)
-    chr_pos, chunks, convolved_dfs = zip(
-        *process_map(
-            _infercnv_chunk,
-            [expr[i : i + chunksize, :] for i in range(0, adata.shape[0], chunksize)],
-            itertools.repeat(var),
-            itertools.repeat(reference),
-            itertools.repeat(lfc_clip),
-            itertools.repeat(window_size),
-            itertools.repeat(step),
-            itertools.repeat(dynamic_threshold),
-            itertools.repeat(calculate_gene_values),
-            tqdm_class=tqdm,
-            disable=not log.isEnabledFor(logging.INFO),
-            max_workers=cpu_count() if n_jobs is None else n_jobs,
-        ),
-        strict=False,
-    )
-
-    res = scipy.sparse.vstack(chunks)
-
-    chr_pos = chr_pos[0]
-
-    if calculate_gene_values:
-        per_gene_df = pd.concat(convolved_dfs, axis=0)
-        # Ensure the DataFrame has the correct row index
-        per_gene_df.index = adata.obs.index
-        # Ensure the per gene CNV matches the adata var (genes) index, any genes
-        # that are not included in the CNV will be filled with NaN
-        per_gene_df = per_gene_df.reindex(columns=adata.var_names, fill_value=np.nan)
-        # This needs to be a numpy array as colnames are too large to save in anndata
-        per_gene_mtx = per_gene_df.values
-    else:
-        per_gene_mtx = None
-
-    msg, args = "%d cells x %d windows on %d chromosomes", [res.shape[0], res.shape[1], len(chr_pos)]
+    if dynamic_threshold is not None:
+        log.debug(
+            "infercnv: removed values within %.4g ± %.4g (from %s)",
+            band[1],
+            band[0],
+            "all cells" if band_rows is None else f"{len(band_rows)} reference cells",
+        )
+    msg, args = "%d cells x %d windows on %d chromosomes", [res.shape[0], res.shape[1], len(layout.chr_pos)]
     if n_unplaced:
         msg += ", dropped %d of %d genes without a genomic position"
         args += [n_unplaced, adata.n_vars]
@@ -203,17 +249,15 @@ def infercnv(
         time=start,
     )
 
-    if inplace:
-        adata.obsm[f"X_{key_added}"] = res
-        adata.uns[key_added] = {
-            "chr_pos": chr_pos,
-            "params": params,
-        }
-
-        if calculate_gene_values:
-            adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
-        return None
-    return chr_pos, res, per_gene_mtx
+    if out is True:
+        return layout.chr_pos, res, per_gene_mtx
+    key = _obsm_key("cnv") if out is False else _key(out, "obsm")
+    name = key.removeprefix("X_")
+    adata.obsm[key] = res
+    adata.uns[name] = {"chr_pos": layout.chr_pos, "params": params}
+    if calculate_gene_values:
+        adata.layers[f"gene_values_{name}"] = per_gene_mtx
+    return None
 
 
 def _natural_sort(l: Sequence):
@@ -231,184 +275,301 @@ def _natural_sort(l: Sequence):
     return sorted(l, key=alphanum_key)
 
 
-def _running_mean(
-    x: np.ndarray,
-    n: int = 50,
-    step: int = 10,
-    gene_list: Sequence | np.ndarray | None = None,
-    calculate_gene_values: bool = False,
-) -> tuple[np.ndarray, pd.DataFrame | None]:
+def _categories(reference_cat: str | Sequence[str]) -> np.ndarray:
+    return np.array([reference_cat] if isinstance(reference_cat, str) else reference_cat)
+
+
+class _Layout:
+    """Genes in genomic order and the geometry of the running windows, built once per call.
+
+    Genes are ordered by chromosome (natural sort; only names starting with "chr", without "chrM") and start
+    position. Per chromosome `c`, with `g` genes and window length `n = min(window_size, g)`, the pyramid weights are
+    the convolution of boxes of `a` and `b` genes, and `K` windows starting every `step` genes are kept. A chromosome
+    with at most `window_size` genes is a single unweighted window (`a = g`, `b = 1`).
     """
-    Compute a pyramidially weighted running mean.
 
-    Densifies the matrix. Use `step` and `chunksize` to save memory.
+    def __init__(self, var: pd.DataFrame, var_mask: np.ndarray, window_size: int, step: int):
+        used = var.loc[~var_mask, ["chromosome", "start", "end"]]
+        chromosomes = _natural_sort([x for x in used["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
+        order, geometry = [], []
+        self.chr_pos: dict[str, int] = {}
+        n_genes = n_windows = self.n_covered = 0
+        for chromosome in chromosomes:
+            # `sort_values` is not stable: genes with the same start keep the order infercnvpy has always used
+            genes = used.loc[used["chromosome"] == chromosome].sort_values("start").index.to_numpy()
+            g = len(genes)
+            if window_size < g:
+                n, a = window_size, (window_size + 1) // 2
+            else:  # a single unweighted window: box(g) * box(1)
+                n = a = g
+            b = n + 1 - a
+            K = len(range(0, g - n + 1, step))
+            order.append(var.index.get_indexer(genes))
+            geometry.append((n_genes, g, a, b, K, n_windows, n))
+            self.chr_pos[chromosome] = n_windows
+            self.n_covered += min(g, (K - 1) * step + n)
+            n_genes += g
+            n_windows += K
+        #: column in `var` of each gene in genomic order
+        self.order = np.concatenate(order)
+        #: position in genomic order of each column of `var`, -1 for genes that are not used
+        self.col_map = np.full(len(var), -1, dtype=np.int64)
+        self.col_map[self.order] = np.arange(n_genes)
+        self.n_vars = len(var)
+        self.n_windows = n_windows
+        g0s, gs, As, Bs, Ks, w0s, ns = (np.array(x, dtype=np.int64) for x in zip(*geometry, strict=True))
+        self.geometry = (g0s, gs, As, Bs, Ks, w0s, step)
+        self.gene_geometry = (gs, ns, Ks, w0s, g0s, step, self.order, self.n_covered)
 
-    Parameters
-    ----------
-    x
-        matrix to work on
-    n
-        Length of the running window
-    step
-        only compute running windows every `step` columns, e.g. if step is 10
-        0:99, 10:109, 20:119 etc. Saves memory.
-    gene_list
-        List of gene names to be used in the convolution
-    calculate_gene_values
-        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
+
+@dataclass(frozen=True)
+class _Plan:
+    """Everything the kernels need besides the cells: layout, reference bounds and noise settings."""
+
+    layout: _Layout
+    lo: np.ndarray
+    hi: np.ndarray
+    base: np.ndarray  # clipped log fold change of an expression of 0
+    cap: np.floating
+    dynamic_threshold: float | None
+    noise_reference: str
+
+    @classmethod
+    def build(cls, layout: _Layout, reference: np.ndarray, lfc_clip: float, dynamic_threshold, noise_reference):
+        # With one reference `lo == hi`: the bounded difference is the plain difference.
+        ref = np.asarray(reference)[:, layout.order].astype(np.float32)
+        lo, hi = ref.min(axis=0), ref.max(axis=0)
+        cap = np.float32(lfc_clip)
+        zero = np.float32(0)
+        base = np.asarray(np.clip(zero - np.clip(zero, lo, hi), -cap, cap), dtype=np.float32)
+        return cls(layout, lo, hi, base, cap, dynamic_threshold, noise_reference)
+
+
+def _windows(plan: _Plan, X, row0: int, n_rows: int, serial: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    """Median-centred windows (float32) of rows `row0 : row0 + n_rows` of `X`, and their (sum, sum of squares)."""
+    lay = plan.layout
+    out = np.empty((n_rows, lay.n_windows), dtype=np.float32)
+    rowstats = np.empty((n_rows, 2), dtype=np.float64)
+    n_chunks = n_kernel_chunks(n_rows, serial=serial)
+    if sp.issparse(X):
+        _cnv_csr(
+            X.data, X.indices, X.indptr, row0, lay.col_map, plan.lo, plan.hi, plan.base, plan.cap, *lay.geometry,
+            out, rowstats, n_chunks, serial=serial,
+        )  # fmt: skip
+    else:
+        _cnv_dense(
+            X, row0, lay.col_map, plan.lo, plan.hi, plan.cap, *lay.geometry, out, rowstats, n_chunks, serial=serial
+        )
+    return out, rowstats
+
+
+#: `(threshold, centre)` that removes nothing
+_NO_BAND = (-1.0, 0.0)
+
+
+def _noise_band(plan: _Plan, rowstats: np.ndarray) -> tuple[float, float]:
+    """`(threshold, centre)` of the noise band from the per-cell (sum, sum of squares) of the windows."""
+    if plan.dynamic_threshold is None:
+        return _NO_BAND
+    n_windows = plan.layout.n_windows
+    sums, squares = rowstats[:, 0], rowstats[:, 1]
+    mean = sums.sum() / (sums.size * n_windows)
+    if plan.noise_reference == "all":  # standard deviation over all values, around 0
+        sd = np.sqrt(max(squares.sum() / (sums.size * n_windows) - mean**2, 0.0))
+        return plan.dynamic_threshold * float(sd), 0.0
+    # R inferCNV (`clear_noise_via_ref_mean_sd`): mean of the per-cell standard deviations, around the mean
+    cell_var = np.maximum(squares - sums**2 / n_windows, 0.0) / max(n_windows - 1, 1)
+    return plan.dynamic_threshold * float(np.sqrt(cell_var).mean()), float(mean)
+
+
+def _to_csr(out: np.ndarray, band: tuple[float, float], serial: bool = False) -> sp.csr_matrix:
+    """The entries of `out` outside the noise band as a CSR matrix."""
+    thr, centre = band
+    counts = np.zeros(out.shape[0] + 1, dtype=np.int64)
+    _count_kept(out, thr, centre, counts, serial=serial)
+    indptr = np.cumsum(counts)
+    idx_dtype = np.int32 if max(indptr[-1], out.shape[1]) < np.iinfo(np.int32).max else np.int64
+    indptr = indptr.astype(idx_dtype)
+    data = np.empty(indptr[-1], dtype=np.float32)
+    indices = np.empty(indptr[-1], dtype=idx_dtype)
+    _fill_kept(out, thr, centre, indptr, data, indices, serial=serial)
+    return sp.csr_matrix((data, indices, indptr), shape=out.shape)
+
+
+def _gene_values_of(plan: _Plan, out: np.ndarray, band: tuple[float, float], serial: bool = False) -> np.ndarray:
+    gv = np.full((out.shape[0], plan.layout.n_vars), np.nan, dtype=np.float32)
+    n_chunks = n_kernel_chunks(out.shape[0], serial=serial)
+    _gene_values(out, *plan.layout.gene_geometry, *band, gv, n_chunks, serial=serial)
+    return gv
+
+
+def _stats_task(plan: _Plan, X, row0: int, n_rows: int, start: int) -> np.ndarray:
+    return _windows(plan, X, row0, n_rows)[1]
+
+
+def _main_task(plan: _Plan, band, band_rows, gene_values: bool, X, row0: int, n_rows: int, start: int):
+    """CNV matrix (and gene values) of one block. With `band=None`, the block is all cells and defines the band."""
+    out, rowstats = _windows(plan, X, row0, n_rows)
+    if band is None:
+        band = _noise_band(plan, rowstats if band_rows is None else rowstats[band_rows])
+    return _to_csr(out, band), _gene_values_of(plan, out, band) if gene_values else None, band
+
+
+def _run(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_values: bool):
+    """Noise band (a pass over `band_rows`, or all cells, unless there is a single block), then the CNV matrix.
+
+    Blocks are read one after another and each is processed with all numba threads.
     """
-    gene_list = np.arange(x.shape[1]) if gene_list is None else np.asarray(gene_list)
-    if n < x.shape[1]:  # regular convolution: the filter is smaller than the #genes
-        r = np.arange(1, n + 1)
-        pyramid = np.minimum(r, r[::-1])
-        smoothed_x = np.apply_along_axis(
-            lambda row: np.convolve(row, pyramid, mode="valid"),
-            axis=1,
-            arr=x,
-        ) / np.sum(pyramid)
-
-        ## get the indices of the genes used in the convolution
-        convolution_indices = get_convolution_indices(x, n)[np.arange(0, smoothed_x.shape[1], step)]
-        ## Pull out the genes used in the convolution
-        convolved_gene_names = gene_list[convolution_indices]
-        smoothed_x = smoothed_x[:, np.arange(0, smoothed_x.shape[1], step)]
-
-        if calculate_gene_values:
-            convolved_gene_values = _calculate_gene_averages(convolved_gene_names, smoothed_x)
-        else:
-            convolved_gene_values = None
-
-        return smoothed_x, convolved_gene_values
-
-    else:  # If there is less genes than the window size, set the window size to the number of genes and perform a single convolution
-        n = x.shape[1]  # set the filter size to the number of genes
-        r = np.arange(1, n + 1)
-        ## As we are only doing one convolution the values should be equal
-        pyramid = np.array([1] * n)
-        smoothed_x = np.apply_along_axis(
-            lambda row: np.convolve(row, pyramid, mode="valid"),
-            axis=1,
-            arr=x,
-        ) / np.sum(pyramid)
-
-        if calculate_gene_values:
-            ## As all genes are used the convolution the values are identical for all genes
-            convolved_gene_values = pd.DataFrame(np.repeat(smoothed_x, len(gene_list), axis=1), columns=gene_list)
-        else:
-            convolved_gene_values = None
-
-        return smoothed_x, convolved_gene_values
+    band: tuple[float, float] | None
+    if plan.dynamic_threshold is not None and source.n_blocks > 1:
+        rowstats = [stats for _, stats in source.map(partial(_stats_task, plan), rows=band_rows)]
+        band = _noise_band(plan, np.concatenate(rowstats))
+    else:
+        band = None if plan.dynamic_threshold is not None else _NO_BAND
+    blocks = []
+    gv = np.full((source.n_obs, plan.layout.n_vars), np.nan, dtype=np.float32) if gene_values else None
+    for start, (csr, gv_block, block_band) in source.map(partial(_main_task, plan, band, band_rows, gene_values)):
+        band = block_band  # with a single block, it defines the band
+        blocks.append(csr)
+        if gv is not None:
+            gv[start : start + csr.shape[0]] = gv_block
+    res = blocks[0] if len(blocks) == 1 else sp.vstack(blocks, format="csr")
+    return res, gv, band
 
 
-def _calculate_gene_averages(
-    convolved_gene_names: np.ndarray,
-    smoothed_x: np.ndarray,
-) -> pd.DataFrame:
+def _run_lazy(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_values: bool):
+    """The CNV matrix (and gene values) as lazy dask arrays; the serial kernels run inside dask tasks.
+
+    The noise band is computed first, by one dask computation over the blocks that hold `band_rows` (or all blocks).
     """
-    Calculate the average value of each gene in the convolution
+    import dask
 
-    Parameters
-    ----------
-    convolved_gene_names
-        A numpy array with the gene names used in the convolution
-    smoothed_x
-        A numpy array with the smoothed gene expression values
-
-    Returns
-    -------
-    convolved_gene_values
-        A DataFrame with the average value of each gene in the convolution
-    """
-    ## create a dictionary to store the gene values per sample
-    gene_to_values: dict = {}
-    # Calculate the number of genes in each convolution, will be same as the window size default=100
-    length = len(convolved_gene_names[0])
-    # Convert the flattened convolved gene names to a list
-    flatten_list = list(convolved_gene_names.flatten())
-
-    # For each sample in smoothed_x find the value for each gene and store it in a dictionary
-    for sample, row in enumerate(smoothed_x):
-        # Create sample level in the dictionary
-        if sample not in gene_to_values:
-            gene_to_values[sample] = {}
-        # For each gene in the flattened gene list find the value and store it in the dictionary
-        for i, gene in enumerate(flatten_list):
-            if gene not in gene_to_values[sample]:
-                gene_to_values[sample][gene] = []
-            # As the gene list has been flattend we can use the floor division of the index
-            # to get the correct position of the gene to get the value and store it in the dictionary
-            gene_to_values[sample][gene].append(row[i // length])
-
-    for sample in gene_to_values:
-        for gene in gene_to_values[sample]:
-            gene_to_values[sample][gene] = np.mean(gene_to_values[sample][gene])
-
-    convolved_gene_values = pd.DataFrame(gene_to_values).T
-    return convolved_gene_values
-
-
-def get_convolution_indices(x, n):
-    indices = []
-    for i in range(x.shape[1] - n + 1):
-        indices.append(np.arange(i, i + n))
-    return np.array(indices)
-
-
-def _running_mean_by_chromosome(
-    expr, var, window_size, step, calculate_gene_values
-) -> tuple[dict, np.ndarray, pd.DataFrame | None]:
-    """Compute the running mean for each chromosome independently. Stack the resulting arrays ordered by chromosome.
-
-    Parameters
-    ----------
-    expr
-        A gene expression matrix, appropriately preprocessed
-    var
-        The var data frame of the associated AnnData object
-    window_size
-        size of the running window (number of genes in to include in the window)
-    step
-        only compute every nth running window where n = `step`. Set to 1 to compute
-        all windows.
-
-    Returns
-    -------
-    chr_start_pos
-        A Dictionary mapping each chromosome to the index of running_mean where
-        this chromosome begins.
-    running_mean
-        A numpy array with the smoothed gene expression, ordered by chromosome
-        and genomic position
-    """
-    chromosomes = _natural_sort([x for x in var["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
-
-    running_means = [
-        _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values) for chr in chromosomes
-    ]
-
-    means, gene_dfs = zip(*running_means, strict=False)
-
-    chr_start_pos = {}
-    for chr, i in zip(chromosomes, np.cumsum([0] + [x.shape[1] for x in means]), strict=False):
-        chr_start_pos[chr] = i
-
-    ## Concatenate the gene dfs
-    convolved_dfs = pd.concat(gene_dfs, axis=1) if calculate_gene_values else None
-
-    return chr_start_pos, np.hstack(means), convolved_dfs
-
-
-def _running_mean_for_chromosome(chr, expr, var, window_size, step, calculate_gene_values):
-    # `.to_numpy()` (rather than `.values`) ensures a plain ndarray even when the index is
-    # backed by a pandas extension array (e.g. pyarrow strings), which doesn't support the
-    # 2D fancy indexing used in `_running_mean`.
-    genes = var.loc[var["chromosome"] == chr].sort_values("start").index.to_numpy()
-    tmp_x = expr[:, var.index.get_indexer(genes)]
-    x_conv, convolved_gene_values = _running_mean(
-        tmp_x, n=window_size, step=step, gene_list=genes, calculate_gene_values=calculate_gene_values
+    X = source.X
+    band = _NO_BAND
+    if plan.dynamic_threshold is not None:
+        blocks = X.to_delayed().ravel()
+        tasks = [dask.delayed(_dask_stats_task)(blocks[i], plan, local) for i, local in source.blocks_of(band_rows)]
+        band = _noise_band(plan, np.concatenate(dask.compute(*tasks)))
+    lay = plan.layout
+    res = X.map_blocks(
+        partial(_lazy_cnv_block, plan, band),
+        dtype=np.float32,
+        chunks=(X.chunks[0], (lay.n_windows,)),
+        meta=sp.csr_matrix((0, lay.n_windows), dtype=np.float32),
     )
+    gv = None
+    if gene_values:
+        gv = X.map_blocks(
+            partial(_lazy_gene_values_block, plan, band),
+            dtype=np.float32,
+            chunks=(X.chunks[0], (lay.n_vars,)),
+            meta=np.empty((0, lay.n_vars), dtype=np.float32),
+        )
+    return res, gv, band
 
-    return x_conv, convolved_gene_values
+
+def _dask_stats_task(block, plan: _Plan, local: np.ndarray | None) -> np.ndarray:
+    X = _kernel_ready(block)
+    X = X if local is None else _kernel_ready(X[local])
+    return _windows(plan, X, 0, X.shape[0], serial=True)[1]
+
+
+def _lazy_cnv_block(plan: _Plan, band, block) -> sp.csr_matrix:
+    X = _kernel_ready(block)
+    return _to_csr(_windows(plan, X, 0, X.shape[0], serial=True)[0], band, serial=True)
+
+
+def _lazy_gene_values_block(plan: _Plan, band, block) -> np.ndarray:
+    X = _kernel_ready(block)
+    return _gene_values_of(plan, _windows(plan, X, 0, X.shape[0], serial=True)[0], band, serial=True)
+
+
+class _Rows:
+    """Row blocks of the expression matrix: in memory, backed (h5ad), or a dask array.
+
+    In memory and backed, blocks have `chunksize` rows; a dask array keeps its own blocks. `map` reads the blocks one
+    after another (dask: with the synchronous scheduler) and processes each on this thread, so the kernels can use
+    all numba threads.
+    """
+
+    def __init__(self, X, chunksize: int):
+        self.n_obs = X.shape[0]
+        if _is_dask(X):
+            self.kind = "dask"
+            if len(X.chunks[1]) > 1:
+                X = X.rechunk({1: -1})
+            sizes = list(X.chunks[0])
+        else:
+            self.kind = "backed" if _is_backed(X) else "in memory"
+            if self.kind == "in memory":
+                X = _kernel_ready(X)
+            sizes = [chunksize] * (self.n_obs // chunksize) + [self.n_obs % chunksize] * bool(self.n_obs % chunksize)
+        self.X = X
+        self.bounds = np.concatenate([[0], np.cumsum(sizes, dtype=np.int64)])
+
+    @property
+    def n_blocks(self) -> int:
+        return len(self.bounds) - 1
+
+    def blocks_of(self, rows: np.ndarray | None) -> Iterator[tuple[int, np.ndarray | None]]:
+        """`(block, local row indices)` of the blocks that hold any of `rows` (sorted), or `(block, None)` for all."""
+        for i in range(self.n_blocks):
+            if rows is None:
+                yield i, None
+                continue
+            s, e = self.bounds[i], self.bounds[i + 1]
+            local = rows[np.searchsorted(rows, s) : np.searchsorted(rows, e)] - s
+            if len(local):
+                yield i, local
+
+    def map(self, fn: Callable, rows: np.ndarray | None = None) -> Iterator[tuple[int, Any]]:
+        """Yield `(start, fn(X, row0, n_rows, start))` for every block, in order.
+
+        `X` is an in-memory, kernel-ready matrix and `row0` the row of `X` where the block starts. With `rows` (sorted
+        row indices), a block holds only these rows (`start` is then the first of them), and blocks without any are
+        skipped.
+        """
+        for i, local in self.blocks_of(rows):
+            s, e = int(self.bounds[i]), int(self.bounds[i + 1])
+            start = s if local is None else s + int(local[0])
+            if self.kind == "in memory":
+                X = self.X if local is None else _kernel_ready(self.X[s + local])
+                row0 = s if local is None else 0
+            else:
+                block = self.X.blocks[i].compute(scheduler="synchronous") if self.kind == "dask" else self.X[s:e]
+                X = _kernel_ready(block)
+                X = X if local is None else _kernel_ready(X[local])
+                row0 = 0
+            yield start, fn(X, row0, (e - s) if local is None else len(local), start)
+
+
+def _kernel_ready(X):
+    """`X` as a CSR matrix or C-contiguous array of float32 or float64, without copying when it already is one."""
+    if hasattr(X, "to_scipy_sparse"):  # pydata/sparse blocks
+        X = X.to_scipy_sparse()
+    if sp.issparse(X):
+        if X.format != "csr":
+            X = X.tocsr()
+        if X.dtype not in (np.float32, np.float64):
+            X = X.astype(np.float32)
+        if not X.has_canonical_format:  # duplicate entries are summed, as by `toarray()`
+            X = X.copy()
+            X.sum_duplicates()
+        return X
+    X = np.asarray(X)
+    return np.ascontiguousarray(X if X.dtype in (np.float32, np.float64) else X.astype(np.float32))
+
+
+def _distributed_client_active() -> bool:
+    """Whether a `dask.distributed` client is the default scheduler (without importing distributed)."""
+    distributed = sys.modules.get("distributed")
+    if distributed is None:
+        return False
+    try:
+        distributed.default_client()
+    except ValueError:
+        return False
+    return True
 
 
 def _get_reference(
@@ -417,21 +578,23 @@ def _get_reference(
     reference_cat: None | str | Sequence[str],
     reference: np.ndarray | None,
     layer: str | None,
+    *,
+    chunksize: int = 5000,
+    lazy: bool = False,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
     If multiple reference categories are given, compute the mean per
-    category.
+    category. For a dask array or a backed matrix, all means are computed
+    in a single pass over the data (with `lazy`, as one dask computation).
 
-    Returns a 2D array with reference categories in rows, cells in columns.
+    Returns a 2D array with reference categories in rows, genes in columns.
     If there's just one category, it's still a 2D array.
     """
-    if layer is not None:
-        X = adata.layers[layer]
-    else:
-        X = adata.X
+    X: Any = adata.X if layer is None else adata.layers[layer]
 
     if reference is None:
+        cats, labels = None, None
         if reference_key is None or reference_cat is None:
             warnings.warn(
                 "Using the mean of all cells as reference. For better results, "
@@ -439,20 +602,23 @@ def _get_reference(
                 UserWarning,
                 skip_file_prefixes=SKIP_OWN_FRAMES,
             )
-            reference = np.mean(X, axis=0)
-
         else:
-            obs_col = adata.obs[reference_key]
-            cats = np.array([reference_cat] if isinstance(reference_cat, str) else reference_cat)
-            cats_in_obs = np.isin(cats, obs_col)
+            labels = np.asarray(adata.obs[reference_key])
+            cats = _categories(reference_cat)
+            cats_in_obs = np.isin(cats, labels)
             if not np.all(cats_in_obs):
                 raise ValueError(
                     "The following reference categories were not found in "
                     f"adata.obs[reference_key]: {cats[~cats_in_obs]}"
                 )
+        if _is_dask(X) or _is_backed(X):
+            reference = _streaming_means(_Rows(X, chunksize), cats, labels, lazy=lazy)
+        elif cats is None:
+            reference = np.mean(X, axis=0)
+        else:
+            reference = np.vstack([np.mean(X[labels == cat, :], axis=0) for cat in cats])
 
-            reference = np.vstack([np.mean(X[obs_col.values == cat, :], axis=0) for cat in cats])
-
+    reference = np.asarray(reference)
     if reference.ndim == 1:
         reference = reference[np.newaxis, :]
 
@@ -462,50 +628,34 @@ def _get_reference(
     return reference
 
 
-def _infercnv_chunk(tmp_x, var, reference, lfc_cap, window_size, step, dynamic_threshold, calculate_gene_values=False):
-    """The actual infercnv work is happening here.
+def _streaming_means(source: _Rows, cats: np.ndarray | None, labels: np.ndarray | None, *, lazy: bool) -> np.ndarray:
+    """Column means over all rows (`cats=None`), or over the rows of each category, in one pass over the data."""
+    fn = partial(_block_sums, cats, labels)
+    if lazy:  # one dask computation, in parallel with the current scheduler
+        import dask
 
-    Process chunks of serveral thousand genes independently since this
-    leads to (temporary) densification of the matrix.
-
-    Parameters see `infercnv`.
-    """
-    # Step 1 - compute log fold change. This densifies the matrix.
-    # Per default, use "bounded" difference calculation, if multiple references
-    # are available. This mitigates cell-type specific biases (HLA, IGHG, ...)
-    if reference.shape[0] == 1:
-        x_centered = tmp_x - reference[0, :]
+        blocks = source.X.to_delayed().ravel()
+        tasks = [dask.delayed(_dask_block_sums)(b, fn, int(s)) for b, s in zip(blocks, source.bounds, strict=False)]
+        parts = dask.compute(*tasks)
     else:
-        ref_min = np.min(reference, axis=0)
-        ref_max = np.max(reference, axis=0)
-        # entries that are between the two "bounds" are considered having a logFC of 0.
-        x_centered = np.zeros(tmp_x.shape, dtype=tmp_x.dtype)
-        above_max = tmp_x > ref_max
-        below_min = tmp_x < ref_min
-        x_centered[above_max] = _ensure_array(tmp_x - ref_max)[above_max]
-        x_centered[below_min] = _ensure_array(tmp_x - ref_min)[below_min]
+        parts = tuple(part for _, part in source.map(fn))
+    sums, counts = zip(*parts, strict=True)
+    return np.sum(sums, axis=0) / np.sum(counts, axis=0)[:, np.newaxis]
 
-    x_centered = _ensure_array(x_centered)
-    # Step 2 - clip log fold changes
-    x_clipped = np.clip(x_centered, -lfc_cap, lfc_cap)
-    # Step 3 - smooth by genomic position
-    chr_pos, x_smoothed, conv_df = _running_mean_by_chromosome(
-        x_clipped, var, window_size=window_size, step=step, calculate_gene_values=calculate_gene_values
-    )
-    # Step 4 - center by cell
-    x_res = x_smoothed - np.median(x_smoothed, axis=1)[:, np.newaxis]
-    if calculate_gene_values:
-        gene_res = conv_df - np.median(conv_df, axis=1)[:, np.newaxis]
+
+def _dask_block_sums(block, fn: Callable, start: int):
+    X = _kernel_ready(block)
+    return fn(X, 0, X.shape[0], start)
+
+
+def _block_sums(cats, labels, X, row0: int, n_rows: int, start: int) -> tuple[np.ndarray, np.ndarray]:
+    """Per category (or all rows): sum over the rows of the block, and the number of rows."""
+    if cats is None:
+        group, row = np.zeros(n_rows, dtype=np.int64), np.arange(n_rows)
     else:
-        gene_res = None
-
-    # step 5 - standard deviation based noise filtering
-    if dynamic_threshold is not None:
-        noise_thres = dynamic_threshold * np.std(x_res)
-        x_res[np.abs(x_res) < noise_thres] = 0
-        if calculate_gene_values:
-            gene_res[np.abs(gene_res) < noise_thres] = 0
-
-    x_res = scipy.sparse.csr_matrix(x_res)
-
-    return chr_pos, x_res, gene_res
+        group, row = np.nonzero(cats[:, np.newaxis] == labels[np.newaxis, start : start + n_rows])
+    n_groups = 1 if cats is None else len(cats)
+    indicator = sp.csr_matrix((np.ones(len(row)), (group, row0 + row)), shape=(n_groups, X.shape[0]))
+    sums = indicator @ X
+    sums = sums.toarray() if sp.issparse(sums) else np.asarray(sums)
+    return sums, np.bincount(group, minlength=n_groups)
