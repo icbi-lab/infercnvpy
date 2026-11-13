@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -227,6 +229,38 @@ def test_tsne_use_rep():
     res = cnv.tl.tsne(adata, use_rep="other", inplace=False)
     assert res.shape == (60, 2)
     assert "X_cnv_pca" not in adata.obsm
+
+
+@pytest.fixture
+def adata_cnv_neighbors():
+    rng = np.random.default_rng(0)
+    adata = sc.AnnData(np.zeros((100, 1)), obsm={"X_cnv_pca": rng.normal(size=(100, 5))})
+    cnv.pp.neighbors(adata)
+    return adata
+
+
+def test_leiden_defaults_to_igraph(adata_cnv_neighbors, monkeypatch):
+    calls = []
+    monkeypatch.setattr(sc.tl, "leiden", lambda adata, **kwargs: calls.append(kwargs))
+    cnv.tl.leiden(adata_cnv_neighbors)
+    cnv.tl.leiden(adata_cnv_neighbors, n_iterations=5)
+    cnv.tl.leiden(adata_cnv_neighbors, flavor="leidenalg")
+    defaults, n_iter, leidenalg = calls
+    assert defaults | {"flavor": "igraph", "n_iterations": 2, "directed": False} == defaults
+    assert n_iter["n_iterations"] == 5
+    # leidenalg keeps scanpy's own defaults for n_iterations and directed
+    assert leidenalg["flavor"] == "leidenalg"
+    assert "n_iterations" not in leidenalg
+    assert "directed" not in leidenalg
+
+
+def test_leiden_no_flavor_warning(adata_cnv_neighbors):
+    """At default settings, scanpy's leiden flavor FutureWarning is not raised."""
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        cnv.tl.leiden(adata_cnv_neighbors)
+    assert not [w for w in record if issubclass(w.category, FutureWarning) or "leiden" in str(w.message)]
+    assert adata_cnv_neighbors.obs["cnv_leiden"].nunique() > 1
 
 
 def test_layer_parameter(adata_oligodendroglioma):

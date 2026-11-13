@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
@@ -16,36 +18,58 @@ def leiden(
     neighbors_key: str = "cnv_neighbors",
     key_added: str = "cnv_leiden",
     inplace: bool = True,
+    *,
+    flavor: Literal["igraph", "leidenalg"] = "igraph",
+    n_iterations: int | None = None,
+    directed: bool | None = None,
     **kwargs,
 ):
     """Perform leiden clustering on the CNV neighborhood graph.
 
-    Thin wrapper around :func:`scanpy.tl.leiden`.
+    Thin wrapper around :func:`scanpy.tl.leiden`. Unlike scanpy, it uses the
+    `igraph` implementation by default, which is faster and does not raise scanpy's
+    flavor warning. Pass `flavor="leidenalg"` for the previous default.
 
     Parameters
     ----------
     adata
-        annotated data matrix
+        Annotated data matrix.
     neighbors_key
-        Key under which the result of :func:`infercnvpy.pp.neighbors` is stored
-        in adata
+        Key under which the result of :func:`infercnvpy.pp.neighbors` is stored in adata.
     key_added
-        Key under which the cluster labels will be stored in `adata.obs`.
+        Key under which the cluster labels are stored in `adata.obs`.
     inplace
-        If True, store the result in adata, otherwise return a copy of adata with the result.
+        If `True`, store the result in adata, otherwise return a copy of adata with the result.
+    flavor
+        Leiden implementation, see :func:`scanpy.tl.leiden`.
+    n_iterations
+        Number of iterations of the Leiden algorithm. Default: `2` for `flavor="igraph"`,
+        scanpy's default (`-1`, until convergence) for `flavor="leidenalg"`.
+    directed
+        Whether to treat the graph as directed. Default: `False` for `flavor="igraph"`
+        (the only value igraph supports), scanpy's default for `flavor="leidenalg"`.
     **kwargs
-        Additional arguments passed to :func:`scanpy.tl.leiden`.
+        Additional arguments passed to :func:`scanpy.tl.leiden`, e.g. `resolution`
+        or `random_state`.
 
     Returns
     -------
     Depending on the value of `inplace`, either returns `None` or a copy of `adata`
     with the cluster labels in `adata.obs[key_added]`.
     """
+    if flavor == "igraph":
+        n_iterations = 2 if n_iterations is None else n_iterations
+        directed = False if directed is None else directed
+    if n_iterations is not None:
+        kwargs["n_iterations"] = n_iterations
+    if directed is not None:
+        kwargs["directed"] = directed
     return sc.tl.leiden(
         adata,
         neighbors_key=neighbors_key,
         key_added=key_added,
         copy=not inplace,
+        flavor=flavor,
         **kwargs,
     )
 
