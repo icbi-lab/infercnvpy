@@ -116,6 +116,12 @@ def ithgex(
         (from :cite:`Wu2021`)
 
 
+    .. versionchanged:: 0.7.0
+        The correlations are computed block by block with a numba kernel instead of as one
+        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
+        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
+        defined correlation and are left out; before, any such cell made the group's score `NaN`.
+
     Parameters
     ----------
     adata
@@ -133,12 +139,6 @@ def ithgex(
         Key under which the score will be stored in `adata.obs`.
     n_jobs
         Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
-
-    .. versionchanged:: 0.7.0
-        The correlations are computed block by block with a numba kernel instead of as one
-        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
-        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
-        defined correlation and are left out; before, any such cell made the group's score `NaN`.
 
     Returns
     -------
@@ -180,6 +180,12 @@ def ithcna(
 
         (from :cite:`Wu2021`)
 
+    .. versionchanged:: 0.7.0
+        The correlations are computed block by block with a numba kernel instead of as one
+        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
+        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
+        defined correlation and are left out; before, any such cell made the group's score `NaN`.
+
     Parameters
     ----------
     adata
@@ -195,12 +201,6 @@ def ithcna(
         If True, store the result in adata, otherwise return it.
     n_jobs
         Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
-
-    .. versionchanged:: 0.7.0
-        The correlations are computed block by block with a numba kernel instead of as one
-        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
-        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
-        defined correlation and are left out; before, any such cell made the group's score `NaN`.
 
     Returns
     -------
