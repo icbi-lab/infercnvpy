@@ -35,12 +35,10 @@ def neighbors(
 
     Returns
     -------
-    None | anndata.AnnData
-        If `inplace=True`, returns `None` and sets the fields below on adata.
-        Otherwise returns a copy of adata with these fields.
+    If `inplace=True`, returns `None` and sets the fields below on adata.
+    Otherwise returns a copy of adata with these fields.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obsp["{key_added}_distances"]` : :class:`scipy.sparse.csr_matrix`
         Distances between each cell and its nearest neighbors.
     `adata.obsp["{key_added}_connectivities"]` : :class:`scipy.sparse.csr_matrix`

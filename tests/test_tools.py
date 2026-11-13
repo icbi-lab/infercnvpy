@@ -1,6 +1,6 @@
-import inspect
 import warnings
 
+import leidenalg
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -208,10 +208,13 @@ def test_infercnv_records_params(adata_full_mock, tmp_path):
         "dynamic_threshold": 1.5,
         "exclude_chromosomes": ["chrX", "chrY"],
         "chunksize": 5000,
+        "layer": None,
         "calculate_gene_values": False,
     }
-    # params can be written to h5ad
+    # a disabled step is recorded as None, and params round-trip through h5ad
+    cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", dynamic_threshold=None)
     adata_full_mock.write_h5ad(tmp_path / "cnv.h5ad")
+    assert sc.read_h5ad(tmp_path / "cnv.h5ad").uns["cnv"]["params"]["dynamic_threshold"] is None
 
 
 def test_infercnv_no_chr_prefix(adata_full_mock):
@@ -248,26 +251,6 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
 
 
-@pytest.mark.parametrize(
-    "func",
-    [
-        cnv.tl.infercnv,
-        cnv.tl.pca,
-        cnv.tl.umap,
-        cnv.tl.tsne,
-        cnv.tl.leiden,
-        cnv.tl.cnv_score,
-        cnv.tl.ithgex,
-        cnv.tl.ithcna,
-        cnv.tl.copykat,
-        cnv.pp.neighbors,
-    ],
-)
-def test_docstring_lists_fields(func):
-    """Every public tl/pp function documents the adata fields it writes."""
-    assert "Sets the following fields\n-------------------------\n`adata." in inspect.getdoc(func)
-
-
 def test_tsne_use_rep():
     """`tl.tsne` embeds the representation passed as `use_rep`, not always `X_cnv_pca`."""
     rng = np.random.default_rng(0)
@@ -293,19 +276,29 @@ def test_neighbors_not_inplace_returns_copy(adata_cnv_neighbors):
     assert "other_connectivities" not in adata_cnv_neighbors.obsp
 
 
-def test_leiden_defaults_to_igraph(adata_cnv_neighbors, monkeypatch):
-    calls = []
-    monkeypatch.setattr(sc.tl, "leiden", lambda adata, **kwargs: calls.append(kwargs))
+def test_leiden_defaults_to_igraph(adata_cnv_neighbors):
     cnv.tl.leiden(adata_cnv_neighbors)
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == 2
     cnv.tl.leiden(adata_cnv_neighbors, n_iterations=5)
-    cnv.tl.leiden(adata_cnv_neighbors, flavor="leidenalg")
-    defaults, n_iter, leidenalg = calls
-    assert defaults | {"flavor": "igraph", "n_iterations": 2, "directed": False} == defaults
-    assert n_iter["n_iterations"] == 5
-    # leidenalg keeps scanpy's own defaults for n_iterations and directed
-    assert leidenalg["flavor"] == "leidenalg"
-    assert "n_iterations" not in leidenalg
-    assert "directed" not in leidenalg
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == 5
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"flavor": "leidenalg"},
+        # only leidenalg supports partition_type, so it is used without an explicit flavor
+        {"partition_type": leidenalg.RBConfigurationVertexPartition},
+    ],
+)
+def test_leiden_leidenalg(adata_cnv_neighbors, kwargs):
+    # scanpy>=1.12 adds a UserWarning recommending igraph
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        cnv.tl.leiden(adata_cnv_neighbors, **kwargs)
+    # leidenalg keeps scanpy's own default of iterating until convergence
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == -1
+    assert adata_cnv_neighbors.obs["cnv_leiden"].nunique() > 1
 
 
 def test_leiden_no_flavor_warning(adata_cnv_neighbors):

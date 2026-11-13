@@ -49,12 +49,10 @@ def cnv_score(
 
     Returns
     -------
-    None | dict
-        If `inplace=True`, returns `None` and sets the fields below.
-        Otherwise returns a dictionary with the score per group.
+    If `inplace=True`, returns `None` and sets the fields below.
+    Otherwise returns a dictionary with the score per group.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to.
     `adata.uns[key_added]["params"]` : :class:`dict`
@@ -133,13 +131,11 @@ def ithgex(
 
     Returns
     -------
-    None | dict
-        If `inplace=True`, returns `None` and sets the field below.
-        Otherwise returns a dictionary with one value per group. Groups with a
-        single cell have no cell pairs to correlate and get a score of `NaN`.
+    If `inplace=True`, returns `None` and sets the field below.
+    Otherwise returns a dictionary with one value per group. Groups with a
+    single cell have no cell pairs to correlate and get a score of `NaN`.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
@@ -212,13 +208,11 @@ def ithcna(
 
     Returns
     -------
-    None | dict
-        If `inplace=True`, returns `None` and sets the field below.
-        Otherwise returns a dictionary with one value per group. Groups with a
-        single cell have no cell pairs to correlate and get a score of `NaN`.
+    If `inplace=True`, returns `None` and sets the field below.
+    Otherwise returns a dictionary with one value per group. Groups with a
+    single cell have no cell pairs to correlate and get a score of `NaN`.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """

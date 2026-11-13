@@ -19,7 +19,7 @@ def leiden(
     key_added: str = "cnv_leiden",
     inplace: bool = True,
     *,
-    flavor: Literal["igraph", "leidenalg"] = "igraph",
+    flavor: Literal["igraph", "leidenalg"] | None = None,
     n_iterations: int | None = None,
     directed: bool | None = None,
     **kwargs,
@@ -29,6 +29,11 @@ def leiden(
     Thin wrapper around :func:`scanpy.tl.leiden`. Unlike scanpy, it uses the
     `igraph` implementation by default, which is faster and does not raise scanpy's
     flavor warning. Pass `flavor="leidenalg"` for the previous default.
+
+    .. versionchanged:: 0.7.0
+        The default implementation changed from `leidenalg` to `igraph`, with
+        `n_iterations=2` and `directed=False`, ahead of the same change in scanpy.
+        Cluster labels differ from earlier versions.
 
     Parameters
     ----------
@@ -41,7 +46,8 @@ def leiden(
     inplace
         If `True`, store the result in adata, otherwise return a copy of adata with the result.
     flavor
-        Leiden implementation, see :func:`scanpy.tl.leiden`.
+        Leiden implementation, see :func:`scanpy.tl.leiden`. Default: `"igraph"`, or
+        `"leidenalg"` when `partition_type` is passed, which only leidenalg supports.
     n_iterations
         Number of iterations of the Leiden algorithm. Default: `2` for `flavor="igraph"`,
         scanpy's default (`-1`, until convergence) for `flavor="leidenalg"`.
@@ -54,17 +60,17 @@ def leiden(
 
     Returns
     -------
-    None | anndata.AnnData
-        If `inplace=True`, returns `None` and sets the fields below on adata.
-        Otherwise returns a copy of adata with these fields.
+    If `inplace=True`, returns `None` and sets the fields below on adata.
+    Otherwise returns a copy of adata with these fields.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obs[key_added]` : :class:`pandas.Categorical`
         Cluster label of each cell.
     `adata.uns[key_added]["params"]` : :class:`dict`
         Parameters of the clustering, as recorded by :func:`scanpy.tl.leiden`.
     """
+    if flavor is None:
+        flavor = "leidenalg" if "partition_type" in kwargs else "igraph"
     if flavor == "igraph":
         n_iterations = 2 if n_iterations is None else n_iterations
         directed = False if directed is None else directed
@@ -114,12 +120,10 @@ def pca(
 
     Returns
     -------
-    None | numpy.ndarray
-        If `inplace=True`, returns `None` and sets the field below.
-        Otherwise returns the PCA coordinates.
+    If `inplace=True`, returns `None` and sets the field below.
+    Otherwise returns the PCA coordinates.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
         PCA coordinates of the CNV matrix, cells x components.
     """
@@ -165,12 +169,10 @@ def umap(
 
     Returns
     -------
-    None | numpy.ndarray
-        If `inplace=True`, returns `None` and sets the field below.
-        Otherwise returns the UMAP coordinates.
+    If `inplace=True`, returns `None` and sets the field below.
+    Otherwise returns the UMAP coordinates.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
         UMAP coordinates, cells x `n_components` (default 2).
     """
@@ -209,12 +211,10 @@ def tsne(
 
     Returns
     -------
-    None | numpy.ndarray
-        If `inplace=True`, returns `None` and sets the field below.
-        Otherwise returns the t-SNE coordinates.
+    If `inplace=True`, returns `None` and sets the field below.
+    Otherwise returns the t-SNE coordinates.
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
         t-SNE coordinates, cells x 2.
     `adata.obsm["X_cnv_pca"]` : :class:`numpy.ndarray`

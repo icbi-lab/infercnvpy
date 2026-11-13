@@ -83,12 +83,10 @@ def copykat(
 
     Returns
     -------
-    None | tuple
-        If `inplace=True`, returns `None` and sets the fields below. Otherwise
-        returns a tuple (`CNV Matrix`, `CopyKat prediction`).
+    If `inplace=True`, returns `None` and sets the fields below. Otherwise
+    returns a tuple (`CNV Matrix`, `CopyKat prediction`).
+    Sets the following fields:
 
-    Sets the following fields
-    -------------------------
     `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
         CopyKAT copy number values, cells x genomic bins.
     `adata.obs[key_added]` : :class:`pandas.Series`

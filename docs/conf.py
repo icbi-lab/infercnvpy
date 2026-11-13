@@ -40,6 +40,3 @@ xref_overrides = {
     # For a missing link that can’t be fixed this way, add it to `nitpick_ignore` instead.
     #     "igraph._igraph.GraphBase": "igraph.GraphBase",
 }
-
-# lists the adata fields a function writes, rendered as a definition list
-napoleon_custom_sections = ["Sets the following fields"]
