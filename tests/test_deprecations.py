@@ -48,6 +48,20 @@ def test_returned(adata, old, new):
     np.testing.assert_equal(res_old, new(adata))
 
 
+def test_infercnv(adata_oligodendroma):
+    adata_oligodendroma.layers["lognorm"] = adata_oligodendroma.X
+    with pytest.warns(FutureWarning, match="is deprecated"):
+        old = cnv.tl.infercnv(adata_oligodendroma, layer="lognorm", inplace=False)
+    np.testing.assert_equal(
+        old[1].toarray(), cnv.tl.infercnv(adata_oligodendroma, use="layers.lognorm", out=True)[1].toarray()
+    )
+    with pytest.warns(FutureWarning, match="argument key_added is deprecated"):
+        cnv.tl.infercnv(adata_oligodendroma, key_added="old", calculate_gene_values=True)
+    assert {"X_old"} <= set(adata_oligodendroma.obsm)
+    assert "old" in adata_oligodendroma.uns
+    assert "gene_values_old" in adata_oligodendroma.layers
+
+
 def test_key_added(adata):
     with pytest.warns(FutureWarning, match="argument key_added is deprecated"):
         cnv.tl.pca(adata, key_added="old_pca")

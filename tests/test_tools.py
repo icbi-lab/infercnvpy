@@ -79,7 +79,7 @@ def test_infercnv_mock_values(adata_full_mock, gene_res_actual, x_res_actual, ch
         noise_reference="all",
         chunksize=chunksize,
         calculate_gene_values=True,
-        inplace=False,
+        out=True,
     )
     np.testing.assert_array_equal(res.toarray(), x_res_actual)
     np.testing.assert_allclose(per_gene_mtx, gene_res_actual.to_numpy(), rtol=1e-6)
@@ -100,7 +100,7 @@ def test_infercnv_records_params(adata_full_mock, tmp_path):
         "noise_reference": "reference",
         "exclude_chromosomes": ["chrX", "chrY"],
         "chunksize": 5000,
-        "layer": None,
+        "use": "X",
         "calculate_gene_values": False,
     }
     # a disabled step is recorded as None, and params round-trip through h5ad
@@ -216,8 +216,8 @@ def test_layer_parameter(adata_oligodendroglioma):
     adata_oligodendroglioma2 = adata_oligodendroglioma.copy()
     adata_oligodendroglioma2.X = adata_oligodendroglioma.layers["LogNormalize"]
 
-    cnv.tl.infercnv(adata_oligodendroglioma, layer="LogNormalize")
-    cnv.tl.infercnv(adata_oligodendroglioma2, layer=None)
+    cnv.tl.infercnv(adata_oligodendroglioma, use=lognorm)
+    cnv.tl.infercnv(adata_oligodendroglioma2)
 
     X_cnv = adata_oligodendroglioma.obsm["X_cnv"].toarray()
     X_cnv2 = adata_oligodendroglioma2.obsm["X_cnv"].toarray()

@@ -114,7 +114,7 @@ def test_matches_naive(random_adata, fmt, window_size, step, n_ref, noise_refere
         reference_cat=cats,
         noise_reference=noise_reference,
         calculate_gene_values=True,
-        inplace=False,
+        out=True,
         **kw,
     )
     assert isinstance(res, sp.csr_matrix)
@@ -160,7 +160,7 @@ REF = {"reference_key": "cell_type", "reference_cat": ["Microglia/Macrophage", "
 
 
 def _run(adata, **kw):
-    return cnv.tl.infercnv(adata, **REF, inplace=False, **kw)
+    return cnv.tl.infercnv(adata, **REF, out=True, **kw)
 
 
 def _assert_identical(a, b):
@@ -187,7 +187,7 @@ def test_noise_reference(oligo):
     assert ref.nnz > all_cells.nnz  # the reference cells are less noisy than the tumor cells
     reference = cnv.tl._infercnv._get_reference(oligo, REF["reference_key"], REF["reference_cat"], None, None)
     # without reference cells, both the band of the reference cells and the global std use all cells
-    explicit = cnv.tl.infercnv(oligo, reference=reference, inplace=False)[1]
+    explicit = cnv.tl.infercnv(oligo, reference=reference, out=True)[1]
     unthresholded = _run(oligo, dynamic_threshold=None)[1].toarray().astype(np.float64)
     centre, thr = unthresholded.mean(), 1.5 * unthresholded.std(axis=1, ddof=1).mean()
     expected = np.where(np.abs(unthresholded - centre) < thr, 0, unthresholded)
