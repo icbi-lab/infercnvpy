@@ -94,7 +94,7 @@ def ithgex(
     inplace: bool = True,
     key_added: str = "ithgex",
 ) -> Mapping[str, float] | None:
-    """Compute the ITHGEX diversity score based on gene expression cite:`Wu2021`.
+    """Compute the ITHGEX diversity score based on gene expression :cite:`Wu2021`.
 
     A high score indicates a high diversity of gene expression profiles of cells
     within a group.

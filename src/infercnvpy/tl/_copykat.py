@@ -68,7 +68,7 @@ def copykat(
         sample (output file) name.
     min_genes_chr
         minimal number of genes per chromosome for cell filtering.
-    norm_cell_names:
+    norm_cell_names
         cell barcodes (`adata.obs.index`) indicate normal cells
     n_jobs
         Number of cores to use for copyKAT analysis. Per default, uses all cores
