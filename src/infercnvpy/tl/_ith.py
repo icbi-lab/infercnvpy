@@ -7,6 +7,11 @@ adds that block's upper triangle to thread-local histograms with weight 2. The q
 cumulative counts (linear interpolation inside a bin, then numpy's linear interpolation between ranks), which
 matches numpy to about 1e-6. Memory is the standardized matrix (cells x features, float32) plus one block,
 instead of cells^2 float64.
+
+With `n_pairs`, the quantiles are estimated from that many entries of the correlation matrix drawn uniformly at
+random (row and column independently, so the diagonal and both triangles appear as often as in the full matrix).
+The sample quantiles are unbiased estimates of the exact ones, their error shrinks like 1/sqrt(n_pairs), and the
+cost no longer depends on the group size.
 """
 
 from __future__ import annotations
@@ -78,6 +83,22 @@ def _bin_tile(C, row0, hists):  # pragma: no cover
                     h[min(max(k, 0), n_bins - 1)] += 2
 
 
+@njit_parallel
+def _sampled_corr(Z, rows, cols, out):  # pragma: no cover
+    """Correlations of the sampled matrix entries (rows[k], cols[k]) of standardized rows `Z`."""
+    g = Z.shape[1]
+    for k in prange(len(rows)):
+        i = rows[k]
+        j = cols[k]
+        if i == j:
+            out[k] = 1.0
+            continue
+        r = 0.0
+        for c in range(g):
+            r += Z[i, c] * Z[j, c]
+        out[k] = r
+
+
 def _quantiles(hist: np.ndarray, qs: tuple[float, ...]) -> list[float]:
     """Numpy's default (linear) quantiles of the values summarised by `hist` over [-1, 1]."""
     n_bins = len(hist)
@@ -98,10 +119,11 @@ def _quantiles(hist: np.ndarray, qs: tuple[float, ...]) -> list[float]:
     return out
 
 
-def corr_iqr(X: Any, *, tile: int = TILE) -> float:
+def corr_iqr(X: Any, *, tile: int = TILE, n_pairs: int | None = None, rng: np.random.Generator | None = None) -> float:
     """IQR of the Pearson correlations between all rows of `X` (numpy array or scipy sparse matrix).
 
     Rows with constant values have no defined correlation and are left out. Returns NaN with fewer than two rows.
+    With `n_pairs`, groups with more than `n_pairs` matrix entries are estimated from a uniform sample of entries.
     """
     Z = np.empty(X.shape, dtype=np.float32)
     if sp.issparse(X):
@@ -114,6 +136,14 @@ def corr_iqr(X: Any, *, tile: int = TILE) -> float:
     n = Z.shape[0]
     if n <= 1:
         return np.nan
+    if n_pairs is not None and n * n > n_pairs:
+        rng = np.random.default_rng() if rng is None else rng
+        rows = rng.integers(0, n, n_pairs)
+        cols = rng.integers(0, n, n_pairs)
+        r = np.empty(n_pairs, dtype=np.float32)
+        _sampled_corr(Z, rows, cols, r)
+        q75, q25 = np.percentile(r, [75, 25])
+        return float(q75 - q25)
     if n <= tile:
         # one block: the exact float64 quantiles cost at most tile^2 values, as before 0.7.0
         rows = X[np.flatnonzero(keep)]

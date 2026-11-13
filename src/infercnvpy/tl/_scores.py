@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from anndata import AnnData
 
-from infercnvpy._logging import log_result
+from infercnvpy._logging import log, log_result
 from infercnvpy._numba import numba_threads
 from infercnvpy._util import _as_matrix, _choose_mtx_rep, _params_for_uns
 
@@ -94,6 +94,8 @@ def ithgex(
     inplace: bool = True,
     key_added: str = "ithgex",
     n_jobs: int | None = None,
+    n_pairs: int | None = None,
+    random_state: int | None = 0,
 ) -> Mapping[str, float] | None:
     """Compute the ITHGEX diversity score based on gene expression :cite:`Wu2021`.
 
@@ -139,6 +141,14 @@ def ithgex(
         Key under which the score will be stored in `adata.obs`.
     n_jobs
         Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
+    n_pairs
+        Estimate the score of large groups from this many randomly drawn cell pairs instead of
+        all pairs, e.g. `1_000_000`. Pairs are drawn uniformly from the full correlation matrix,
+        so the estimate is unbiased; its error shrinks like `1 / sqrt(n_pairs)` (about 1e-3 for a
+        million pairs) and the cost no longer grows with the group size. Groups with fewer pairs
+        are computed exactly. Default: all pairs (exact).
+    random_state
+        Seed for drawing the pairs with `n_pairs`.
 
     Returns
     -------
@@ -151,7 +161,7 @@ def ithgex(
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
     X = _as_matrix(_choose_mtx_rep(adata, use_raw, layer))
-    return _ith(adata, X, groupby, key_added, inplace, n_jobs)
+    return _ith(adata, X, groupby, key_added, inplace, n_jobs, n_pairs, random_state)
 
 
 def ithcna(
@@ -162,6 +172,8 @@ def ithcna(
     key_added: str = "ithcna",
     inplace: bool = True,
     n_jobs: int | None = None,
+    n_pairs: int | None = None,
+    random_state: int | None = 0,
 ) -> Mapping[str, float] | None:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
 
@@ -201,6 +213,14 @@ def ithcna(
         If True, store the result in adata, otherwise return it.
     n_jobs
         Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
+    n_pairs
+        Estimate the score of large groups from this many randomly drawn cell pairs instead of
+        all pairs, e.g. `1_000_000`. Pairs are drawn uniformly from the full correlation matrix,
+        so the estimate is unbiased; its error shrinks like `1 / sqrt(n_pairs)` (about 1e-3 for a
+        million pairs) and the cost no longer grows with the group size. Groups with fewer pairs
+        are computed exactly. Default: all pairs (exact).
+    random_state
+        Seed for drawing the pairs with `n_pairs`.
 
     Returns
     -------
@@ -213,14 +233,32 @@ def ithcna(
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
     X = _as_matrix(adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
-    return _ith(adata, X, groupby, key_added, inplace, n_jobs)
+    return _ith(adata, X, groupby, key_added, inplace, n_jobs, n_pairs, random_state)
 
 
-def _ith(adata: AnnData, X, groupby: str, key_added: str, inplace: bool, n_jobs: int | None):
+def _ith(
+    adata: AnnData,
+    X,
+    groupby: str,
+    key_added: str,
+    inplace: bool,
+    n_jobs: int | None,
+    n_pairs: int | None,
+    random_state: int | None,
+):
     """IQR of the cell-cell correlations of the rows of `X` within each group of `adata.obs[groupby]`."""
     codes = adata.obs[groupby].astype("category").cat
     with numba_threads(n_jobs):
-        scores = {group: corr_iqr(X[np.flatnonzero(codes.codes == i)]) for i, group in enumerate(codes.categories)}
+        rng = np.random.default_rng(random_state)
+        sizes = np.bincount(codes.codes[codes.codes >= 0], minlength=len(codes.categories))
+        if n_pairs is not None and (
+            sampled := [str(g) for g, n in zip(codes.categories, sizes, strict=True) if n * n > n_pairs]
+        ):
+            log.info("%s: estimated from %d sampled cell pairs for groups %s", key_added, n_pairs, ", ".join(sampled))
+        scores = {
+            group: corr_iqr(X[np.flatnonzero(codes.codes == i)], n_pairs=n_pairs, rng=rng)
+            for i, group in enumerate(codes.categories)
+        }
     if not inplace:
         return scores
     adata.obs[key_added] = np.array([*scores.values(), np.nan])[codes.codes]  # code -1 (no group) -> NaN

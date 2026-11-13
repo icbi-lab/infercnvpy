@@ -37,3 +37,13 @@ def test_constant_cells_are_left_out():
 @pytest.mark.parametrize("n", [0, 1])
 def test_fewer_than_two_cells(n):
     assert np.isnan(corr_iqr(np.ones((n, 3)) * np.arange(3)))
+
+
+def test_sampled_pairs_estimate_the_exact_score():
+    X = _cnv_like(3000, np.random.default_rng(2))
+    exact = corr_iqr(X)
+    estimates = [corr_iqr(X, n_pairs=200_000, rng=np.random.default_rng(s)) for s in range(5)]
+    assert np.mean(estimates) == pytest.approx(exact, abs=2e-3)
+    assert np.std(estimates) < 5e-3
+    # small groups (fewer matrix entries than n_pairs) stay exact
+    assert corr_iqr(X[:100], n_pairs=200_000) == corr_iqr(X[:100])
