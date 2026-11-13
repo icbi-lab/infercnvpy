@@ -4,8 +4,8 @@
 [![Documentation][badge-docs]][link-docs]
 [![PyPI][badge-pypi]][link-pypi]
 
-[badge-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yaml/badge.svg
-[link-tests]: https://github.com/icbi-lab/infercnvpy/actions/workflows/test.yml
+[badge-tests]: https://github.com/scverse/infercnvpy/actions/workflows/test.yaml/badge.svg
+[link-tests]: https://github.com/scverse/infercnvpy/actions/workflows/test.yaml
 [badge-docs]: https://img.shields.io/readthedocs/infercnvpy
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
 [link-pypi]: https://pypi.org/project/infercnvpy/
@@ -46,7 +46,7 @@ pip install infercnvpy
 2. Install the latest development version:
 
 ```bash
-pip install git+https://github.com/icbi-lab/infercnvpy.git@main
+pip install git+https://github.com/scverse/infercnvpy.git@main
 ```
 
 To (optionally) run the `copyKAT` algorithm, you need a working R installation
@@ -66,7 +66,7 @@ import infercnvpy
 
 ## Release notes
 
-See the [changelog][changelog].
+See the [release notes on GitHub][changelog].
 
 ## Contact
 
@@ -78,7 +78,7 @@ If you found a bug, please use the [issue tracker][issue-tracker].
 n/a
 
 [scverse-discourse]: https://discourse.scverse.org/
-[issue-tracker]: https://github.com/icbi-lab/infercnvpy/issues
-[changelog]: https://infercnvpy.readthedocs.io/latest/changelog.html
+[issue-tracker]: https://github.com/scverse/infercnvpy/issues
+[changelog]: https://github.com/scverse/infercnvpy/releases
 [link-docs]: https://infercnvpy.readthedocs.io/
 [link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html

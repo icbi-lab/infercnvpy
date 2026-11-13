@@ -14,7 +14,7 @@ DATASET_ENV_VAR = "INFERCNVPY_DATA_DIR"
 
 _EXAMPLEDATA = pooch.create(
     path=pooch.os_cache("infercnvpy"),
-    base_url="https://github.com/icbi-lab/infercnvpy/releases/download/d0.1.0/",
+    base_url="https://github.com/scverse/infercnvpy/releases/download/d0.1.0/",
     env=DATASET_ENV_VAR,
     registry={
         "maynard2020_3k.h5ad": "md5:8a97c55dd72fb92d8e5ab72a52e23679",
