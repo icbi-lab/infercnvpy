@@ -37,8 +37,8 @@ dependencies = [
   "rdata>=1",                             # MIT; reads SCEVAN .RData files
   "scanpy>=1.11",
   "scipy>=1.15",
-  # the shared `scverse` logger
-  "scverse-misc>=0.1.8",
+  # the shared `scverse` logger and the example dataset registry
+  "scverse-misc[datasets]>=0.1.8",
   # for debug logging (referenced from the issue template)
   "session-info2>=0.2",
   "tqdm>=4.67",
