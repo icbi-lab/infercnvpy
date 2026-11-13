@@ -84,7 +84,9 @@ CNV signal than whole-transcriptome data, so consider a smaller `window_size`.
 
 ## Plotting
 
-{func}`infercnvpy.pl.chromosome_heatmap` averages the cells that fall into each pixel row of the figure, so it reads
-the CNV matrix once and draws an image of about a thousand rows, whatever the number of cells. It needs
-`adata.obsm["X_cnv"]` in memory: compute a lazy result first, e.g.
-`adata.obsm["X_cnv"] = adata.obsm["X_cnv"].compute()`.
+{func}`infercnvpy.pl.chromosome_heatmap` draws one row per pixel of the figure, whatever the number of cells: the
+cell in the middle of the cells that fall into that row (as the full plot looks when downscaled), or with
+`aggregate="mean"` their mean. It reads the CNV matrix once, block by block if `adata.obsm["X_cnv"]` is a dask array
+(the lazy result of `infercnv`) or a backed matrix, and keeps only the drawn rows in memory.
+{func}`~infercnvpy.pl.chromosome_heatmap_summary` computes the group means in the same way. `mode="legacy"` draws
+every cell with {func}`scanpy.pl.heatmap`, which needs the whole matrix in memory as a dense table.
