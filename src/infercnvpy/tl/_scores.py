@@ -5,11 +5,13 @@ from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
-import scipy.sparse as sp
 from anndata import AnnData
 
 from infercnvpy._logging import log_result
+from infercnvpy._numba import numba_threads
 from infercnvpy._util import _as_matrix, _choose_mtx_rep, _params_for_uns
+
+from ._ith import corr_iqr
 
 
 def cnv_score(
@@ -91,6 +93,7 @@ def ithgex(
     layer: str | None = None,
     inplace: bool = True,
     key_added: str = "ithgex",
+    n_jobs: int | None = None,
 ) -> Mapping[str, float] | None:
     """Compute the ITHGEX diversity score based on gene expression :cite:`Wu2021`.
 
@@ -113,6 +116,12 @@ def ithgex(
         (from :cite:`Wu2021`)
 
 
+    .. versionchanged:: 0.7.0
+        The correlations are computed block by block with a numba kernel instead of as one
+        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
+        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
+        defined correlation and are left out; before, any such cell made the group's score `NaN`.
+
     Parameters
     ----------
     adata
@@ -128,6 +137,8 @@ def ithgex(
         If True, store the result in adata, otherwise return it.
     key_added
         Key under which the score will be stored in `adata.obs`.
+    n_jobs
+        Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
 
     Returns
     -------
@@ -139,32 +150,8 @@ def ithgex(
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
-    groups = adata.obs[groupby].unique()
-    ithgex = {}
-    for group in groups:
-        tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = _choose_mtx_rep(tmp_adata, use_raw, layer)
-        if sp.issparse(X):
-            X = X.todense()
-        if X.shape[0] <= 1:
-            # a single cell has no cell pairs to correlate
-            ithgex[group] = np.nan
-            continue
-        pcorr = np.corrcoef(X, rowvar=True)
-        assert pcorr.shape == (
-            tmp_adata.shape[0],
-            tmp_adata.shape[0],
-        ), f"pcorr is a cell x cell matrix {tmp_adata.shape[0]} {pcorr.shape}"
-        q75, q25 = np.percentile(pcorr, [75, 25])
-        ithgex[group] = q75 - q25
-
-    if inplace:
-        ithgex_obs = np.full(adata.shape[0], np.nan)
-        for group in groups:
-            ithgex_obs[adata.obs[groupby] == group] = ithgex[group]
-        adata.obs[key_added] = ithgex_obs
-        return None
-    return ithgex
+    X = _as_matrix(_choose_mtx_rep(adata, use_raw, layer))
+    return _ith(adata, X, groupby, key_added, inplace, n_jobs)
 
 
 def ithcna(
@@ -174,6 +161,7 @@ def ithcna(
     use_rep: str = "X_cnv",
     key_added: str = "ithcna",
     inplace: bool = True,
+    n_jobs: int | None = None,
 ) -> Mapping[str, float] | None:
     """Compute the ITHCNA diversity score based on copy number variation :cite:`Wu2021`.
 
@@ -192,6 +180,12 @@ def ithcna(
 
         (from :cite:`Wu2021`)
 
+    .. versionchanged:: 0.7.0
+        The correlations are computed block by block with a numba kernel instead of as one
+        cells x cells matrix, so large groups no longer run out of memory. The quantiles match
+        numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
+        defined correlation and are left out; before, any such cell made the group's score `NaN`.
+
     Parameters
     ----------
     adata
@@ -205,6 +199,8 @@ def ithcna(
         Key under which the score will be stored in `adata.obs`.
     inplace
         If True, store the result in adata, otherwise return it.
+    n_jobs
+        Number of threads. Default: all cores (numba's setting, see :func:`numba.set_num_threads`).
 
     Returns
     -------
@@ -216,29 +212,16 @@ def ithcna(
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
-    groups = adata.obs[groupby].unique()
-    ithcna = {}
-    for group in groups:
-        tmp_adata = adata[adata.obs[groupby] == group, :]
-        X = _as_matrix(tmp_adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
-        if not isinstance(X, np.ndarray):
-            X = X.todense()
-        if X.shape[0] <= 1:
-            # a single cell has no cell pairs to correlate
-            ithcna[group] = np.nan
-            continue
-        pcorr = np.corrcoef(X, rowvar=True)
-        assert pcorr.shape == (
-            tmp_adata.shape[0],
-            tmp_adata.shape[0],
-        ), "pcorr is a cell x cell matrix"
-        q75, q25 = np.percentile(pcorr, [75, 25])
-        ithcna[group] = q75 - q25
+    X = _as_matrix(adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
+    return _ith(adata, X, groupby, key_added, inplace, n_jobs)
 
-    if inplace:
-        ithcna_obs = np.full(adata.shape[0], np.nan)
-        for group in groups:
-            ithcna_obs[adata.obs[groupby] == group] = ithcna[group]
-        adata.obs[key_added] = ithcna_obs
-        return None
-    return ithcna
+
+def _ith(adata: AnnData, X, groupby: str, key_added: str, inplace: bool, n_jobs: int | None):
+    """IQR of the cell-cell correlations of the rows of `X` within each group of `adata.obs[groupby]`."""
+    codes = adata.obs[groupby].astype("category").cat
+    with numba_threads(n_jobs):
+        scores = {group: corr_iqr(X[np.flatnonzero(codes.codes == i)]) for i, group in enumerate(codes.categories)}
+    if not inplace:
+        return scores
+    adata.obs[key_added] = np.array([*scores.values(), np.nan])[codes.codes]  # code -1 (no group) -> NaN
+    return None
