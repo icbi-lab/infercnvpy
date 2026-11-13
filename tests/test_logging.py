@@ -67,6 +67,11 @@ def test_auto_pca_is_info(adata_oligodendroma, caplog, func):
     assert "X_cnv_pca" in adata_oligodendroma.obsm
 
 
+def test_cnv_score_obs_key_is_deprecated(adata_ithgex):
+    with pytest.warns(FutureWarning, match="renamed to `groupby`"):
+        cnv.tl.cnv_score(adata_ithgex, obs_key="group", inplace=False)
+
+
 @pytest.mark.parametrize(
     ("n_unknown", "level"),
     [(2, logging.INFO), (6, logging.WARNING)],

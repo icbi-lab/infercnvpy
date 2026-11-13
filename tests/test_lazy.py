@@ -26,7 +26,7 @@ def base():
 @pytest.fixture(scope="module")
 def expected(base):
     """In-memory result, with gene values."""
-    return cnv.tl.infercnv(base, **REF, calculate_gene_values=True, out=True)
+    return cnv.tl.infercnv(base, **REF, calculate_gene_values=True, inplace=False)
 
 
 def _with_X(base, X):
@@ -55,7 +55,7 @@ def _csr_blocks(base, block_rows, counter=None):
 
 def _check(adata, expected, gene_values=True, **kw):
     """The result equals the in-memory one up to the precision of the reference (float64 sums vs float32 means)."""
-    chr_pos, res, gv = cnv.tl.infercnv(adata, **REF, calculate_gene_values=gene_values, out=True, **kw)
+    chr_pos, res, gv = cnv.tl.infercnv(adata, **REF, calculate_gene_values=gene_values, inplace=False, **kw)
     if hasattr(res, "compute"):
         res, gv = dask.compute(res, gv)
     assert isinstance(res, sp.csr_matrix)
@@ -81,7 +81,7 @@ def test_dask_sparse_blocks(base, expected, block_rows):
 def test_dask_layer(base, expected):
     a = _with_X(base, sp.csr_matrix(base.X.shape, dtype=np.float32))
     a.layers["raw"] = _csr_blocks(base, 50)
-    _check(a, expected, use="layers.raw")
+    _check(a, expected, layer="raw")
 
 
 @pytest.mark.parametrize("fmt", ["csr", "dense"])
@@ -123,7 +123,7 @@ def test_streaming_reference_matches_in_memory(base):
 def test_lazy_output(base, expected, scheduler):
     """With `lazy=True`, the result stays a dask array of CSR blocks and equals the eager result exactly."""
     X = _csr_blocks(base, 50)
-    eager = cnv.tl.infercnv(_with_X(base, X), **REF, calculate_gene_values=True, out=True)
+    eager = cnv.tl.infercnv(_with_X(base, X), **REF, calculate_gene_values=True, inplace=False)
     a = _with_X(base, X)
     with dask.config.set(scheduler=scheduler):
         cnv.tl.infercnv(a, **REF, lazy=True, calculate_gene_values=True)
@@ -136,14 +136,14 @@ def test_lazy_output(base, expected, scheduler):
 
 
 def test_lazy_without_threshold(base, expected):
-    res = cnv.tl.infercnv(_with_X(base, _csr_blocks(base, 50)), **REF, dynamic_threshold=None, lazy=True, out=True)
-    want = cnv.tl.infercnv(base, **REF, dynamic_threshold=None, out=True)[1]
+    res = cnv.tl.infercnv(_with_X(base, _csr_blocks(base, 50)), **REF, dynamic_threshold=None, lazy=True, inplace=False)
+    want = cnv.tl.infercnv(base, **REF, dynamic_threshold=None, inplace=False)[1]
     np.testing.assert_allclose(res[1].compute().toarray(), want.toarray(), rtol=1e-5, atol=1e-5)
 
 
 def test_block_size_does_not_change_the_result(base):
     results = [
-        cnv.tl.infercnv(_with_X(base, _csr_blocks(base, rows)), **REF, out=True)[1].toarray() for rows in (10, 97)
+        cnv.tl.infercnv(_with_X(base, _csr_blocks(base, rows)), **REF, inplace=False)[1].toarray() for rows in (10, 97)
     ]
     np.testing.assert_allclose(results[0], results[1], rtol=1e-5, atol=1e-6)
 
@@ -163,7 +163,7 @@ def test_lazily_normalised_table(base):
     lazy = normalised(lazy_input.X)
     assert isinstance(lazy.X, da.Array)
     eager = normalised(counts)
-    want = cnv.tl.infercnv(eager, **REF, out=True)
+    want = cnv.tl.infercnv(eager, **REF, inplace=False)
     _check(lazy, want, gene_values=False)
 
 
@@ -204,6 +204,6 @@ def test_unplaced_and_extra_features(base, expected):
     )
     var.index = list(base.var_names) + [f"NegControlProbe_{i}" for i in range(n_ctrl)]
     a = ad.AnnData(X=da.from_array(X, chunks=(60, -1), asarray=False), obs=base.obs.copy(), var=var)
-    chr_pos, res, gv = cnv.tl.infercnv(a, **REF, calculate_gene_values=True, out=True)
+    chr_pos, res, gv = cnv.tl.infercnv(a, **REF, calculate_gene_values=True, inplace=False)
     np.testing.assert_allclose(res.toarray(), expected[1].toarray(), rtol=1e-5, atol=1e-6)
     assert np.isnan(gv[:, -n_ctrl:]).all()

@@ -17,7 +17,7 @@ from infercnvpy.tl import infercnv
         # weird gtfparse issue
         # ["chr1_ensembl.gtf", {}, 42],
         ["chr21_gencode.gtf", {}, 56],
-        ["chr21_gencode.gtf", {"use": "var.gene_ids", "gtf_gene_id": "gene_id"}, 116],
+        ["chr21_gencode.gtf", {"adata_gene_id": "gene_ids", "gtf_gene_id": "gene_id"}, 116],
     ],
 )
 def test_get_genomic_position_from_gtf(adata_pbmc3k, gtf, kwargs, testdata, expected_genes):
@@ -105,7 +105,7 @@ def test_genomic_position_from_biomart_duplicate_message(monkeypatch, caplog):
 
 @pytest.mark.internet
 @pytest.mark.usefixtures("biomart_cache")
-@pytest.mark.parametrize("kwargs", [{"use": "var.gene_ids"}, {"biomart_gene_id": "hgnc_symbol"}])
+@pytest.mark.parametrize("kwargs", [{"adata_gene_id": "gene_ids"}, {"biomart_gene_id": "hgnc_symbol"}])
 def test_get_genomic_position_from_biomart(adata_pbmc3k, kwargs):
     adata = adata_pbmc3k
     genomic_position_from_biomart(adata, use_cache=True, **kwargs)

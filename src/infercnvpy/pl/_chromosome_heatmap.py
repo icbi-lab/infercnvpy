@@ -1,34 +1,25 @@
-from typing import Any
-
 import matplotlib.axes
 import numpy as np
 import pandas as pd
 import scanpy as sc
 from anndata import AnnData
-from anndata.acc import A
 from matplotlib.colors import Colormap, TwoSlopeNorm
-from scanpy.plotting.legacy._utils import savefig_or_show  # TODO should not use private scanpy functions
-from scverse_misc import deprecated_arg
 
-from infercnvpy._acc import DEPR_USE_REP, _key, _legacy, _obsm_key, _uns_entry
 from infercnvpy._util import _as_df, _as_matrix
 
+# TODO should not use private scanpy functions
+try:
+    from scanpy.plotting._utils import savefig_or_show
+except ImportError:
+    # scanpy >= 1.13
+    from scanpy.plotting.legacy._utils import savefig_or_show
 
-def _cnv(adata: AnnData, use: Any, use_rep: str | None) -> tuple[Any, dict[str, int]]:
-    """The CNV matrix and its chromosome start positions, sorted (saving and loading anndata loses the order)."""
-    use = _legacy(use, use_rep, A.obsm[f"X_{use_rep}"], name="use_rep")
-    key = _obsm_key("cnv") if use is None else _key(use, "obsm")
-    chr_pos = dict(sorted(_uns_entry(adata, key)["chr_pos"].items(), key=lambda x: x[1]))
-    return adata.obsm[key], chr_pos
 
-
-@deprecated_arg("use_rep", DEPR_USE_REP)
 def chromosome_heatmap(
     adata: AnnData,
     *,
     groupby: str = "cnv_leiden",
-    use: Any = None,
-    use_rep: str | None = None,
+    use_rep: str = "cnv",
     cmap: str | Colormap = "bwr",
     figsize: tuple[int, int] = (16, 10),
     show: bool | None = None,
@@ -47,11 +38,8 @@ def chromosome_heatmap(
         group the cells by a categorical variable from adata.obs. It usually makes
         sense to either group by unsupervised clustering obtained from
         :func:`infercnvpy.tl.leiden` (the default) or a cell-type label.
-    use
-        The CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). Its chromosome positions are
-        read from `adata.uns` under the same name without the `X_` prefix.
     use_rep
-        Deprecated, use `use`.
+        Key under which the result from :func:`infercnvpy.tl.infercnv` are stored.
     cmap
         colormap to use
     figsize
@@ -71,8 +59,10 @@ def chromosome_heatmap(
     """
     if groupby == "cnv_leiden" and "cnv_leiden" not in adata.obs.columns:
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
-    X, chr_pos_dict = _cnv(adata, use, use_rep)
-    tmp_adata = AnnData(X=_as_matrix(X), obs=_as_df(adata.obs), uns=adata.uns)
+    tmp_adata = AnnData(X=_as_matrix(adata.obsm[f"X_{use_rep}"]), obs=_as_df(adata.obs), uns=adata.uns)
+
+    # re-sort, as saving & loading anndata destroys the order
+    chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
@@ -111,13 +101,11 @@ def chromosome_heatmap(
     return None
 
 
-@deprecated_arg("use_rep", DEPR_USE_REP)
 def chromosome_heatmap_summary(
     adata: AnnData,
     *,
     groupby: str = "cnv_leiden",
-    use: Any = None,
-    use_rep: str | None = None,
+    use_rep: str = "cnv",
     cmap: str | Colormap = "bwr",
     figsize: tuple[int, int] = (16, 10),
     show: bool | None = None,
@@ -136,11 +124,8 @@ def chromosome_heatmap_summary(
         group the cells by a categorical variable from adata.obs. It usually makes
         sense to either group by unsupervised clustering obtained from
         :func:`infercnvpy.tl.leiden` (the default) or a cell-type label.
-    use
-        The CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). Its chromosome positions are
-        read from `adata.uns` under the same name without the `X_` prefix.
     use_rep
-        Deprecated, use `use`.
+        Key under which the result from :func:`infercnvpy.tl.infercnv` are stored.
     cmap
         colormap to use
     figsize
@@ -165,14 +150,13 @@ def chromosome_heatmap_summary(
     # heatmap cannot really handle it if there's just one observation
     # per row. Scanpy matrixplot is not an option, since it plots each
     # gene individually.
-    X, chr_pos_dict = _cnv(adata, use, use_rep)
     groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
     tmp_obs.index = tmp_obs.index.astype(str)
 
     def _get_group_mean(group):
-        group_mean = np.mean(X[adata.obs[groupby].values == group, :], axis=0)
+        group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == group, :], axis=0)
         if len(group_mean.shape) == 1:
             # derived from an array instead of sparse matrix -> 1 dim instead of 2
             group_mean = group_mean[np.newaxis, :]
@@ -182,6 +166,7 @@ def chromosome_heatmap_summary(
         X=np.vstack([np.repeat(_get_group_mean(group), 10, axis=0) for group in groups]), obs=tmp_obs, uns=adata.uns
     )
 
+    chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0

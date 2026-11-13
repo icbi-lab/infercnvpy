@@ -12,7 +12,6 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-import scverse_misc._deprecated
 from scverse_misc.logging import get_logger
 
 if TYPE_CHECKING:
@@ -20,9 +19,8 @@ if TYPE_CHECKING:
 
 log = get_logger("infercnvpy", timed=True)
 
-#: ``warnings.warn(..., skip_file_prefixes=SKIP_OWN_FRAMES)`` points at the caller's line, not ours
-#: (nor at the `scverse_misc.deprecated_arg` wrappers around our functions).
-SKIP_OWN_FRAMES = tuple(os.path.dirname(f) + os.sep for f in (__file__, scverse_misc._deprecated.__file__))
+#: ``warnings.warn(..., skip_file_prefixes=SKIP_OWN_FRAMES)`` points at the caller's line, not ours.
+SKIP_OWN_FRAMES = (os.path.dirname(__file__) + os.sep,)
 
 
 def log_result(

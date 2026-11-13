@@ -10,24 +10,16 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
-from anndata.acc import A
-from scverse_misc import deprecated_arg
 
-from infercnvpy._acc import DEPR_INPLACE, DEPR_KEY_ADDED, DEPR_LAYER, _dest, _key, _legacy, _obsm_key
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._numba import n_kernel_chunks, numba_threads
 from infercnvpy._util import _as_matrix, _is_backed, _is_dask, _params_for_uns
 from infercnvpy.tl._infercnv_kernels import _cnv_csr, _cnv_dense, _count_kept, _fill_kept, _gene_values
 
 
-@deprecated_arg("inplace", DEPR_INPLACE)
-@deprecated_arg("layer", DEPR_LAYER)
-@deprecated_arg("key_added", DEPR_KEY_ADDED)
 def infercnv(
     adata: AnnData,
     *,
-    use: Any = None,
-    out: Any = False,
     reference_key: str | None = None,
     reference_cat: None | str | Sequence[str] = None,
     reference: np.ndarray | None = None,
@@ -40,10 +32,10 @@ def infercnv(
     chunksize: int = 5000,
     n_jobs: int | None = None,
     lazy: bool | None = None,
-    calculate_gene_values: bool = False,
-    inplace: bool | None = None,
+    inplace: bool = True,
     layer: str | None = None,
-    key_added: str | None = None,
+    key_added: str = "cnv",
+    calculate_gene_values: bool = False,
 ) -> None | tuple[dict, sp.csr_matrix, np.ndarray | None]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
@@ -69,14 +61,6 @@ def infercnv(
     ----------
     adata
         annotated data matrix
-    use
-        The log-normalized gene expression, e.g. `A.X` (the default) or
-        `A.layers["lognorm"]`. Strings are resolved by :meth:`anndata.acc.AdAcc.resolve`.
-    out
-        Where to write the CNV matrix, e.g. `A.obsm["X_cnv"]` (the default). The chromosome
-        positions and parameters go to `adata.uns` and the gene values to
-        `adata.layers["gene_values_..."]`, named after it without the `X_` prefix.
-        If `True`, return the results instead of writing them.
     reference_key
         Column name in adata.obs that contains tumor/normal annotations.
         If this is set to None, the average of all cells is used as reference.
@@ -126,42 +110,41 @@ def infercnv(
         Default: `True` if a :class:`distributed.Client` is active, otherwise `False`:
         the blocks are read one after another with the synchronous scheduler and the
         result is in memory.
+    inplace
+        If True, save the results in adata.obsm, otherwise return the CNV matrix.
+    layer
+        Layer from adata to use. If `None`, use `X`.
+    key_added
+        Key under which the cnv matrix will be stored in adata if `inplace=True`.
+        Will store the matrix in `adata.obsm["X_{key_added}"] and additional information
+        in `adata.uns[key_added]`.
     calculate_gene_values
-        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_cnv"]`.
+        If True per gene CNVs will be calculated and stored in `adata.layers["gene_values_{key_added}"]`.
         The value of a gene is the mean of all windows that contain it, so many genes share
         similar values. Not all genes are in a window, because the window size and step
         size are not always a multiple of the number of genes; these and the dropped genes
         are NaN. This needs a dense float32 cells x genes matrix in memory.
-    inplace
-        Deprecated, use `out=True` to return the result.
-    layer
-        Deprecated, use `use`.
-    key_added
-        Deprecated, use `out`.
 
     Returns
     -------
-    If `out=True`, a tuple `(chr_pos, cnv_matrix, gene_values)` with the values below;
-    `gene_values` is `None` unless `calculate_gene_values=True`. Otherwise `None`.
-    By default sets the following fields:
+    If `inplace=True`, returns `None` and sets the fields below. Otherwise
+    returns a tuple `(chr_pos, cnv_matrix, gene_values)` with the same values;
+    `gene_values` is `None` unless `calculate_gene_values=True`.
+    Sets the following fields:
 
-    `adata.obsm["X_cnv"]` : :class:`scipy.sparse.csr_matrix`
+    `adata.obsm["X_{key_added}"]` : :class:`scipy.sparse.csr_matrix`
         Smoothed and denoised CNV values (float32), cells x genomic windows, ordered by
         chromosome and genomic position. With `lazy`, a :class:`dask.array.Array` of
         CSR blocks.
-    `adata.uns["cnv"]["chr_pos"]` : :class:`dict`
-        Maps each chromosome to the column of `X_cnv` where it starts.
-    `adata.uns["cnv"]["params"]` : :class:`dict`
+    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_{key_added}` where it starts.
+    `adata.uns[key_added]["params"]` : :class:`dict`
         Parameters of this call, stored as given. `reference_key` and `reference_cat`
         are `None` when an explicit `reference` is passed.
-    `adata.layers["gene_values_cnv"]` : :class:`numpy.ndarray`
+    `adata.layers["gene_values_{key_added}"]` : :class:`numpy.ndarray`
         Only if `calculate_gene_values=True`: CNV values per gene (float32), `NaN` for
         genes that are in no window. With `lazy`, a :class:`dask.array.Array`.
     """
-    use = _legacy(use, layer, A.layers[layer] if layer else None, name="layer")
-    layer = None if use is None or _dest(use)[0] == "X" else _key(use, "layers")
-    out = _legacy(out, key_added, A.obsm[f"X_{key_added}"] if key_added else None, name="key_added", default=False)
-    out = True if inplace is False else out
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")
     if {"chromosome", "start", "end"} - set(adata.var.columns) != set():
@@ -186,7 +169,7 @@ def infercnv(
         noise_reference=noise_reference,
         exclude_chromosomes=exclude_chromosomes,
         chunksize=chunksize,
-        use="X" if layer is None else f"layers.{layer}",
+        layer=layer,
         calculate_gene_values=calculate_gene_values,
     )
 
@@ -249,15 +232,13 @@ def infercnv(
         time=start,
     )
 
-    if out is True:
-        return layout.chr_pos, res, per_gene_mtx
-    key = _obsm_key("cnv") if out is False else _key(out, "obsm")
-    name = key.removeprefix("X_")
-    adata.obsm[key] = res
-    adata.uns[name] = {"chr_pos": layout.chr_pos, "params": params}
-    if calculate_gene_values:
-        adata.layers[f"gene_values_{name}"] = per_gene_mtx
-    return None
+    if inplace:
+        adata.obsm[f"X_{key_added}"] = res
+        adata.uns[key_added] = {"chr_pos": layout.chr_pos, "params": params}
+        if calculate_gene_values:
+            adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
+        return None
+    return layout.chr_pos, res, per_gene_mtx
 
 
 def _natural_sort(l: Sequence):
