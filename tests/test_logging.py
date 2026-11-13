@@ -42,10 +42,12 @@ def test_infercnv_silent_at_default_verbosity(adata_full_mock, caplog, capsys):
     assert "it/s" not in capsys.readouterr().err  # no progress bar
 
 
-def test_infercnv_progress_bar_at_info(adata_full_mock, capsys):
+def test_infercnv_one_line_and_no_progress_bar_at_info(adata_full_mock, caplog, capsys):
     log_config.verbosity = "info"
-    cnv.tl.infercnv(adata_full_mock, reference=np.ones(adata_full_mock.n_vars), window_size=2, step=1, n_jobs=1)
-    assert "it/s" in capsys.readouterr().err
+    with caplog.at_level(logging.INFO, logger=LOGGER):
+        cnv.tl.infercnv(adata_full_mock, reference=np.ones(adata_full_mock.n_vars), window_size=2, step=1, chunksize=1)
+    assert [level for level, _ in _messages(caplog)] == [logging.INFO]
+    assert "it/s" not in capsys.readouterr().err
 
 
 def test_infercnv_mean_reference_warns(adata_full_mock):

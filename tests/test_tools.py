@@ -3,7 +3,6 @@ import warnings
 import leidenalg
 import numpy as np
 import numpy.testing as npt
-import pandas as pd
 import pytest
 import scanpy as sc
 
@@ -66,133 +65,23 @@ def test_infercnv_gene_values(adata_oligodendroma):
     assert "gene_values_cnv" in adata_oligodendroma.layers.keys(), "gene_values_cnv not in .layers"
 
 
-def test_running_mean_n_less_than_genes():
-    # Create a 2D numpy array
-    x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
-    n = 3
-    step = 1
-    gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
-
-    # Call the function with the test parameters
-    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list, calculate_gene_values=True)
-
-    # Define the expected output
-    expected_result = np.array([[2, 3, 4], [7, 8, 9]])
-    expected_gene_values = pd.DataFrame(
-        {
-            "gene1": [2.0, 7.0],
-            "gene2": [2.5, 7.5],
-            "gene3": [3.0, 8.0],
-            "gene4": [3.5, 8.5],
-            "gene5": [4.0, 9.0],
-        }
-    )
-
-    # Assert that the function output is as expected
-    np.testing.assert_array_equal(result, expected_result)
-    # Assert that the gene dfs are equal
-    pd.testing.assert_frame_equal(convolved_gene_values, expected_gene_values)
-
-
-def test_running_mean_n_greater_than_genes():
-    # Create a 2D numpy array
-    x = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
-    n = 7
-    step = 1
-    gene_list = np.array(["gene1", "gene2", "gene3", "gene4", "gene5"])
-
-    # Call the function with the test parameters
-    result, convolved_gene_values = cnv.tl._infercnv._running_mean(x, n, step, gene_list, calculate_gene_values=True)
-
-    # Define the expected output
-    expected_result = np.array([[3], [8]])
-    expected_gene_values = pd.DataFrame(
-        {
-            "gene1": [3.0, 8.0],
-            "gene2": [3.0, 8.0],
-            "gene3": [3.0, 8.0],
-            "gene4": [3.0, 8.0],
-            "gene5": [3.0, 8.0],
-        }
-    )
-
-    # Assert that the function output is as expected
-    np.testing.assert_array_equal(result, expected_result)
-    # Assert that the gene dfs are equal
-    pd.testing.assert_frame_equal(convolved_gene_values, expected_gene_values)
-
-
-def test_calculate_gene_averages():
-    convolved_gene_names = np.array(
-        [["gene1", "gene2", "gene3"], ["gene2", "gene3", "gene4"], ["gene3", "gene4", "gene5"]]
-    )
-
-    smoothed_x = np.array([[2, 3, 4], [4, 4, 6], [6, 2, 1]])
-
-    convolved_gene_values = cnv.tl._infercnv._calculate_gene_averages(convolved_gene_names, smoothed_x)
-
-    pd.testing.assert_frame_equal(
-        convolved_gene_values,
-        pd.DataFrame(
-            {
-                "gene1": [2.0, 4.0, 6.0],
-                "gene2": [2.5, 4.0, 4.0],
-                "gene3": [3.000000, 4.666667, 3.000000],
-                "gene4": [3.5, 5.0, 1.5],
-                "gene5": [4.0, 6.0, 1.0],
-            }
-        ),
-    )
-
-
-def test_infercnv_chunk_with_gene_values(adata_full_mock, gene_res_actual, x_res_actual):
-    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None, layer=None)
-    var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
-    tmp_x = adata_full_mock.X
-
-    chr_pos, x_res, gene_res = cnv.tl._infercnv._infercnv_chunk(
-        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1, calculate_gene_values=True
-    )
-
-    gene_res.index = gene_res.index.astype(str)
-    pd.testing.assert_frame_equal(gene_res, gene_res_actual)
-    np.testing.assert_array_equal(x_res.toarray(), x_res_actual)
-    assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
-
-
-def test_infercnv_chunk_default(adata_full_mock, x_res_actual):
-    reference = _get_reference(adata_full_mock, reference_key=None, reference_cat=None, reference=None, layer=None)
-    var = adata_full_mock.var.loc[:, ["chromosome", "start", "end"]]
-    tmp_x = adata_full_mock.X
-
-    chr_pos, x_res, gene_res = cnv.tl._infercnv._infercnv_chunk(
-        tmp_x, var, reference, lfc_cap=1, window_size=3, step=1, dynamic_threshold=1
-    )
-
-    assert gene_res is None
-    np.testing.assert_array_equal(x_res.toarray(), x_res_actual)
-    assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
-
-
-def test_infercnv_more_than_2_chunks(adata_full_mock, x_res_actual):
+@pytest.mark.parametrize("chunksize", [1, 3, 5000])
+def test_infercnv_mock_values(adata_full_mock, gene_res_actual, x_res_actual, chunksize):
+    """Values of infercnvpy <= 0.6 with all cells in one chunk, whose threshold is the std of all cells."""
     chr_pos, res, per_gene_mtx = cnv.tl.infercnv(
         adata_full_mock,
-        reference_key=None,
-        reference_cat=None,
-        reference=None,
-        chunksize=2,
         lfc_clip=1,
         window_size=3,
         step=1,
         dynamic_threshold=1,
+        noise_reference="all",
+        chunksize=chunksize,
         calculate_gene_values=True,
         inplace=False,
     )
-
-    ## each chunk will contain 2 samples, this simulatanously tests the chunking and the merging
-    np.testing.assert_array_equal(per_gene_mtx[0], np.array([0.75, 0.0, 0.0, 0.0, -0.75, 0.0, 0.0, 0.0, 0.0, 0.75]))
-    np.testing.assert_array_equal(per_gene_mtx[3], np.array([0, 0, 0, 0, 0, 0.921875, 0.703125, 0, 0, 0]))
     np.testing.assert_array_equal(res.toarray(), x_res_actual)
+    np.testing.assert_allclose(per_gene_mtx, gene_res_actual.to_numpy(), rtol=1e-6)
+    assert res.dtype == per_gene_mtx.dtype == np.float32
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
@@ -206,6 +95,7 @@ def test_infercnv_records_params(adata_full_mock, tmp_path):
         "window_size": 3,
         "step": 1,
         "dynamic_threshold": 1.5,
+        "noise_reference": "reference",
         "exclude_chromosomes": ["chrX", "chrY"],
         "chunksize": 5000,
         "layer": None,
