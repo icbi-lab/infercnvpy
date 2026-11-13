@@ -109,6 +109,12 @@ def infercnv(
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
 
     tmp_adata = adata[:, ~var_mask]
+    if not tmp_adata.var["chromosome"].astype(str).str.startswith("chr").any():
+        raise ValueError(
+            'None of the chromosome names in `adata.var["chromosome"]` start with "chr". '
+            'infercnvpy only uses chromosomes named like "chr1". Add the prefix, e.g. with '
+            '`adata.var["chromosome"] = "chr" + adata.var["chromosome"].astype(str)`.'
+        )
     reference = _get_reference(adata, reference_key, reference_cat, reference, layer)[:, ~var_mask]
 
     expr = _as_matrix(tmp_adata.X if layer is None else tmp_adata.layers[layer])

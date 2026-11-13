@@ -195,6 +195,13 @@ def test_infercnv_more_than_2_chunks(adata_full_mock, x_res_actual):
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
+def test_infercnv_no_chr_prefix(adata_full_mock):
+    """Chromosome names without a "chr" prefix (Ensembl style) give a clear error."""
+    adata_full_mock.var["chromosome"] = adata_full_mock.var["chromosome"].str.removeprefix("chr")
+    with pytest.raises(ValueError, match='start with "chr"'):
+        cnv.tl.infercnv(adata_full_mock, window_size=3, step=1)
+
+
 def test_infercnv_manual_reference(adata_oligodendroma):
     cnv.tl.infercnv(adata_oligodendroma, reference=np.ones(adata_oligodendroma.shape[1]))
 
