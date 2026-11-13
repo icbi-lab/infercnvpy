@@ -1,10 +1,12 @@
 import os
 from multiprocessing import cpu_count
 
+import numpy as np
 import pandas as pd
 from anndata import AnnData
 from scanpy import logging
-from scipy.sparse import issparse
+
+from infercnvpy._util import _as_df, _as_matrix
 
 
 def copykat(
@@ -22,7 +24,7 @@ def copykat(
     norm_cell_names: str = "",
     cell_line="no",
     window_size=25,
-) -> (pd.DataFrame, pd.Series):
+) -> tuple[np.ndarray, pd.Series] | None:
     """Inference of genomic copy number and subclonal structure.
 
     Runs CopyKAT (Copynumber Karyotyping of Tumors) :cite:`Gao2021` based on integrative
@@ -105,8 +107,8 @@ def copykat(
 
     logging.info("Preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
-        expr = adata.X if layer is None else adata.layers[layer]
-        if issparse(expr):
+        expr = _as_matrix(adata.X if layer is None else adata.layers[layer])
+        if not isinstance(expr, np.ndarray):
             expr = expr.T.toarray()
         else:
             expr = expr.T
@@ -165,7 +167,7 @@ def copykat(
     new_cpkat = copyKAT_result.drop(["chrom", "chrompos", "abspos"], axis=1)
     # align cells
     new_cpkat = new_cpkat.loc[:, adata.obs.index]
-    copyKAT_pred = adata.obs.merge(copyKAT_pred, left_index=True, right_index=True, how="left")["copykat.pred"]
+    copyKAT_pred = _as_df(adata.obs).merge(copyKAT_pred, left_index=True, right_index=True, how="left")["copykat.pred"]
     # transpose
     new_cpkat_trans = new_cpkat.T.values
 
@@ -173,5 +175,5 @@ def copykat(
         adata.uns[key_added] = chrom_pos
         adata.obsm[f"X_{key_added}"] = new_cpkat_trans
         adata.obs[key_added] = copyKAT_pred
-    else:
-        return new_cpkat_trans, copyKAT_pred
+        return None
+    return new_cpkat_trans, copyKAT_pred

@@ -1,5 +1,5 @@
 {
-    "[python][json][jsonc]": {
+    "[python][json][jsonc][yaml][markdown]": {
         "editor.formatOnSave": true,
     },
     "[python]": {
@@ -9,7 +9,7 @@
             "source.organizeImports": "always",
         },
     },
-    "[json][jsonc]": {
+    "[json][jsonc][yaml][markdown]": {
         "editor.defaultFormatter": "biomejs.biome",
     },
     "python.analysis.typeCheckingMode": "basic",

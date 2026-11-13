@@ -7,6 +7,8 @@ import scanpy.queries
 from anndata import AnnData
 from scanpy import logging
 
+from infercnvpy._util import _as_df
+
 
 def genomic_position_from_biomart(
     adata: AnnData | None = None,
@@ -16,7 +18,7 @@ def genomic_position_from_biomart(
     species: str = "hsapiens",
     inplace: bool = True,
     **kwargs,
-):
+) -> pd.DataFrame | None:
     """
     Get genomic gene positions from ENSEMBL Biomart.
 
@@ -57,6 +59,9 @@ def genomic_position_from_biomart(
         # use chr prefix for chromosome
         .assign(chromosome=lambda x: "chr" + x["chromosome"])
     )
+    if adata is None:
+        # same rule as when matching to adata: genes with more than one position are dropped
+        return biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     missing_from_biomart = len(set(gene_ids_adata) - set(biomart_annot[biomart_gene_id].values))
@@ -70,7 +75,7 @@ def genomic_position_from_biomart(
         logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
         biomart_annot = biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
 
-    tmp_var = adata.var.copy()
+    tmp_var = _as_df(adata.var).copy()
     orig_index_name = tmp_var.index.name
     TMP_INDEX_NAME = "adata_var_index"
     tmp_var.index.name = TMP_INDEX_NAME
@@ -87,8 +92,8 @@ def genomic_position_from_biomart(
 
     if inplace:
         adata.var = var_annotated
-    else:
-        return var_annotated
+        return None
+    return var_annotated
 
 
 def genomic_position_from_gtf(
@@ -128,9 +133,7 @@ def genomic_position_from_gtf(
         raise ImportError(
             "genomic_position_from_gtf requires gtfparse as optional dependency. Please install it using `pip install gtfparse`."
         ) from None
-    gtf = gtfparse.read_gtf(
-        gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"]
-    ).to_pandas()
+    gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
     gtf = (
         gtf.loc[
             gtf["feature"] == "gene",
@@ -141,6 +144,9 @@ def genomic_position_from_gtf(
     )
     # remove ensembl versions
     gtf["gene_id"] = gtf["gene_id"].str.replace(r"\.\d+$", "", regex=True)
+    if adata is None:
+        # same rule as when matching to adata: genes with more than one position are dropped
+        return _add_chr_prefix(gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :])
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     gtf = gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :]
@@ -154,7 +160,7 @@ def genomic_position_from_gtf(
         logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
         gtf = gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :]
 
-    tmp_var = adata.var.copy()
+    tmp_var = _as_df(adata.var).copy()
     orig_index_name = tmp_var.index.name
     TMP_INDEX_NAME = "adata_var_index"
     tmp_var.index.name = TMP_INDEX_NAME
@@ -169,11 +175,17 @@ def genomic_position_from_gtf(
     var_annotated.set_index(TMP_INDEX_NAME, inplace=True)
     var_annotated.index.name = orig_index_name
 
-    # if not a gencode GTF, let's add 'chr' prefix:
-    if np.all(~var_annotated["chromosome"].dropna().str.startswith("chr")):
-        var_annotated["chromosome"] = "chr" + var_annotated["chromosome"]
+    var_annotated = _add_chr_prefix(var_annotated)
 
     if inplace:
         adata.var = var_annotated
-    else:
-        return var_annotated
+        return None
+    return var_annotated
+
+
+def _add_chr_prefix(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a 'chr' prefix to the chromosome names if none has one (non-GENCODE GTFs)."""
+    if np.all(~df["chromosome"].dropna().str.startswith("chr")):
+        # gtfparse 3 returns categoricals; object dtype keeps NaN for genes without a position
+        df["chromosome"] = "chr" + df["chromosome"].astype(object)
+    return df

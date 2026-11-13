@@ -67,4 +67,4 @@ def maynard2020_3k() -> AnnData:
     return read_h5ad(fname)
 
 
-maynard2020_3k.__doc__ = maynard2020_3k.__doc__.format(pooch_info=indent(_POOCH_INFO, " " * 4).lstrip())
+maynard2020_3k.__doc__ = (maynard2020_3k.__doc__ or "").format(pooch_info=indent(_POOCH_INFO, " " * 4).lstrip())

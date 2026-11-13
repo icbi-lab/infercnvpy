@@ -1,7 +1,7 @@
 {
   "template": "https://github.com/scverse/cookiecutter-scverse",
-  "commit": "6518dfa1abde7379ea7255daf0ce09c23f2b4c94",
-  "checkout": "v0.8.0",
+  "commit": "3cf6a432c391c7b30cc6d5a967c6155312919009",
+  "checkout": "main",
   "context": {
     "cookiecutter": {
       "project_name": "infercnvpy",
@@ -13,7 +13,7 @@
       "github_repo": "infercnvpy",
       "license": "BSD 3-Clause License",
       "ide_integration": true,
-      "issue_categorization": "",
+      "issue_categorization": "issue types",
       "_copy_without_render": [
         ".github/workflows/build.yaml",
         ".github/workflows/test.yaml",
@@ -24,8 +24,12 @@
         "LICENSE",
         "README.md",
         "docs/api.md",
+        "docs/api/**",
+        "docs/citation.md",
         "docs/index.md",
+        "docs/installation.md",
         "docs/notebooks/example.ipynb",
+        "docs/quickstart.md",
         "docs/references.bib",
         "docs/references.md",
         "src/**",
@@ -37,10 +41,8 @@
         "trim_blocks": true
       },
       "_template": "https://github.com/scverse/cookiecutter-scverse",
-      "_commit": "6518dfa1abde7379ea7255daf0ce09c23f2b4c94"
-    },
-    "_commit": "6518dfa1abde7379ea7255daf0ce09c23f2b4c94",
-    "_template": "https://github.com/scverse/cookiecutter-scverse"
+      "_commit": "3cf6a432c391c7b30cc6d5a967c6155312919009"
+    }
   },
   "directory": null
 }

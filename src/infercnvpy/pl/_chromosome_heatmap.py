@@ -4,7 +4,8 @@ import pandas as pd
 import scanpy as sc
 from anndata import AnnData
 from matplotlib.colors import Colormap, TwoSlopeNorm
-from scipy.sparse import issparse
+
+from infercnvpy._util import _as_df, _as_matrix
 
 # TODO should not use private scanpy functions
 try:
@@ -58,14 +59,15 @@ def chromosome_heatmap(
     """
     if groupby == "cnv_leiden" and "cnv_leiden" not in adata.obs.columns:
         raise ValueError("'cnv_leiden' is not in `adata.obs`. Did you run `tl.leiden()`?")
-    tmp_adata = AnnData(X=adata.obsm[f"X_{use_rep}"], obs=adata.obs, uns=adata.uns)
+    tmp_adata = AnnData(X=_as_matrix(adata.obsm[f"X_{use_rep}"]), obs=_as_df(adata.obs), uns=adata.uns)
 
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
     chr_pos = list(chr_pos_dict.values())
 
     # center color map at 0
-    tmp_data = tmp_adata.X.data if issparse(tmp_adata.X) else tmp_adata.X
+    X = _as_matrix(tmp_adata.X)
+    tmp_data = X if isinstance(X, np.ndarray) else X.data
     vmin = kwargs.pop("vmin", None)
     vmax = kwargs.pop("vmax", None)
     if vmin is None:
@@ -96,6 +98,7 @@ def chromosome_heatmap(
     show = sc.settings.autoshow if show is None else show
     if not show:
         return return_ax_dic
+    return None
 
 
 def chromosome_heatmap_summary(
@@ -197,3 +200,4 @@ def chromosome_heatmap_summary(
     show = sc.settings.autoshow if show is None else show
     if not show:
         return return_ax_dic
+    return None
