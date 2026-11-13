@@ -21,6 +21,8 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Typing :: Typed",
 ]
 dynamic = [ "version" ]
 dependencies = [
@@ -54,13 +56,12 @@ contributors = [
 
 [dependency-groups]
 dev = [
-  "prek>=0.2",
   "twine>=4.0.2",
 ]
 test = [
   "coverage>=7.10",
   "openpyxl>=3.1",         # required for one of the scanpy datasets used in the tests
-  "pytest>=8.4",
+  "pytest>=9",
   "pytest-benchmark>=5.1",
   "pytest-cov>=6",         # For VS Code’s coverage functionality
 ]
@@ -79,15 +80,29 @@ doc = [
   "sphinxcontrib-katex",
   "sphinxext-opengraph",
 ]
+typecheck = [
+  "mypy",
+  "pandas-stubs",
+]
 
 [tool.hatch]
 version.source = "vcs"
+version.raw-options.git_describe_command = "git describe --dirty --tags --long --match v*"
+build.targets.sdist.exclude = [ "/docs", "/tests" ]
 envs.default.installer = "uv"
 envs.default.dependency-groups = [ "dev" ]
 envs.docs.scripts.build = "sphinx-build -M html docs docs/_build -W {args}"
 envs.docs.scripts.clean = "git clean -fdX -- {args:docs}"
 envs.docs.scripts.open = "python -m webbrowser -t docs/_build/html/index.html"
 envs.docs.dependency-groups = [ "doc" ]
+envs.hatch-check-code.dependencies = [ "prek" ]
+envs.hatch-check-code.scripts.lint-check = "echo 'try `hatch check code --fix`'; false"
+envs.hatch-check-code.scripts.lint-fix = "prek run -a --no-group=format --no-group=typecheck"
+envs.hatch-check-fmt.dependencies = [ "prek" ]
+envs.hatch-check-fmt.scripts.format-check = "echo 'try `hatch check fmt --fix`'; false"
+envs.hatch-check-fmt.scripts.format-fix = "prek run -a --group=format --no-group=typecheck"
+envs.hatch-check-types.scripts.check = [ "mypy" ]
+envs.hatch-check-types.dependency-groups = [ "typecheck", "test" ]
 # Install the `gtf` extra so `tests/test_io.py::test_get_genomic_position_from_gtf` can run.
 # The `copykat` extra (rpy2 + R) is intentionally omitted: `test_copykat` is skipped on CI
 # and both rpy2 and gtfparse are imported lazily, so the base import works without them.
@@ -145,16 +160,15 @@ lint.per-file-ignores."docs/*" = [ "I" ]
 lint.per-file-ignores."tests/*" = [ "D" ]
 lint.pydocstyle.convention = "numpy"
 
+[tool.mypy]
+files = [ "src", "tests" ]
+
 [tool.pytest]
-ini_options.testpaths = [ "tests" ]
-ini_options.addopts = [
-  # "-Werror",  # if 3rd party libs raise DeprecationWarnings, just use filterwarnings below
+addopts = [
   "--import-mode=importlib", # allow using test files with same name
 ]
-ini_options.xfail_strict = true
-ini_options.filterwarnings = [
-  # "ignore:.*U.*mode is deprecated:DeprecationWarning",
-]
+strict = true
+testpaths = [ "tests" ]
 
 [tool.coverage]
 run.source = [ "infercnvpy" ]
@@ -170,6 +184,7 @@ skip = [
   "src/**/__init__.py",
   "src/**/basic.py",
   "CHANGELOG.md",
+  "docs/api",
   "docs/api.md",
   "docs/changelog.md",
   "docs/references.bib",
