@@ -1,22 +1,22 @@
 import numpy as np
 import numpy.testing as npt
 import pytest
-import scanpy.datasets
 
 from infercnvpy.io import genomic_position_from_biomart, genomic_position_from_gtf
 from infercnvpy.tl import infercnv
 
 
 @pytest.mark.parametrize(
-    "adata,gtf,kwargs,expected_genes",
+    "gtf,kwargs,expected_genes",
     [
         # weird gtfparse issue
-        # [scanpy.datasets.pbmc3k(), "chr1_ensembl.gtf", {}, 42],
-        [scanpy.datasets.pbmc3k(), "chr21_gencode.gtf", {}, 56],
-        [scanpy.datasets.pbmc3k(), "chr21_gencode.gtf", {"adata_gene_id": "gene_ids", "gtf_gene_id": "gene_id"}, 116],
+        # ["chr1_ensembl.gtf", {}, 42],
+        ["chr21_gencode.gtf", {}, 56],
+        ["chr21_gencode.gtf", {"adata_gene_id": "gene_ids", "gtf_gene_id": "gene_id"}, 116],
     ],
 )
-def test_get_genomic_position_from_gtf(adata, gtf, kwargs, testdata, expected_genes):
+def test_get_genomic_position_from_gtf(adata_pbmc3k, gtf, kwargs, testdata, expected_genes):
+    adata = adata_pbmc3k
     genomic_position_from_gtf(testdata / gtf, adata, **kwargs)
     # those entries that are not null should start with "chr"
     assert all(adata.var["chromosome"].dropna().str.startswith("chr"))
@@ -38,14 +38,11 @@ def test_get_genomic_position_from_gtf_without_adata(gtf, testdata):
     assert not gene_pos["gene_name"].duplicated().any()
 
 
-@pytest.mark.parametrize(
-    "adata,kwargs",
-    [
-        [scanpy.datasets.pbmc3k(), {"adata_gene_id": "gene_ids"}],
-        [scanpy.datasets.pbmc3k(), {"biomart_gene_id": "hgnc_symbol"}],
-    ],
-)
-def test_get_genomic_position_from_biomart(adata, kwargs):
+@pytest.mark.internet
+@pytest.mark.usefixtures("biomart_cache")
+@pytest.mark.parametrize("kwargs", [{"adata_gene_id": "gene_ids"}, {"biomart_gene_id": "hgnc_symbol"}])
+def test_get_genomic_position_from_biomart(adata_pbmc3k, kwargs):
+    adata = adata_pbmc3k
     genomic_position_from_biomart(adata, use_cache=True, **kwargs)
     # those entries that are not null should start with "chr"
     assert all(adata.var["chromosome"].dropna().str.startswith("chr"))

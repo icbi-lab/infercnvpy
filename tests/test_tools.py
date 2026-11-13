@@ -220,8 +220,7 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
 
 
-def test_layer_parameter(adata_oligodendroma):
-    adata_oligodendroglioma = cnv.datasets.oligodendroglioma()
+def test_layer_parameter(adata_oligodendroglioma):
 
     # create lognorm layer but leave X unchanged
     adata_oligodendroglioma.layers["LogNormalize"] = adata_oligodendroglioma.X.copy()
@@ -241,6 +240,7 @@ def test_layer_parameter(adata_oligodendroma):
     assert np.all(X_cnv == X_cnv2), "Different results found with infercnv layer parameter"
 
 
+# The benchmarks are skipped by default (`--benchmark-skip` in pyproject.toml); run them with `--benchmark-only`.
 def test_calculate_gene_values_speed(benchmark, adata_oligodendroma):
     # Benchmark with calculate_gene_values=True
     benchmark(
