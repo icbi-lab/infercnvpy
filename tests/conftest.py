@@ -1,6 +1,5 @@
 import os
 from collections.abc import Callable, Generator, Iterable
-from importlib.metadata import version
 from pathlib import Path
 
 import matplotlib
@@ -128,9 +127,9 @@ def image_comparer(tmp_path) -> Generator[Callable[..., None]]:
 
     To add or update a baseline, copy the `actual` image named in the failure message to `tests/_images`.
     """
-    # baselines are drawn with scanpy 1.12; older scanpy lays out the heatmap differently
-    if Version(version("scanpy")) < Version("1.12"):
-        pytest.skip("image baselines need scanpy>=1.12")
+    # baselines are drawn with matplotlib 3.11; 3.10 lays out the heatmap slightly differently
+    if Version(matplotlib.__version__) < Version("3.11"):
+        pytest.skip("image baselines need matplotlib>=3.11")
     plt.rcdefaults()
 
     def save_and_compare(name: str, *, tol: float = 15) -> None:
