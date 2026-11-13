@@ -1,0 +1,21 @@
+# Example datasets, read with scverse_misc.datasets.parse_registry.
+# Files are hosted on exampledata.scverse.org as infercnvpy/<dataset>/<file>.
+# Each file has one key and is the single source of truth: when its content changes, overwrite the key,
+# re-pin the sha256 here and purge the CDN cache, since edges keep serving the old bytes for about 24 h.
+base_url: https://exampledata.scverse.org/infercnvpy/
+
+datasets:
+  maynard2020_3k:
+    type: infercnvpy
+    shape: [3000, 55556]
+    files:
+      - name: maynard2020_3k.h5ad
+        s3_key: maynard2020_3k/maynard2020_3k.h5ad
+        sha256: 12be17faefe6893fadc4fbcbdfda9c6fbcf08a6c5b9275d8e016ba2361b840da
+  oligodendroglioma:
+    type: infercnvpy
+    shape: [184, 9450]
+    files:
+      - name: oligodendroglioma.h5ad
+        s3_key: oligodendroglioma/oligodendroglioma.h5ad
+        sha256: f1c5bf67613cabc6931b90f4a623bdd5ed7e32f574a98901f3f55b9d80523f5e

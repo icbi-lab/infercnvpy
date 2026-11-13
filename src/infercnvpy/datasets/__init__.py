@@ -1,25 +1,30 @@
 """Example datasets."""
 
-import importlib.resources as pkg_resources
-from os import PathLike
+import os
+from pathlib import Path
 from textwrap import dedent, indent
-from typing import cast
 
 import pooch
 from anndata import AnnData, read_h5ad
-
-from . import data
+from scverse_misc.datasets import DatasetEntry, DownloadCB, fetch, parse_registry, register_loader
 
 DATASET_ENV_VAR = "INFERCNVPY_DATA_DIR"
 
-_EXAMPLEDATA = pooch.create(
-    path=pooch.os_cache("infercnvpy"),
-    base_url="https://github.com/scverse/infercnvpy/releases/download/d0.1.0/",
-    env=DATASET_ENV_VAR,
-    registry={
-        "maynard2020_3k.h5ad": "md5:8a97c55dd72fb92d8e5ab72a52e23679",
-    },
-)
+_BASE_URL, _DATASETS = parse_registry(Path(__file__).parent / "registry.yaml")
+
+
+# scverse-misc keys loaders by type name across all packages in the process, so ours uses the package name.
+@register_loader("infercnvpy")
+def _load_h5ad(entry: DatasetEntry, target: Path, download: DownloadCB, /, **kwargs: object) -> AnnData:
+    # Download into the cache dir itself rather than `target` (`<cache dir>/<type>`),
+    # so files cached by earlier infercnvpy versions are reused.
+    return read_h5ad(download(entry.file(suffix=".h5ad"), dest=target.parent))
+
+
+def _fetch(name: str) -> AnnData:
+    cache_dir = os.environ.get(DATASET_ENV_VAR) or pooch.os_cache("infercnvpy")
+    return fetch(_DATASETS[name], cache_dir, base_url=_BASE_URL)
+
 
 _POOCH_INFO = dedent(
     f"""\
@@ -40,9 +45,10 @@ def oligodendroglioma() -> AnnData:
     """The original inferCNV example dataset.
 
     Derived from :cite:`Tirosh2016`.
+
+    {pooch_info}
     """
-    with pkg_resources.path(data, "oligodendroglioma.h5ad") as p:
-        return read_h5ad(p)
+    return _fetch("oligodendroglioma")
 
 
 def maynard2020_3k() -> AnnData:
@@ -63,8 +69,8 @@ def maynard2020_3k() -> AnnData:
 
     {pooch_info}
     """
-    fname = cast(PathLike, _EXAMPLEDATA.fetch("maynard2020_3k.h5ad", progressbar=True))
-    return read_h5ad(fname)
+    return _fetch("maynard2020_3k")
 
 
-maynard2020_3k.__doc__ = (maynard2020_3k.__doc__ or "").format(pooch_info=indent(_POOCH_INFO, " " * 4).lstrip())
+for _func in (oligodendroglioma, maynard2020_3k):
+    _func.__doc__ = (_func.__doc__ or "").format(pooch_info=indent(_POOCH_INFO, " " * 4).lstrip())

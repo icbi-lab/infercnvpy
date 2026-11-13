@@ -236,6 +236,15 @@ pytest
 
 in the root of the repository.
 
+The default run skips two kinds of tests.
+Tests marked with `@pytest.mark.internet` (BioMart queries, dataset downloads) run only with `--internet-tests`.
+The benchmarks run only with `--benchmark-only`.
+Downloaded test data (pbmc3k from scanpy, the infercnvpy datasets) is cached in the infercnvpy data directory
+({func}`pooch.os_cache`, or `$INFERCNVPY_DATA_DIR` if set), so only the first run needs the internet.
+
+The plotting tests compare figures against baseline images in `tests/_images`.
+If you change a plot on purpose, copy the new image from the path in the failure message into `tests/_images`.
+
 [pytest]: https://docs.pytest.org/
 
 ### Continuous integration

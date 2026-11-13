@@ -78,12 +78,22 @@ jobs:
         run: uvx hatch env create ${{ matrix.env.name }}
       - name: list all all installed package versions
         run: uvx hatch run ${{ matrix.env.name }}:uv pip list
+      - name: Restore data cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The default pooch cache of infercnvpy.datasets. tests/conftest.py puts scanpy's downloads there, too.
+          path: ~/.cache/infercnvpy
+          key: data-${{ hashFiles('src/infercnvpy/datasets/registry.yaml', 'tests/conftest.py') }}
+          restore-keys: |
+            data-
       - name: run tests using hatch
         env:
           MPLBACKEND: agg
           PLATFORM: ${{ matrix.os }}
           DISPLAY: :42
-        run: uvx hatch run ${{ matrix.env.name }}:run-cov -v --color=yes -n auto
+          # Tests that need the internet (BioMart, dataset downloads) only run on the schedule.
+          INTERNET_TESTS: ${{ github.event_name == 'schedule' && '--internet-tests' || '' }}
+        run: uvx hatch run ${{ matrix.env.name }}:run-cov -v --color=yes -n auto $INTERNET_TESTS
       - name: generate coverage report
         run: |
           # See https://coverage.readthedocs.io/page/config.html#run-patch

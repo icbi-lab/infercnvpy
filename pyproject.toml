@@ -37,8 +37,8 @@ dependencies = [
   "rdata>=1",                             # MIT; reads SCEVAN .RData files
   "scanpy>=1.11",
   "scipy>=1.15",
-  # the shared `scverse` logger
-  "scverse-misc>=0.1.8",
+  # the shared `scverse` logger and the example dataset registry
+  "scverse-misc[datasets]>=0.1.8",
   # for debug logging (referenced from the issue template)
   "session-info2>=0.2",
   "tqdm>=4.67",
@@ -166,6 +166,10 @@ overrides = [
 [tool.pytest]
 addopts = [
   "--import-mode=importlib", # allow using test files with same name
+  "--benchmark-skip",        # run the benchmarks with `--benchmark-only`
+]
+markers = [
+  "internet: tests which rely on internet resources (enable with `--internet-tests`)",
 ]
 strict = true
 testpaths = [ "tests" ]

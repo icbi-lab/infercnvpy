@@ -19,6 +19,7 @@ __pycache__/
 /data/
 /node_modules/
 /.coverage*
+/.benchmarks/
 
 # docs
 /docs/generated/
