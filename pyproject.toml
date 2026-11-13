@@ -28,15 +28,15 @@ dynamic = [ "version" ]
 dependencies = [
   "anndata>=0.7.3",
   "leidenalg",
+  "matplotlib",
   "numpy>=1.20",                          # includes type annotations
   "pandas>=1",
   "pooch>=1.7",
   "pybiomart>=0.2",
   "pycairo>=1.20; sys_platform=='win32'",
-  "pytest-benchmark",
-  "pytoml",
   "rdata",                                # MIT; reads SCEVAN .RData files
   "scanpy>=1.10",
+  "scipy",
   # for debug logging (referenced from the issue template)
   "session-info2",
   "tqdm>=4.63",                           # fixes tqdm.auto
@@ -61,9 +61,10 @@ dev = [
 ]
 test = [
   "coverage>=7.10",
-  "openpyxl",       # required for one of the scanpy datasets used in the tests
+  "openpyxl",         # required for one of the scanpy datasets used in the tests
   "pytest",
-  "pytest-cov",     # For VS Code’s coverage functionality
+  "pytest-benchmark",
+  "pytest-cov",       # For VS Code’s coverage functionality
 ]
 doc = [
   "ipykernel",
