@@ -15,6 +15,10 @@ Computation steps
 
 The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
 
+Genes without a genomic position and genes on `exclude_chromosomes`
+(default: `chrX` and `chrY`) are dropped first. Only chromosomes whose name starts
+with `chr` are used, and `chrM` is skipped.
+
 1. Subtract the reference gene expression from all cells. Since the data is in log
    space, this effectively computes the log fold change. If references for
    multiple categories are available (i.e. multiple values are specified to
@@ -30,15 +34,19 @@ The function parameters are documented at :func:`infercnvpy.tl.infercnv`.
    This procedure avoids calling false positive CNV regions due to cell-type specific
    expression of clustered gene regions (e.g. Immunoglobulin- or HLA genes in different
    immune cell types).
-2. Clip the fold changes at `-lfc_cap` and `+lfc_cap`.
-3. Smooth the gene expression by genomic position. Computes the average over a
-   running window of length `window_size`. Compute only every nth window
-   to save time & space, where n = `step`.
+2. Clip the fold changes at `-lfc_clip` and `+lfc_clip`.
+3. Smooth the gene expression by genomic position. For each chromosome, genes are
+   sorted by start position and averaged over a running window of `window_size`
+   genes, weighted with a pyramid that gives the genes in the middle of the window
+   the largest weight. Only every nth window is kept to save time and space, where
+   n = `step`. A chromosome with fewer genes than `window_size` is reduced to a
+   single, unweighted mean.
 4. Center the smoothed gene expression by cell, by subtracting the median of each cell
    from each cell.
-5. Perform noise filtering. Values `< dynamic_theshold * STDDEV` are set to 0,
-   where `STDDEV` is the standard deviation of the smoothed gene expression
-6. Smooth the final result using a median filter.
+5. Perform noise filtering. Values with an absolute value `< dynamic_threshold * STDDEV`
+   are set to 0, where `STDDEV` is the standard deviation of the centered, smoothed
+   gene expression. The standard deviation is computed separately for each chunk of
+   `chunksize` cells.
 
 .. _input-data:
 

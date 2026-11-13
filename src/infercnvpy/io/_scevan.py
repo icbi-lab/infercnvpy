@@ -1,12 +1,16 @@
 """Read in result files from scevan."""
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import rdata
 from anndata import AnnData
+from anndata.acc import A
+from scverse_misc import deprecated_arg
 
+from infercnvpy._acc import DEPR_INPLACE_COPY, DEPR_KEY_ADDED, _key, _legacy, _obsm_key
 from infercnvpy._logging import log
 
 
@@ -35,15 +39,18 @@ def _get_chr_pos_from_array(chr_pos_array):
     return chr_pos
 
 
+@deprecated_arg("key_added", DEPR_KEY_ADDED)
+@deprecated_arg("inplace", DEPR_INPLACE_COPY)
 def read_scevan(
     adata: AnnData,
     scevan_res_dir: str | Path,
     scevan_res_table: str | Path | None = None,
     *,
+    out: Any = False,
     subclones: bool = True,
-    inplace: bool = True,
     subset: bool = True,
-    key_added: str = "scevan",
+    inplace: bool | None = None,
+    key_added: str | None = None,
 ) -> AnnData | None:
     """Load results from SCEVAN :cite:`DeFalco2021` for downstream analysis with infercnvpy.
 
@@ -56,8 +63,8 @@ def read_scevan(
         adata object to which the SCEVAN results shall be added
     scevan_res_table
         The results of `SCEVAN::pipelineCNA` saved as CSV file. Will add
-        the columns `{key_added}_class`, `{key_added}_confident_normal` and, if SCEVAN was
-        ran with subclone calling, `{key_added}_subclone` to `adata.obs`. This parameter can
+        the columns `scevan_class`, `scevan_confident_normal` and, if SCEVAN was
+        ran with subclone calling, `scevan_subclone` to `adata.obs` (named after `out`). This parameter can
         be omitted if you only want to load the CNV matrix.
     scevan_res_dir
         The output directory created by SCEVAN. Must only contain results for a single
@@ -69,17 +76,22 @@ def read_scevan(
         If `True` (the default), subset anndata to the cells that have not been filtered
         out by the SCEVAN analysis. Otherwise the CNV matrix may contain `nan`-values and
         downstream analysis such as PCA will not work.
-    key_added
-        Used as prefix for the columns added to `adata.obs` and will add the CNV matrix
-        as `X_{key_added}` to `adata.obsm`, and chromosome indices to `adata.uns[key_added]`.
+    out
+        Where to write the CNV matrix, e.g. `A.obsm["X_scevan"]` (the default).
+        Its name without the `X_` prefix is used for the chromosome positions in
+        `adata.uns` and as prefix of the columns added to `adata.obs`.
     inplace
-        If `True`, modify anndata inplace. Otherwise, return a copy.
+        Deprecated, copy `adata` before calling this function instead.
+    key_added
+        Deprecated, use `out`.
 
     Returns
     -------
-    Depending on the value of `inplace` returns a modified AnnData object or returns
-    `None` and modifies adata inplace.
+    `None`, or a modified copy of adata if the deprecated `inplace=False` is passed.
     """
+    out = _legacy(out, key_added, A.obsm[f"X_{key_added}"], name="key_added", default=False)
+    key = _obsm_key("scevan") if out is False else _key(out, "obsm")
+    name = key.removeprefix("X_")
     scevan_res_dir = Path(scevan_res_dir)
     scevan_res_file = list(scevan_res_dir.glob("*_CNAmtx.RData"))
     scevan_subclones_file = list(scevan_res_dir.glob("*_CNAmtxSubclones.RData"))
@@ -103,15 +115,15 @@ def read_scevan(
     if subclones and len(scevan_subclones_file):
         scevan_subclone_res = _read_rdata_frame(scevan_subclones_file[0], "results.com").T
 
-    if not inplace:
+    if inplace is False:
         adata = adata.copy()
 
     # add obs annotation
     if tumor_normal_call is not None:
-        adata.obs[f"{key_added}_class"] = tumor_normal_call["class"]
-        adata.obs[f"{key_added}_confident_normal"] = tumor_normal_call["confidentNormal"]
+        adata.obs[f"{name}_class"] = tumor_normal_call["class"]
+        adata.obs[f"{name}_confident_normal"] = tumor_normal_call["confidentNormal"]
         if "subclone" in tumor_normal_call.columns:
-            adata.obs[f"{key_added}_subclone"] = tumor_normal_call["subclone"].apply(
+            adata.obs[f"{name}_subclone"] = tumor_normal_call["subclone"].apply(
                 lambda x: f"{int(x)}" if not pd.isnull(x) else np.nan
             )
 
@@ -123,9 +135,7 @@ def read_scevan(
         # cells SCEVAN dropped are not in adata unless subset=True; columns are the same segments
         idx = scevan_subclone_res.index.intersection(cna.index)
         cna.loc[idx, :] = scevan_subclone_res.loc[idx].to_numpy()
-    adata.obsm[f"X_{key_added}"] = cna.values
-    adata.uns[key_added] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
+    adata.obsm[key] = cna.values
+    adata.uns[name] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
 
-    if not inplace:
-        return adata
-    return None
+    return adata if inplace is False else None

@@ -1,6 +1,11 @@
+import logging
+
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
 import pytest
+import scanpy as sc
+import scanpy.queries
 
 from infercnvpy.io import genomic_position_from_biomart, genomic_position_from_gtf
 from infercnvpy.tl import infercnv
@@ -12,7 +17,7 @@ from infercnvpy.tl import infercnv
         # weird gtfparse issue
         # ["chr1_ensembl.gtf", {}, 42],
         ["chr21_gencode.gtf", {}, 56],
-        ["chr21_gencode.gtf", {"adata_gene_id": "gene_ids", "gtf_gene_id": "gene_id"}, 116],
+        ["chr21_gencode.gtf", {"use": "var.gene_ids", "gtf_gene_id": "gene_id"}, 116],
     ],
 )
 def test_get_genomic_position_from_gtf(adata_pbmc3k, gtf, kwargs, testdata, expected_genes):
@@ -38,9 +43,69 @@ def test_get_genomic_position_from_gtf_without_adata(gtf, testdata):
     assert not gene_pos["gene_name"].duplicated().any()
 
 
+def _genepos_message(caplog, func):
+    [msg] = [r.getMessage() for r in caplog.records if r.getMessage().startswith(f"{func}:")]
+    return msg
+
+
+@pytest.mark.parametrize(
+    ("gtf_gene_id", "n_duplicated"),
+    [
+        # gene ids are unique: nothing is dropped, nothing is reported
+        ("gene_id", 0),
+        # two gene ids share the name "DUP": both rows are dropped
+        ("gene_name", 1),
+    ],
+)
+def test_genomic_position_from_gtf_duplicates(tmp_path, caplog, gtf_gene_id, n_duplicated):
+    genes = [("ENSG1", "DUP", 100), ("ENSG2", "DUP", 300), ("ENSG3", "UNIQUE", 500)]
+    gtf = tmp_path / "dup.gtf"
+    gtf.write_text(
+        "".join(
+            f'chr1\tTEST\tgene\t{start}\t{start + 99}\t.\t+\t.\tgene_id "{gene_id}"; gene_name "{gene_name}";\n'
+            for gene_id, gene_name, start in genes
+        )
+    )
+    var_names = ["ENSG1", "ENSG2", "ENSG3"] if gtf_gene_id == "gene_id" else ["DUP", "UNIQUE"]
+    adata = sc.AnnData(np.zeros((2, len(var_names))), var=pd.DataFrame(index=var_names))
+
+    with caplog.at_level(logging.INFO, logger="scverse.infercnvpy"):
+        genomic_position_from_gtf(gtf, adata, gtf_gene_id=gtf_gene_id)
+
+    msg = _genepos_message(caplog, "genomic_position_from_gtf")
+    if n_duplicated:
+        assert f"{n_duplicated} with more than one entry for their gene_name" in msg
+        assert pd.isna(adata.var.loc["DUP", "chromosome"])
+    else:
+        assert "more than one entry" not in msg
+        assert adata.var["chromosome"].notna().all()
+
+
+def test_genomic_position_from_biomart_duplicate_message(monkeypatch, caplog):
+    """The duplicate message names BioMart as the source, not a GTF file."""
+    annot = pd.DataFrame(
+        {
+            "ensembl_gene_id": ["ENSG1", "ENSG1", "ENSG2"],
+            "start_position": [1, 1, 10],
+            "end_position": [5, 5, 20],
+            "chromosome_name": ["1", "1", "2"],
+        }
+    )
+    monkeypatch.setattr(scanpy.queries, "biomart_annotations", lambda *args, **kwargs: annot.copy())
+    adata = sc.AnnData(np.zeros((2, 3)), var=pd.DataFrame(index=["ENSG1", "ENSG2", "ENSG3"]))
+
+    with caplog.at_level(logging.INFO, logger="scverse.infercnvpy"):
+        genomic_position_from_biomart(adata)
+
+    msg = _genepos_message(caplog, "genomic_position_from_biomart")
+    assert "1 with no entry in BioMart" in msg
+    assert "1 with more than one entry for their ensembl_gene_id" in msg
+    assert "GTF" not in msg
+
+
 @pytest.mark.internet
 @pytest.mark.usefixtures("biomart_cache")
-@pytest.mark.parametrize("kwargs", [{"adata_gene_id": "gene_ids"}, {"biomart_gene_id": "hgnc_symbol"}])
+@pytest.mark.parametrize("kwargs", [{"use": "var.gene_ids"}, {"biomart_gene_id": "hgnc_symbol"}])
 def test_get_genomic_position_from_biomart(adata_pbmc3k, kwargs):
     adata = adata_pbmc3k
     genomic_position_from_biomart(adata, use_cache=True, **kwargs)

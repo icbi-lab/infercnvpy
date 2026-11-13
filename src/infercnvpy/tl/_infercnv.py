@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
-from infercnvpy._util import _as_matrix, _ensure_array
+from infercnvpy._util import _as_matrix, _ensure_array, _params_for_uns
 
 
 def infercnv(
@@ -64,9 +64,10 @@ def infercnv(
         only compute every nth running window where n = `step`. Set to 1 to compute
         all windows.
     dynamic_threshold
-        Values `< dynamic threshold * STDDEV` will be set to 0, where STDDEV is
-        the stadard deviation of the smoothed gene expression. Set to `None` to disable
-        this step.
+        Values with an absolute value `< dynamic_threshold * STDDEV` will be set to 0,
+        where STDDEV is the standard deviation of the smoothed, cell-centered gene
+        expression, computed separately for each chunk of `chunksize` cells. Set to
+        `None` to disable this step.
     exclude_chromosomes
         List of chromosomes to exclude. The default is to exclude genosomes.
     chunksize
@@ -93,8 +94,22 @@ def infercnv(
 
     Returns
     -------
-    Depending on inplace, either return the smoothed and denoised gene expression
-    matrix sorted by genomic position, or add it to adata.
+    If `inplace=True`, returns `None` and sets the fields below. Otherwise
+    returns a tuple `(chr_pos, cnv_matrix, gene_values)` with the same values;
+    `gene_values` is `None` unless `calculate_gene_values=True`.
+    Sets the following fields:
+
+    `adata.obsm["X_{key_added}"]` : :class:`scipy.sparse.csr_matrix`
+        Smoothed and denoised CNV values, cells x genomic windows, ordered by
+        chromosome and genomic position.
+    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_{key_added}` where it starts.
+    `adata.uns[key_added]["params"]` : :class:`dict`
+        Parameters of this call, stored as given. `reference_key` and `reference_cat`
+        are `None` when an explicit `reference` is passed.
+    `adata.layers["gene_values_{key_added}"]` : :class:`numpy.ndarray`
+        Only if `calculate_gene_values=True`: CNV values per gene, `NaN` for genes
+        that are in no window.
     """
     if not adata.var_names.is_unique:
         raise ValueError("Ensure your var_names are unique!")
@@ -103,12 +118,32 @@ def infercnv(
             "Genomic positions not found. There need to be `chromosome`, `start`, and `end` columns in `adata.var`. "
         )
 
+    params = _params_for_uns(
+        # an explicit `reference` overrides `reference_key` and `reference_cat`
+        reference_key=reference_key if reference is None else None,
+        reference_cat=reference_cat if reference is None else None,
+        lfc_clip=lfc_clip,
+        window_size=window_size,
+        step=step,
+        dynamic_threshold=dynamic_threshold,
+        exclude_chromosomes=exclude_chromosomes,
+        chunksize=chunksize,
+        layer=layer,
+        calculate_gene_values=calculate_gene_values,
+    )
+
     var_mask = adata.var["chromosome"].isnull()
     n_unplaced = int(var_mask.sum())
     if exclude_chromosomes is not None:
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
 
     tmp_adata = adata[:, ~var_mask]
+    if not tmp_adata.var["chromosome"].astype(str).str.startswith("chr").any():
+        raise ValueError(
+            'None of the chromosome names in `adata.var["chromosome"]` start with "chr". '
+            'infercnvpy only uses chromosomes named like "chr1". Add the prefix, e.g. with '
+            '`adata.var["chromosome"] = "chr" + adata.var["chromosome"].astype(str)`.'
+        )
     reference = _get_reference(adata, reference_key, reference_cat, reference, layer)[:, ~var_mask]
 
     expr = _as_matrix(tmp_adata.X if layer is None else tmp_adata.layers[layer])
@@ -170,7 +205,10 @@ def infercnv(
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.uns[key_added] = {"chr_pos": chr_pos}
+        adata.uns[key_added] = {
+            "chr_pos": chr_pos,
+            "params": params,
+        }
 
         if calculate_gene_values:
             adata.layers[f"gene_values_{key_added}"] = per_gene_mtx

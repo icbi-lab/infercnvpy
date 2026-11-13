@@ -1,8 +1,13 @@
+import warnings
+
+import anndata as ad
+import leidenalg
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
 import scanpy as sc
+from anndata.acc import A
 
 import infercnvpy as cnv
 from infercnvpy.tl._infercnv import _get_reference
@@ -50,16 +55,16 @@ def test_get_reference_given_reference(adata_mock):
 )
 def test_infercnv(adata_oligodendroma, reference_key, reference_cat):
     cnv.tl.infercnv(adata_oligodendroma, reference_key=reference_key, reference_cat=reference_cat)
-    assert "X_cnv" in adata_oligodendroma.obsm_keys(), "cnv not in adata.obsm"
-    assert "cnv" in adata_oligodendroma.uns_keys(), "cnv not in adata.uns"
+    assert "X_cnv" in adata_oligodendroma.obsm, "cnv not in adata.obsm"
+    assert "cnv" in adata_oligodendroma.uns, "cnv not in adata.uns"
     ## Test that the gene values are not calculated by default
     assert "gene_values_cnv" not in adata_oligodendroma.layers.keys(), "gene_values_cnv in .layers"
 
 
 def test_infercnv_gene_values(adata_oligodendroma):
     cnv.tl.infercnv(adata_oligodendroma, calculate_gene_values=True)
-    assert "X_cnv" in adata_oligodendroma.obsm_keys(), "cnv not in adata.obsm"
-    assert "cnv" in adata_oligodendroma.uns_keys(), "cnv not in adata.uns"
+    assert "X_cnv" in adata_oligodendroma.obsm, "cnv not in adata.obsm"
+    assert "cnv" in adata_oligodendroma.uns, "cnv not in adata.uns"
     assert "gene_values_cnv" in adata_oligodendroma.layers.keys(), "gene_values_cnv not in .layers"
 
 
@@ -193,6 +198,34 @@ def test_infercnv_more_than_2_chunks(adata_full_mock, x_res_actual):
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
+def test_infercnv_records_params(adata_full_mock, tmp_path):
+    cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", window_size=3, step=1)
+    assert set(adata_full_mock.uns["cnv"]) == {"chr_pos", "params"}
+    assert adata_full_mock.uns["cnv"]["params"] == {
+        "reference_key": "sample",
+        "reference_cat": "sample1",
+        "lfc_clip": 3,
+        "window_size": 3,
+        "step": 1,
+        "dynamic_threshold": 1.5,
+        "exclude_chromosomes": ["chrX", "chrY"],
+        "chunksize": 5000,
+        "layer": None,
+        "calculate_gene_values": False,
+    }
+    # a disabled step is recorded as None, and params round-trip through h5ad
+    cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", dynamic_threshold=None)
+    adata_full_mock.write_h5ad(tmp_path / "cnv.h5ad")
+    assert ad.read_h5ad(tmp_path / "cnv.h5ad").uns["cnv"]["params"]["dynamic_threshold"] is None
+
+
+def test_infercnv_no_chr_prefix(adata_full_mock):
+    """Chromosome names without a "chr" prefix (Ensembl style) give a clear error."""
+    adata_full_mock.var["chromosome"] = adata_full_mock.var["chromosome"].str.removeprefix("chr")
+    with pytest.raises(ValueError, match='start with "chr"'):
+        cnv.tl.infercnv(adata_full_mock, window_size=3, step=1)
+
+
 def test_infercnv_manual_reference(adata_oligodendroma):
     cnv.tl.infercnv(adata_oligodendroma, reference=np.ones(adata_oligodendroma.shape[1]))
 
@@ -220,12 +253,74 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
 
 
+def test_tsne_use():
+    """`tl.tsne` embeds the representation passed as `use`, not always `X_cnv_pca`."""
+    rng = np.random.default_rng(0)
+    adata = sc.AnnData(np.zeros((60, 1)), obsm={"X_other": rng.normal(size=(60, 5))})
+    res = cnv.tl.tsne(adata, use="obsm.X_other", out=True)
+    assert res.shape == (60, 2)
+    assert "X_cnv_pca" not in adata.obsm
+
+
+@pytest.fixture
+def adata_cnv_neighbors():
+    rng = np.random.default_rng(0)
+    adata = sc.AnnData(np.zeros((100, 1)), obsm={"X_cnv_pca": rng.normal(size=(100, 5))})
+    cnv.pp.neighbors(adata)
+    return adata
+
+
+def test_neighbors_layout(adata_cnv_neighbors):
+    """The graph uses scanpy>=1.13's layout, and `out` picks its name."""
+    assert {"cnv_neighbors", "cnv_neighbors_distances"} <= set(adata_cnv_neighbors.obsp)
+    assert adata_cnv_neighbors.uns["cnv_neighbors"]["connectivities_key"] == "cnv_neighbors"
+    cnv.pp.neighbors(adata_cnv_neighbors, out=A.obsp["other"])
+    assert {"other", "other_distances"} <= set(adata_cnv_neighbors.obsp)
+    cnv.tl.leiden(adata_cnv_neighbors, use="obsp.other", out="obs.other_leiden")
+    assert adata_cnv_neighbors.obs["other_leiden"].nunique() > 1
+
+
+def test_leiden_defaults_to_igraph(adata_cnv_neighbors):
+    cnv.tl.leiden(adata_cnv_neighbors)
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == 2
+    cnv.tl.leiden(adata_cnv_neighbors, n_iterations=5)
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == 5
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"flavor": "leidenalg"},
+        # only leidenalg supports partition_type, so it is used without an explicit flavor
+        {"partition_type": leidenalg.RBConfigurationVertexPartition},
+    ],
+)
+def test_leiden_leidenalg(adata_cnv_neighbors, kwargs):
+    # scanpy adds a UserWarning recommending igraph
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        cnv.tl.leiden(adata_cnv_neighbors, **kwargs)
+    # leidenalg keeps scanpy's own default of iterating until convergence
+    assert adata_cnv_neighbors.uns["cnv_leiden"]["params"]["n_iterations"] == -1
+    assert adata_cnv_neighbors.obs["cnv_leiden"].nunique() > 1
+
+
+def test_leiden_no_flavor_warning(adata_cnv_neighbors):
+    """At default settings, scanpy's leiden flavor FutureWarning is not raised."""
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        cnv.tl.leiden(adata_cnv_neighbors)
+    assert not [w for w in record if issubclass(w.category, FutureWarning) or "leiden" in str(w.message)]
+    assert adata_cnv_neighbors.obs["cnv_leiden"].nunique() > 1
+
+
 def test_layer_parameter(adata_oligodendroglioma):
 
     # create lognorm layer but leave X unchanged
     adata_oligodendroglioma.layers["LogNormalize"] = adata_oligodendroglioma.X.copy()
-    sc.pp.normalize_total(adata_oligodendroglioma, layer="LogNormalize", target_sum=1e4)
-    sc.pp.log1p(adata_oligodendroglioma, layer="LogNormalize")
+    lognorm = A.layers["LogNormalize"]
+    sc.pp.normalize_total(adata_oligodendroglioma, use=lognorm, out=lognorm, target_sum=1e4)
+    sc.pp.log1p(adata_oligodendroglioma, use=lognorm, out=lognorm)
 
     # copy to test if results change with layer option
     adata_oligodendroglioma2 = adata_oligodendroglioma.copy()
@@ -256,3 +351,14 @@ def test_default_infercnv(benchmark, adata_oligodendroma):
         adata_oligodendroma,
         calculate_gene_values=False,
     )
+
+
+def test_default_keys_follow_scanpy_preset(monkeypatch):
+    """Under scanpy's 2.0 preview preset, default `.obsm` keys have no `X_` prefix."""
+    # setting the real preset requires the `scanpy[scanpy2]` extras
+    monkeypatch.setattr("infercnvpy._acc._v2_preset", lambda: True)
+    rng = np.random.default_rng(0)
+    adata = sc.AnnData(np.zeros((60, 1)), obsm={"cnv": rng.normal(size=(60, 8))})
+    cnv.pp.neighbors(adata)
+    assert "cnv_pca" in adata.obsm
+    assert "X_cnv_pca" not in adata.obsm
