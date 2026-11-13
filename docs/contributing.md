@@ -148,39 +148,46 @@ The `.venv` directory is typically automatically discovered by IDEs such as VS C
 
 ## Code-style
 
-This package uses [pre-commit][]-style hooks to enforce consistent code-styles.
-We recommend running them with [prek][], a fast, drop-in replacement for `pre-commit` that reads the same `.pre-commit-config.yaml`.
+This package uses Git hooks to enforce consistent code-styles.
+They are defined in `.pre-commit-config.yaml` and run with [prek][].
 On every commit, the checks will either automatically fix issues with the code, or raise an error message.
 
-To enable the checks locally, install [prek][] (e.g. with `uv tool install prek`) and run
+To enable the checks locally, run
 
 ```bash
-prek install
+hatch run hatch-check-code:prek install
+# or
+uvx prek install
 ```
 
 in the root of the repository.
 prek will automatically download all dependencies when it is run for the first time.
 
-Alternatively, you can rely on the [pre-commit.ci][] service enabled on GitHub.
-If you didn’t run the checks before pushing changes to GitHub it will automatically commit fixes to your pull request, or show an error message.
-
-If pre-commit.ci added a commit on a branch you still have been working on locally, simply use
-
-```bash
-git pull --rebase
-```
-
-to integrate the changes into yours.
-While the [pre-commit.ci][] is useful, we strongly encourage installing and running the checks locally first to understand their usage.
+If you didn’t run the checks locally, the `Pre-commit checks` job of the GitHub Actions CI runs them on your pull request,
+pushes the automatic fixes back to your branch, and reports any remaining failures.
+We strongly encourage installing and running the checks locally first to understand their usage.
 
 Finally, most editors have an _autoformat on save_ feature.
 Consider enabling this option for [ruff][ruff-editors] and [biome][biome-editors].
 
-[pre-commit]: https://pre-commit.com/
 [prek]: https://prek.j178.dev/
-[pre-commit.ci]: https://pre-commit.ci/
 [ruff-editors]: https://docs.astral.sh/ruff/integrations/
 [biome-editors]: https://biomejs.dev/guides/integrate-in-editor/
+
+### Logging and warnings
+
+infercnvpy logs through `infercnvpy._logging.log`, the `scverse.infercnvpy` logger from `scverse_misc.logging`, so it follows the verbosity shared by all scverse packages.
+
+- Use `warnings.warn` for problems with the call, such as a deprecation (`FutureWarning`) or an argument whose effect the caller may not expect, e.g. calling `tl.infercnv` without a reference (`UserWarning`).
+  Pass `skip_file_prefixes=SKIP_OWN_FRAMES` so the warning points at the caller's line.
+- Send anything about the data through the logger, as one line that starts with the function name (`"infercnv: "`), with counts, and with lazy `%`-style arguments.
+  The fix goes in `deep=`, which shows only when the verbosity is more detailed than the line's level.
+- A function logs at most one info line, with its result.
+  `infercnvpy._logging.log_result` writes it, and logs it as a warning instead when half or more of the input was dropped.
+  Progress and per-item detail go to debug.
+
+To test a log message, capture it with `caplog.at_level(logging.INFO, logger="scverse.infercnvpy")`, and test a warning with `pytest.warns`.
+An autouse fixture in `tests/conftest.py` restores the shared verbosity after each test.
 
 (writing-tests)=
 

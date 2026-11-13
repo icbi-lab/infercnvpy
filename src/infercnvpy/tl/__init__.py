@@ -1,13 +1,14 @@
-from typing import Union
-
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
-from scanpy import logging
+
+from infercnvpy._logging import log
 
 from ._copykat import copykat
 from ._infercnv import infercnv
 from ._scores import cnv_score, ithcna, ithgex
+
+__all__ = ["cnv_score", "copykat", "infercnv", "ithcna", "ithgex", "leiden", "pca", "tsne", "umap"]
 
 
 def leiden(
@@ -20,6 +21,25 @@ def leiden(
     """Perform leiden clustering on the CNV neighborhood graph.
 
     Thin wrapper around :func:`scanpy.tl.leiden`.
+
+    Parameters
+    ----------
+    adata
+        annotated data matrix
+    neighbors_key
+        Key under which the result of :func:`infercnvpy.pp.neighbors` is stored
+        in adata
+    key_added
+        Key under which the cluster labels will be stored in `adata.obs`.
+    inplace
+        If True, store the result in adata, otherwise return a copy of adata with the result.
+    **kwargs
+        Additional arguments passed to :func:`scanpy.tl.leiden`.
+
+    Returns
+    -------
+    Depending on the value of `inplace`, either returns `None` or a copy of `adata`
+    with the cluster labels in `adata.obs[key_added]`.
     """
     return sc.tl.leiden(
         adata,
@@ -134,8 +154,8 @@ def tsne(
         Additional arguments passed to :func:`scanpy.tl.tsne`.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
-        logging.warning("X_cnv_pca not found in adata.obsm. Computing PCA with default parameters")  # type: ignore
         pca(adata)
+        log.info("tsne: computed X_cnv_pca with default parameters, as it was not in adata.obsm")
     tmp_adata = sc.tl.tsne(adata, use_rep="X_cnv_pca", copy=True, **kwargs)
 
     if inplace:

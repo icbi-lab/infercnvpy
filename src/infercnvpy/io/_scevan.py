@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import rdata
 from anndata import AnnData
-from scanpy import logging
+
+from infercnvpy._logging import log
 
 
 def _read_rdata_frame(path: Path, name: str) -> pd.DataFrame:
@@ -95,7 +96,7 @@ def read_scevan(
         tumor_normal_call = pd.read_csv(scevan_res_table, index_col=0)
     else:
         tumor_normal_call = None
-        logging.warning("No `scevan_res_table` specified. Will not add tumor/normal classification.")
+        log.debug("read_scevan: no `scevan_res_table` given, so no tumor/normal classification is added")
     scevan_res = _read_rdata_frame(scevan_res_file[0], "CNA_mtx_relat").T
     scevan_anno = _read_rdata_frame(scevan_anno_file[0], "count_mtx_annot")
     scevan_subclone_res = None

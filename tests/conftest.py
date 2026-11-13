@@ -5,8 +5,17 @@ import pandas as pd
 import pytest
 import scanpy as sc
 import scipy.sparse as sp
+from scverse_misc.logging import config as log_config
 
 import infercnvpy as cnv
+
+
+@pytest.fixture(autouse=True)
+def _logging_state():
+    """Restore the shared scverse verbosity after each test."""
+    verbosity_orig = log_config.verbosity
+    yield
+    log_config.verbosity = verbosity_orig
 
 
 @pytest.fixture()

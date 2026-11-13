@@ -4,8 +4,8 @@ from multiprocessing import cpu_count
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from scanpy import logging
 
+from infercnvpy._logging import log, log_result
 from infercnvpy._util import _as_df, _as_matrix
 
 
@@ -105,7 +105,7 @@ def copykat(
             "copyKAT requires a valid R installation with the following packages: copykat, stringr"
         ) from None
 
-    logging.info("Preparing R objects")
+    start = log.debug("copykat: preparing R objects")
     with localconverter(ro.default_converter + numpy2ri.converter):
         expr = _as_matrix(adata.X if layer is None else adata.layers[layer])
         if not isinstance(expr, np.ndarray):
@@ -126,7 +126,7 @@ def copykat(
     ro.globalenv["cell_line"] = ro.conversion.py2rpy(cell_line)
     ro.globalenv["window_size"] = ro.conversion.py2rpy(window_size)
 
-    logging.info("Running copyKAT")
+    log.debug("copykat: running copyKAT in R")
     ro.r(
         """
         rownames(expr_r) <- gene_names
@@ -170,6 +170,7 @@ def copykat(
     copyKAT_pred = _as_df(adata.obs).merge(copyKAT_pred, left_index=True, right_index=True, how="left")["copykat.pred"]
     # transpose
     new_cpkat_trans = new_cpkat.T.values
+    log_result("copykat", "%d cells x %d bins", *new_cpkat_trans.shape, time=start)
 
     if inplace:
         adata.uns[key_added] = chrom_pos

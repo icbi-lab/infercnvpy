@@ -8,6 +8,7 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
+from infercnvpy._logging import log_result
 from infercnvpy._util import _as_matrix, _choose_mtx_rep
 
 
@@ -66,6 +67,7 @@ def cnv_score(
         cluster: np.mean(np.abs(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == cluster, :]))
         for cluster in adata.obs[groupby].unique()
     }
+    log_result("cnv_score", "scored %d groups of %r", len(cluster_score), groupby)
 
     if inplace:
         score_array = np.array([cluster_score[c] for c in adata.obs[groupby]])
