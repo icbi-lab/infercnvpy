@@ -125,7 +125,8 @@ def ithgex(
     Returns
     -------
     Depending of the value of `inplace` either returns a dictionary
-    with one value per group or `None`.
+    with one value per group or `None`. Groups with a single cell have no
+    cell pairs to correlate and get a score of `NaN`.
     """
     groups = adata.obs[groupby].unique()
     ithgex = {}
@@ -135,6 +136,8 @@ def ithgex(
         if sp.issparse(X):
             X = X.todense()
         if X.shape[0] <= 1:
+            # a single cell has no cell pairs to correlate
+            ithgex[group] = np.nan
             continue
         pcorr = np.corrcoef(X, rowvar=True)
         assert pcorr.shape == (
@@ -145,7 +148,7 @@ def ithgex(
         ithgex[group] = q75 - q25
 
     if inplace:
-        ithgex_obs = np.empty(adata.shape[0])
+        ithgex_obs = np.full(adata.shape[0], np.nan)
         for group in groups:
             ithgex_obs[adata.obs[groupby] == group] = ithgex[group]
         adata.obs[key_added] = ithgex_obs
@@ -195,7 +198,8 @@ def ithcna(
     Returns
     -------
     Depending of the value of `inplace` either returns a dictionary
-    with one value per group or `None`.
+    with one value per group or `None`. Groups with a single cell have no
+    cell pairs to correlate and get a score of `NaN`.
     """
     groups = adata.obs[groupby].unique()
     ithcna = {}
@@ -205,6 +209,8 @@ def ithcna(
         if not isinstance(X, np.ndarray):
             X = X.todense()
         if X.shape[0] <= 1:
+            # a single cell has no cell pairs to correlate
+            ithcna[group] = np.nan
             continue
         pcorr = np.corrcoef(X, rowvar=True)
         assert pcorr.shape == (
@@ -215,7 +221,7 @@ def ithcna(
         ithcna[group] = q75 - q25
 
     if inplace:
-        ithcna_obs = np.empty(adata.shape[0])
+        ithcna_obs = np.full(adata.shape[0], np.nan)
         for group in groups:
             ithcna_obs[adata.obs[groupby] == group] = ithcna[group]
         adata.obs[key_added] = ithcna_obs
