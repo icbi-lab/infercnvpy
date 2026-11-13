@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal
 
@@ -5,8 +6,8 @@ import numpy as np
 import pandas as pd
 import scanpy.queries
 from anndata import AnnData
-from scanpy import logging
 
+from infercnvpy._logging import log_result
 from infercnvpy._util import _as_df
 
 
@@ -64,16 +65,14 @@ def genomic_position_from_biomart(
         return biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
-    missing_from_biomart = len(set(gene_ids_adata) - set(biomart_annot[biomart_gene_id].values))
-    if missing_from_biomart:
-        logging.warning(
-            f"Biomart misses annotation for {missing_from_biomart} genes in adata. Did you use ENSEMBL ids?"
-        )
-
-    duplicated_symbols = np.sum(biomart_annot[biomart_gene_id].duplicated())
-    if duplicated_symbols:
-        logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
-        biomart_annot = biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
+    biomart_annot = _drop_duplicates_and_report(
+        "genomic_position_from_biomart",
+        biomart_annot,
+        biomart_gene_id,
+        gene_ids_adata,
+        source="BioMart",
+        remedy=f"check that the gene ids in adata are {biomart_gene_id} values (see `adata_gene_id`)",
+    )
 
     tmp_var = _as_df(adata.var).copy()
     orig_index_name = tmp_var.index.name
@@ -149,16 +148,14 @@ def genomic_position_from_gtf(
         return _add_chr_prefix(gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :])
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
-    gtf = gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :]
-
-    missing_from_gtf = len(set(gene_ids_adata) - set(gtf[gtf_gene_id].values))
-    if missing_from_gtf:
-        logging.warning(f"GTF file misses annotation for {missing_from_gtf} genes in adata.")
-
-    duplicated_symbols = np.sum(gtf["gene_name"].duplicated())
-    if duplicated_symbols:
-        logging.warning(f"Skipped {duplicated_symbols} genes because of duplicate identifiers in GTF file.")
-        gtf = gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :]
+    gtf = _drop_duplicates_and_report(
+        "genomic_position_from_gtf",
+        gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :],
+        gtf_gene_id,
+        gene_ids_adata,
+        source="the GTF file",
+        remedy="check `gtf_gene_id` and `adata_gene_id`, and that the GTF file matches the genome build of the data",
+    )
 
     tmp_var = _as_df(adata.var).copy()
     orig_index_name = tmp_var.index.name
@@ -181,6 +178,26 @@ def genomic_position_from_gtf(
         adata.var = var_annotated
         return None
     return var_annotated
+
+
+def _drop_duplicates_and_report(
+    func: str, annot: pd.DataFrame, id_col: str, gene_ids_adata: Iterable, *, source: str, remedy: str
+) -> pd.DataFrame:
+    """Drop annotation rows whose gene id is not unique, and log how many genes in adata stay unannotated."""
+    duplicated = annot[id_col].duplicated(keep=False)
+    genes = set(gene_ids_adata)
+    n_duplicated = len(genes & set(annot.loc[duplicated, id_col]))
+    n_missing = len(genes - set(annot[id_col]))
+    msg = "annotated %d of %d genes"
+    args: list[object] = [len(genes) - n_missing - n_duplicated, len(genes)]
+    if n_missing:
+        msg += ", %d with no entry in %s"
+        args += [n_missing, source]
+    if n_duplicated:
+        msg += ", %d with more than one entry for their %s"
+        args += [n_duplicated, id_col]
+    log_result(func, msg, *args, dropped=n_missing + n_duplicated, total=len(genes), remedy=remedy)
+    return annot.loc[~duplicated, :]
 
 
 def _add_chr_prefix(df: pd.DataFrame) -> pd.DataFrame:

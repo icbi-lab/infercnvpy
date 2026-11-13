@@ -37,6 +37,8 @@ dependencies = [
   "rdata>=1",                             # MIT; reads SCEVAN .RData files
   "scanpy>=1.11",
   "scipy>=1.15",
+  # the shared `scverse` logger
+  "scverse-misc>=0.1.8",
   # for debug logging (referenced from the issue template)
   "session-info2>=0.2",
   "tqdm>=4.67",
@@ -61,7 +63,7 @@ dev = [
 test = [
   "coverage>=7.10",
   "openpyxl>=3.1",         # required for one of the scanpy datasets used in the tests
-  "pytest>=9",
+  "pytest>=9.1",           # caplog captures loggers that do not propagate (scverse)
   "pytest-benchmark>=5.1",
   "pytest-cov>=6",         # For VS Code’s coverage functionality
 ]

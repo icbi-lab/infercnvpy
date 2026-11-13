@@ -1,5 +1,7 @@
 import itertools
+import logging
 import re
+import warnings
 from collections.abc import Sequence
 from multiprocessing import cpu_count
 
@@ -8,10 +10,10 @@ import pandas as pd
 import scipy.ndimage
 import scipy.sparse
 from anndata import AnnData
-from scanpy import logging
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
+from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._util import _as_matrix, _ensure_array
 
 
@@ -102,8 +104,7 @@ def infercnv(
         )
 
     var_mask = adata.var["chromosome"].isnull()
-    if np.sum(var_mask):
-        logging.warning(f"Skipped {np.sum(var_mask)} genes because they don't have a genomic position annotated. ")  # type: ignore
+    n_unplaced = int(var_mask.sum())
     if exclude_chromosomes is not None:
         var_mask = var_mask | adata.var["chromosome"].isin(exclude_chromosomes)
 
@@ -117,6 +118,8 @@ def infercnv(
 
     var = tmp_adata.var.loc[:, ["chromosome", "start", "end"]]  # type: ignore
 
+    n_chunks = -(-adata.n_obs // chunksize)
+    start = log.debug("infercnv: %d cells x %d genes in %d chunks", adata.n_obs, var.shape[0], n_chunks)
     chr_pos, chunks, convolved_dfs = zip(
         *process_map(
             _infercnv_chunk,
@@ -129,6 +132,7 @@ def infercnv(
             itertools.repeat(dynamic_threshold),
             itertools.repeat(calculate_gene_values),
             tqdm_class=tqdm,
+            disable=not log.isEnabledFor(logging.INFO),
             max_workers=cpu_count() if n_jobs is None else n_jobs,
         ),
         strict=False,
@@ -149,6 +153,20 @@ def infercnv(
         per_gene_mtx = per_gene_df.values
     else:
         per_gene_mtx = None
+
+    msg, args = "%d cells x %d windows on %d chromosomes", [res.shape[0], res.shape[1], len(chr_pos)]
+    if n_unplaced:
+        msg += ", dropped %d of %d genes without a genomic position"
+        args += [n_unplaced, adata.n_vars]
+    log_result(
+        "infercnv",
+        msg,
+        *args,
+        dropped=n_unplaced,
+        total=adata.n_vars,
+        remedy="add positions with io.genomic_position_from_gtf or io.genomic_position_from_biomart",
+        time=start,
+    )
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
@@ -377,10 +395,12 @@ def _get_reference(
 
     if reference is None:
         if reference_key is None or reference_cat is None:
-            logging.warning(
-                "Using mean of all cells as reference. For better results, "
-                "provide either `reference`, or both `reference_key` and `reference_cat`. "
-            )  # type: ignore
+            warnings.warn(
+                "Using the mean of all cells as reference. For better results, "
+                "provide either `reference`, or both `reference_key` and `reference_cat`.",
+                UserWarning,
+                skip_file_prefixes=SKIP_OWN_FRAMES,
+            )
             reference = np.mean(X, axis=0)
 
         else:

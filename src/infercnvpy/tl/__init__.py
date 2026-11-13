@@ -1,9 +1,8 @@
-from typing import Union
-
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
-from scanpy import logging
+
+from infercnvpy._logging import log
 
 from ._copykat import copykat
 from ._infercnv import infercnv
@@ -134,8 +133,8 @@ def tsne(
         Additional arguments passed to :func:`scanpy.tl.tsne`.
     """
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
-        logging.warning("X_cnv_pca not found in adata.obsm. Computing PCA with default parameters")  # type: ignore
         pca(adata)
+        log.info("tsne: computed X_cnv_pca with default parameters, as it was not in adata.obsm")
     tmp_adata = sc.tl.tsne(adata, use_rep="X_cnv_pca", copy=True, **kwargs)
 
     if inplace:

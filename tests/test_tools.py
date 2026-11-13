@@ -24,7 +24,9 @@ def test_get_reference_key_and_cat(adata_mock):
 
 def test_get_reference_no_reference(adata_mock):
     """If no reference is specified, the mean of the entire adata object is taken"""
-    actual = _get_reference(adata_mock, None, None, None, layer=None)
+    with pytest.warns(UserWarning, match="mean of all cells as reference") as record:
+        actual = _get_reference(adata_mock, None, None, None, layer=None)
+    assert record[0].filename == __file__  # points at the caller, not at infercnvpy
     npt.assert_almost_equal(actual, np.array([[4.8, 4.2, 4.4, 5]]), decimal=5)
 
 
