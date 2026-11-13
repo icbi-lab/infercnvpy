@@ -156,7 +156,7 @@ def tsne(
     if f"X_{use_rep}" not in adata.obsm and use_rep == "cnv_pca":
         pca(adata)
         log.info("tsne: computed X_cnv_pca with default parameters, as it was not in adata.obsm")
-    tmp_adata = sc.tl.tsne(adata, use_rep="X_cnv_pca", copy=True, **kwargs)
+    tmp_adata = sc.tl.tsne(adata, use_rep=f"X_{use_rep}", copy=True, **kwargs)
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = tmp_adata.obsm["X_tsne"]

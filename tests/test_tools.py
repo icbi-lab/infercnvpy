@@ -220,6 +220,15 @@ def test_workflow(adata_oligodendroma):
     cnv.pl.chromosome_heatmap_summary(adata_oligodendroma, show=False)
 
 
+def test_tsne_use_rep():
+    """`tl.tsne` embeds the representation passed as `use_rep`, not always `X_cnv_pca`."""
+    rng = np.random.default_rng(0)
+    adata = sc.AnnData(np.zeros((60, 1)), obsm={"X_other": rng.normal(size=(60, 5))})
+    res = cnv.tl.tsne(adata, use_rep="other", inplace=False)
+    assert res.shape == (60, 2)
+    assert "X_cnv_pca" not in adata.obsm
+
+
 def test_layer_parameter(adata_oligodendroglioma):
 
     # create lognorm layer but leave X unchanged
