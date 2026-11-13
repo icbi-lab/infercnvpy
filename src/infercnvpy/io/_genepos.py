@@ -60,7 +60,8 @@ def genomic_position_from_biomart(
         .assign(chromosome=lambda x: "chr" + x["chromosome"])
     )
     if adata is None:
-        return biomart_annot
+        # same rule as when matching to adata: genes with more than one position are dropped
+        return biomart_annot.loc[~biomart_annot[biomart_gene_id].duplicated(keep=False), :]
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     missing_from_biomart = len(set(gene_ids_adata) - set(biomart_annot[biomart_gene_id].values))
@@ -144,7 +145,8 @@ def genomic_position_from_gtf(
     # remove ensembl versions
     gtf["gene_id"] = gtf["gene_id"].str.replace(r"\.\d+$", "", regex=True)
     if adata is None:
-        return _add_chr_prefix(gtf)
+        # same rule as when matching to adata: genes with more than one position are dropped
+        return _add_chr_prefix(gtf.loc[~gtf[gtf_gene_id].duplicated(keep=False), :])
 
     gene_ids_adata = (adata.var_names if adata_gene_id is None else adata.var[adata_gene_id]).values
     gtf = gtf.loc[gtf[gtf_gene_id].isin(gene_ids_adata), :]

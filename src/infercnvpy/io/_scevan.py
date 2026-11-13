@@ -119,7 +119,9 @@ def read_scevan(
 
     cna = scevan_res.reindex(adata.obs_names)
     if scevan_subclone_res is not None:
-        cna.loc[scevan_subclone_res.index, :] = scevan_subclone_res
+        # cells SCEVAN dropped are not in adata unless subset=True; columns are the same segments
+        idx = scevan_subclone_res.index.intersection(cna.index)
+        cna.loc[idx, :] = scevan_subclone_res.loc[idx].to_numpy()
     adata.obsm[f"X_{key_added}"] = cna.values
     adata.uns[key_added] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
 

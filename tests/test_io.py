@@ -35,6 +35,7 @@ def test_get_genomic_position_from_gtf_without_adata(gtf, testdata):
     # the Ensembl GTF has no "chr" prefix, so it gets added
     assert gene_pos["chromosome"].str.startswith("chr").all()
     assert not gene_pos["gene_id"].str.contains(r"\.\d+$").any()
+    assert not gene_pos["gene_name"].duplicated().any()
 
 
 @pytest.mark.parametrize(
