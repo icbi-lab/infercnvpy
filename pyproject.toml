@@ -167,6 +167,7 @@ overrides = [
     "gtfparse.*",
     "h5py.*",
     "leidenalg.*",
+    "mpl_toolkits.*",
     "numba.*",
     "pooch.*",
     "rpy2.*",
