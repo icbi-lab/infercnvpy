@@ -8,6 +8,8 @@ from ._copykat import copykat
 from ._infercnv import infercnv
 from ._scores import cnv_score, ithcna, ithgex
 
+__all__ = ["cnv_score", "copykat", "infercnv", "ithcna", "ithgex", "leiden", "pca", "tsne", "umap"]
+
 
 def leiden(
     adata: AnnData,
@@ -19,6 +21,25 @@ def leiden(
     """Perform leiden clustering on the CNV neighborhood graph.
 
     Thin wrapper around :func:`scanpy.tl.leiden`.
+
+    Parameters
+    ----------
+    adata
+        annotated data matrix
+    neighbors_key
+        Key under which the result of :func:`infercnvpy.pp.neighbors` is stored
+        in adata
+    key_added
+        Key under which the cluster labels will be stored in `adata.obs`.
+    inplace
+        If True, store the result in adata, otherwise return a copy of adata with the result.
+    **kwargs
+        Additional arguments passed to :func:`scanpy.tl.leiden`.
+
+    Returns
+    -------
+    Depending on the value of `inplace`, either returns `None` or a copy of `adata`
+    with the cluster labels in `adata.obs[key_added]`.
     """
     return sc.tl.leiden(
         adata,

@@ -4,6 +4,8 @@ from anndata import AnnData
 from infercnvpy import tl
 from infercnvpy._logging import log
 
+__all__ = ["neighbors"]
+
 
 def neighbors(
     adata: AnnData,
