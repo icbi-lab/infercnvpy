@@ -31,6 +31,11 @@ def test_cnv_score(adata_ithgex):
     assert res["B"] == pytest.approx(2.5, abs=0.001)
 
 
+def test_cnv_score_records_params(adata_ithgex):
+    cnv.tl.cnv_score(adata_ithgex, "group", key_added="score")
+    assert adata_ithgex.uns["score"] == {"params": {"groupby": "group", "use_rep": "cnv"}}
+
+
 @pytest.mark.parametrize("func", [cnv.tl.ithgex, cnv.tl.ithcna])
 def test_ith_single_cell_group(adata_ithgex, func):
     """A group with one cell has no cell pairs: its score is NaN, the other groups are unaffected."""

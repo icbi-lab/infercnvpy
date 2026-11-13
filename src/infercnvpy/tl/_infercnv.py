@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
-from infercnvpy._util import _as_matrix, _ensure_array
+from infercnvpy._util import _as_matrix, _ensure_array, _params_for_uns
 
 
 def infercnv(
@@ -103,6 +103,20 @@ def infercnv(
             "Genomic positions not found. There need to be `chromosome`, `start`, and `end` columns in `adata.var`. "
         )
 
+    params = _params_for_uns(
+        # an explicit `reference` overrides `reference_key` and `reference_cat`
+        reference_key=reference_key if reference is None else None,
+        reference_cat=reference_cat if reference is None else None,
+        lfc_clip=lfc_clip,
+        window_size=window_size,
+        step=step,
+        dynamic_threshold=dynamic_threshold,
+        exclude_chromosomes=exclude_chromosomes,
+        chunksize=chunksize,
+        layer=layer,
+        calculate_gene_values=calculate_gene_values,
+    )
+
     var_mask = adata.var["chromosome"].isnull()
     n_unplaced = int(var_mask.sum())
     if exclude_chromosomes is not None:
@@ -176,7 +190,10 @@ def infercnv(
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.uns[key_added] = {"chr_pos": chr_pos}
+        adata.uns[key_added] = {
+            "chr_pos": chr_pos,
+            "params": params,
+        }
 
         if calculate_gene_values:
             adata.layers[f"gene_values_{key_added}"] = per_gene_mtx

@@ -195,6 +195,24 @@ def test_infercnv_more_than_2_chunks(adata_full_mock, x_res_actual):
     assert chr_pos == {"chr1": 0, "chr2": 3}, "chr_pos is not as expected"
 
 
+def test_infercnv_records_params(adata_full_mock, tmp_path):
+    cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", window_size=3, step=1)
+    assert set(adata_full_mock.uns["cnv"]) == {"chr_pos", "params"}
+    assert adata_full_mock.uns["cnv"]["params"] == {
+        "reference_key": "sample",
+        "reference_cat": "sample1",
+        "lfc_clip": 3,
+        "window_size": 3,
+        "step": 1,
+        "dynamic_threshold": 1.5,
+        "exclude_chromosomes": ["chrX", "chrY"],
+        "chunksize": 5000,
+        "calculate_gene_values": False,
+    }
+    # params can be written to h5ad
+    adata_full_mock.write_h5ad(tmp_path / "cnv.h5ad")
+
+
 def test_infercnv_no_chr_prefix(adata_full_mock):
     """Chromosome names without a "chr" prefix (Ensembl style) give a clear error."""
     adata_full_mock.var["chromosome"] = adata_full_mock.var["chromosome"].str.removeprefix("chr")

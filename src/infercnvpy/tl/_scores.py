@@ -9,7 +9,7 @@ import scipy.sparse as sp
 from anndata import AnnData
 
 from infercnvpy._logging import log_result
-from infercnvpy._util import _as_matrix, _choose_mtx_rep
+from infercnvpy._util import _as_matrix, _choose_mtx_rep, _params_for_uns
 
 
 def cnv_score(
@@ -72,6 +72,7 @@ def cnv_score(
     if inplace:
         score_array = np.array([cluster_score[c] for c in adata.obs[groupby]])
         adata.obs[key_added] = score_array
+        adata.uns[key_added] = {"params": _params_for_uns(groupby=groupby, use_rep=use_rep)}
         return None
     return cluster_score
 

@@ -40,3 +40,8 @@ def _choose_mtx_rep(adata, use_raw=False, layer=None):
         return adata.raw.X
     else:
         return adata.X
+
+
+def _params_for_uns(**params) -> dict:
+    """Prepare call parameters for `adata.uns[...]["params"]`: drop `None`, store sequences as lists."""
+    return {k: list(v) if isinstance(v, tuple | list) else v for k, v in params.items() if v is not None}
