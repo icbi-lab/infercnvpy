@@ -245,8 +245,8 @@ def test_default_infercnv(benchmark, adata_oligodendroma):
 
 def test_default_keys_follow_scanpy_preset(monkeypatch):
     """Under scanpy's 2.0 preview preset, default `.obsm` keys have no `X_` prefix."""
-    # bypass validation: setting the preset normally requires the `scanpy[scanpy2]` extras
-    monkeypatch.setitem(sc.settings.__dict__, "preset", sc.Preset.ScanpyV2Preview)
+    # setting the real preset requires the `scanpy[scanpy2]` extras
+    monkeypatch.setattr("infercnvpy._acc._v2_preset", lambda: True)
     rng = np.random.default_rng(0)
     adata = sc.AnnData(np.zeros((60, 1)), obsm={"cnv": rng.normal(size=(60, 8))})
     cnv.pp.neighbors(adata)

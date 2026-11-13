@@ -19,9 +19,13 @@ DEPR_INPLACE = Deprecation("0.7.0", "Use `out=True` to return the result instead
 DEPR_INPLACE_COPY = Deprecation("0.7.0", "Copy `adata` before calling this function instead.")
 
 
+def _v2_preset() -> bool:
+    return sc.settings.preset == "scanpy-v2-preview"
+
+
 def _obsm_key(name: str) -> str:
     """Default `.obsm` key: `X_{name}`, or `name` under scanpy's 2.0 preview preset."""
-    return name if sc.settings.preset == "scanpy-v2-preview" else f"X_{name}"
+    return name if _v2_preset() else f"X_{name}"
 
 
 def _dest(spec: Any) -> tuple[str, str | None]:
