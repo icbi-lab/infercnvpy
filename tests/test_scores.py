@@ -10,6 +10,15 @@ def test_ithgex(adata_ithgex):
     assert res["B"] == pytest.approx(1.2628, abs=0.001)
 
 
+def test_ithgex_use_raw(adata_ithgex):
+    """`use_raw=None` (the default) uses `.X` even when `.raw` is set; `use_raw=True` uses `.raw`."""
+    expected_x = cnv.tl.ithgex(adata_ithgex, "group", inplace=False)
+    adata_ithgex.raw = adata_ithgex.copy()
+    adata_ithgex.X = np.random.default_rng(0).normal(size=adata_ithgex.shape)
+    assert cnv.tl.ithgex(adata_ithgex, "group", inplace=False) != expected_x
+    assert cnv.tl.ithgex(adata_ithgex, "group", use_raw=True, inplace=False) == expected_x
+
+
 def test_ithcna(adata_ithgex):
     res = cnv.tl.ithcna(adata_ithgex, "group", inplace=False)
     assert res["A"] == pytest.approx(1.053, abs=0.001)

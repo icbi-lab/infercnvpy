@@ -113,8 +113,8 @@ def ithgex(
     groupby
         calculate diversity for each group defined in this category.
     use_raw
-        Use gene expression from `adata.raw`. Defaut: Use `.raw` if available,
-        `.X` otherwise.
+        If `True`, use gene expression from `adata.raw.X`. Default: use `adata.X`
+        (or `layer`, if given), even when `adata.raw` is present.
     layer
         Use gene expression from `adata.layers[layer]`
     inplace
