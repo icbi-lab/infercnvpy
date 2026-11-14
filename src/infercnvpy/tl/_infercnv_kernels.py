@@ -20,13 +20,12 @@ the loop body serialises the threads on numba's allocator lock. `np.median` woul
 
 from __future__ import annotations
 
-import numba
 import numpy as np
 
-from infercnvpy._numba import njit_parallel, prange
+from infercnvpy._numba import njit, njit_parallel, prange
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _lfc(v, lo, hi, cap):
     """Clipped log fold change of `v` against the reference bounds `[lo, hi]` (`lo == hi` for one reference)."""
     if v > hi:
@@ -42,7 +41,7 @@ def _lfc(v, lo, hi, cap):
     return d
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _select(a, n, k):
     """Partially sort `a[:n]` in place so that `a[k]` is its k-th smallest value, and return that (quickselect)."""
     lo = 0
@@ -76,7 +75,7 @@ def _select(a, n, k):
     return a[k]
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _median(values, buf):
     """Median of `values` (as `np.median`), using `buf` (same size) as scratch."""
     n = values.size
@@ -93,7 +92,7 @@ def _median(values, buf):
     return (lower + upper) / 2
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _smooth(x, p1, p2, win, g0s, gs, As, Bs, Ks, w0s, step):
     """Running means of the kept windows of one cell (gene-ordered `x`) into `win`, from prefix sums."""
     for c in range(g0s.size):
@@ -114,7 +113,7 @@ def _smooth(x, p1, p2, win, g0s, gs, As, Bs, Ks, w0s, step):
             win[w0 + w] = (p2[s + b] - p2[s]) / weight
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _scatter(win, j, d, first, weights):
     """Add `d` times the pyramid weights of gene `j` to the weighted window sums `win`, from window `first[j]` on.
 
@@ -126,14 +125,14 @@ def _scatter(win, j, d, first, weights):
         win[w + m] += d * wj[m]
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _normalise(win, n_windows, window_weight):
     """Divide the weighted window sums by the sums of their weights: the running means."""
     for w in range(n_windows):
         win[w] /= window_weight[w]
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _center_emit(win, buf, thr, centre, out, r, rowstats, counts):
     """Subtract the median from the running means `win`, write them to `out[r]` as float32.
 
