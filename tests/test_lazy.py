@@ -98,7 +98,7 @@ def test_backed_h5ad(base, expected, tmp_path, fmt):
 
 @pytest.mark.parametrize("dynamic_threshold", [None, 1.5])
 def test_reads_each_block_once_per_pass(base, expected, dynamic_threshold):
-    """Reference means, the noise band (blocks with reference cells) and the result: one read of a block each."""
+    """Reference means and the noise band (blocks with reference cells), and the result: one read of a block each."""
     loads = []
     a = _with_X(base, _csr_blocks(base, 46, counter=loads))
     cnv.tl.infercnv(a, **REF, dynamic_threshold=dynamic_threshold)
@@ -106,7 +106,7 @@ def test_reads_each_block_once_per_pass(base, expected, dynamic_threshold):
     is_ref = base.obs["cell_type"].isin(REF["reference_cat"]).to_numpy()
     with_ref = sum(is_ref[s : s + 46].any() for s in range(0, base.n_obs, 46))
     assert 0 < with_ref < n_blocks
-    assert len(loads) == 2 * n_blocks + (0 if dynamic_threshold is None else with_ref)
+    assert len(loads) == n_blocks + with_ref * (1 if dynamic_threshold is None else 2)
     assert max(stop - start for start, stop in loads) <= 46, "more than one block was loaded at once"
 
 

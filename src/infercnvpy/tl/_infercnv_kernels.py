@@ -230,3 +230,31 @@ def _gene_values(out, gs, ns, Ks, w0s, g0s, step, order, n_covered, thr, centre,
                     v = vt[q] - med
                     q += 1
                     gv[r, order[g0s[c] + i]] = 0 if abs(v - centre) < thr else v
+
+
+@njit_parallel
+def _group_sums_csr(data, indices, indptr, rows, groups, sums):
+    """`sums[t, groups[i]] += X[rows[i]]` for the CSR matrix `X`, where `t` is the chunk of `i` (one per `sums[t]`)."""
+    n_chunks = sums.shape[0]
+    n = rows.size
+    for t in prange(n_chunks):
+        st = sums[t]
+        for i in range(t * n // n_chunks, (t + 1) * n // n_chunks):
+            s = st[groups[i]]
+            r = rows[i]
+            for k in range(indptr[r], indptr[r + 1]):
+                s[indices[k]] += data[k]
+
+
+@njit_parallel
+def _group_sums_dense(X, rows, groups, sums):
+    """Same as `_group_sums_csr` for the dense matrix `X`."""
+    n_chunks = sums.shape[0]
+    n = rows.size
+    for t in prange(n_chunks):
+        st = sums[t]
+        for i in range(t * n // n_chunks, (t + 1) * n // n_chunks):
+            s = st[groups[i]]
+            r = rows[i]
+            for j in range(X.shape[1]):
+                s[j] += X[r, j]

@@ -14,7 +14,15 @@ from anndata import AnnData
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._numba import n_kernel_chunks, numba_threads
 from infercnvpy._util import _as_matrix, _is_backed, _is_dask, _params_for_uns
-from infercnvpy.tl._infercnv_kernels import _cnv_csr, _cnv_dense, _count_kept, _fill_kept, _gene_values
+from infercnvpy.tl._infercnv_kernels import (
+    _cnv_csr,
+    _cnv_dense,
+    _count_kept,
+    _fill_kept,
+    _gene_values,
+    _group_sums_csr,
+    _group_sums_dense,
+)
 
 
 def infercnv(
@@ -199,7 +207,7 @@ def infercnv(
             *(adata.n_obs, adata.n_vars, source.n_blocks, source.kind, ", lazy" if lazy else ""),
         )
         layout = _Layout(var, var_mask.to_numpy(), window_size, step)
-        ref = _get_reference(adata, reference_key, reference_cat, reference, layer, chunksize=chunksize, lazy=lazy)
+        ref = _get_reference(adata, reference_key, reference_cat, reference, layer, source=source, lazy=lazy)
         plan = _Plan.build(layout, ref, lfc_clip, dynamic_threshold, noise_reference)
         band_rows = None
         if (
@@ -513,15 +521,18 @@ class _Rows:
         for i, local in self.blocks_of(rows):
             s, e = int(self.bounds[i]), int(self.bounds[i + 1])
             start = s if local is None else s + int(local[0])
-            if self.kind == "in memory":
-                X = self.X if local is None else _kernel_ready(self.X[s + local])
-                row0 = s if local is None else 0
-            else:
-                block = self.X.blocks[i].compute(scheduler="synchronous") if self.kind == "dask" else self.X[s:e]
-                X = _kernel_ready(block)
-                X = X if local is None else _kernel_ready(X[local])
-                row0 = 0
+            X, row0 = self.read(i)
+            if local is not None:
+                X, row0 = _kernel_ready(X[row0 + local]), 0
             yield start, fn(X, row0, (e - s) if local is None else len(local), start)
+
+    def read(self, i: int) -> tuple[Any, int]:
+        """Block `i` as an in-memory, kernel-ready matrix, and the row of that matrix where the block starts."""
+        s, e = int(self.bounds[i]), int(self.bounds[i + 1])
+        if self.kind == "in memory":
+            return self.X, s
+        block = self.X.blocks[i].compute(scheduler="synchronous") if self.kind == "dask" else self.X[s:e]
+        return _kernel_ready(block), 0
 
 
 def _kernel_ready(X):
@@ -560,14 +571,16 @@ def _get_reference(
     reference: np.ndarray | None,
     layer: str | None,
     *,
-    chunksize: int = 5000,
+    source: "_Rows | None" = None,
     lazy: bool = False,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
     If multiple reference categories are given, compute the mean per
-    category. For a dask array or a backed matrix, all means are computed
-    in a single pass over the data (with `lazy`, as one dask computation).
+    category. The means are float64 sums of the rows divided by their number, computed in
+    parallel (`source` is the expression matrix, if it is already wrapped). For a dask array or a
+    backed matrix, all means are computed in a single pass over the blocks that hold reference
+    cells (with `lazy`, as one dask computation).
 
     Returns a 2D array with reference categories in rows, genes in columns.
     If there's just one category, it's still a 2D array.
@@ -575,7 +588,7 @@ def _get_reference(
     X: Any = adata.X if layer is None else adata.layers[layer]
 
     if reference is None:
-        cats, labels = None, None
+        cats, codes = None, np.zeros(adata.n_obs, dtype=np.int64)
         if reference_key is None or reference_cat is None:
             warnings.warn(
                 "Using the mean of all cells as reference. For better results, "
@@ -592,12 +605,13 @@ def _get_reference(
                     "The following reference categories were not found in "
                     f"adata.obs[reference_key]: {cats[~cats_in_obs]}"
                 )
-        if _is_dask(X) or _is_backed(X):
-            reference = _streaming_means(_Rows(X, chunksize), cats, labels, lazy=lazy)
-        elif cats is None:
-            reference = np.mean(X, axis=0)
-        else:
-            reference = np.vstack([np.mean(X[labels == cat, :], axis=0) for cat in cats])
+            unique = pd.Index(pd.unique(cats))
+            codes = unique.get_indexer(labels)
+        if source is None:
+            source = _Rows(_as_matrix(X, lazy=True), chunksize=5000)
+        reference = _means(source, codes, 1 if cats is None else len(unique), lazy=lazy)
+        if cats is not None:
+            reference = reference[unique.get_indexer(cats)]  # a repeated category repeats its mean
 
     reference = np.asarray(reference)
     if reference.ndim == 1:
@@ -609,34 +623,52 @@ def _get_reference(
     return reference
 
 
-def _streaming_means(source: _Rows, cats: np.ndarray | None, labels: np.ndarray | None, *, lazy: bool) -> np.ndarray:
-    """Column means over all rows (`cats=None`), or over the rows of each category, in one pass over the data."""
-    fn = partial(_block_sums, cats, labels)
-    if lazy:  # one dask computation, in parallel with the current scheduler
+def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool) -> np.ndarray:
+    """Per group, the column means of the rows with `codes == group` (-1: no group), in one pass over the data.
+
+    Blocks without any of these rows are not read.
+    """
+    rows = None if (codes >= 0).all() else np.flatnonzero(codes >= 0)
+    blocks = list(source.blocks_of(rows))
+    if source.kind == "in memory":
+        rows = np.arange(len(codes)) if rows is None else rows
+        sums = _group_sums(source.X, rows, codes[rows], n_groups)
+    elif lazy:  # one dask computation, in parallel with the current scheduler
         import dask
 
-        blocks = source.X.to_delayed().ravel()
-        tasks = [dask.delayed(_dask_block_sums)(b, fn, int(s)) for b, s in zip(blocks, source.bounds, strict=False)]
-        parts = dask.compute(*tasks)
+        delayed = source.X.to_delayed().ravel()
+        tasks = [
+            dask.delayed(_dask_block_sums)(delayed[i], *_block_groups(source, i, local, codes), n_groups)
+            for i, local in blocks
+        ]
+        sums = np.sum(dask.compute(*tasks), axis=0)
     else:
-        parts = tuple(part for _, part in source.map(fn))
-    sums, counts = zip(*parts, strict=True)
-    return np.sum(sums, axis=0) / np.sum(counts, axis=0)[:, np.newaxis]
+        sums = np.zeros((n_groups, source.X.shape[1]))
+        for i, local in blocks:
+            X, row0 = source.read(i)
+            local, groups = _block_groups(source, i, local, codes)
+            sums += _group_sums(X, row0 + local, groups, n_groups)
+    counts = np.bincount(codes[codes >= 0], minlength=n_groups)
+    return sums / counts[:, np.newaxis]
 
 
-def _dask_block_sums(block, fn: Callable, start: int):
-    X = _kernel_ready(block)
-    return fn(X, 0, X.shape[0], start)
+def _block_groups(source: _Rows, i: int, local: np.ndarray | None, codes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Rows of block `i` (local indices) that belong to a group, and their groups."""
+    s, e = int(source.bounds[i]), int(source.bounds[i + 1])
+    if local is None:
+        local = np.arange(e - s)
+    return local, codes[s + local]
 
 
-def _block_sums(cats, labels, X, row0: int, n_rows: int, start: int) -> tuple[np.ndarray, np.ndarray]:
-    """Per category (or all rows): sum over the rows of the block, and the number of rows."""
-    if cats is None:
-        group, row = np.zeros(n_rows, dtype=np.int64), np.arange(n_rows)
+def _dask_block_sums(block, local: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
+    return _group_sums(_kernel_ready(block), local, groups, n_groups)
+
+
+def _group_sums(X, rows: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
+    """Per group (float64): the sum of the rows `rows` of the kernel-ready matrix `X` whose group is in `groups`."""
+    sums = np.zeros((n_kernel_chunks(len(rows), per_thread=1), n_groups, X.shape[1]))
+    if sp.issparse(X):
+        _group_sums_csr(X.data, X.indices, X.indptr, rows, groups, sums)
     else:
-        group, row = np.nonzero(cats[:, np.newaxis] == labels[np.newaxis, start : start + n_rows])
-    n_groups = 1 if cats is None else len(cats)
-    indicator = sp.csr_matrix((np.ones(len(row)), (group, row0 + row)), shape=(n_groups, X.shape[0]))
-    sums = indicator @ X
-    sums = sums.toarray() if sp.issparse(sums) else np.asarray(sums)
-    return sums, np.bincount(group, minlength=n_groups)
+        _group_sums_dense(X, rows, groups, sums)
+    return sums.sum(axis=0)
