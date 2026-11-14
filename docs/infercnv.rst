@@ -3,13 +3,21 @@
 The inferCNV method
 ===================
 
-Essentially, this package is a Python reimplementation of
+infercnvpy is a Python reimplementation of
 `infercnv <https://github.com/broadinstitute/inferCNV/>`_. It mostly follows the computation steps
 outlined `here <https://github.com/broadinstitute/inferCNV/wiki/Running-InferCNV>`_,
-with minor modifications. The computation steps are outlined below.
+with these differences to R inferCNV:
+
+* Lowly expressed genes are kept by default. `min_mean` removes them like the `cutoff` of R inferCNV,
+  which suggests `1` for Smart-seq2 and `0.1` for 10x data (R also drops genes found in fewer than 3 cells).
+* The reference is subtracted once, per gene, before smoothing. R subtracts it again after smoothing.
+* Noise filtering (`dynamic_threshold`) is on by default; R only denoises with `denoise=TRUE`.
+* There is no HMM (in R optional with `HMM=TRUE`), so the result is always a continuous CNV value.
+* The default window has 100 genes (R: 101).
+
+The computation steps are outlined below.
 The steps run in compiled `numba` code, one block of cells at a time and on all
-cores, and the input matrix is never densified, so it is a lot more
-computationally efficient. The input can also be a dask array or a backed
+cores, and the input matrix is never densified. The input can also be a dask array or a backed
 AnnData, see :ref:`large-data`.
 
 Computation steps
@@ -41,7 +49,7 @@ with `chr` are used, and `chrM` is skipped.
    sorted by start position and averaged over a running window of `window_size`
    genes, weighted with a pyramid that gives the genes in the middle of the window
    the largest weight. Only every nth window is kept to save time and space, where
-   n = `step`. A chromosome with fewer genes than `window_size` is reduced to a
+   n = `step`. A chromosome with at most `window_size` genes is reduced to a
    single, unweighted mean.
 4. Center the smoothed gene expression by cell, by subtracting the median of each cell
    from each cell.

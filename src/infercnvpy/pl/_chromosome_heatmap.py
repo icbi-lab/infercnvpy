@@ -65,6 +65,7 @@ def chromosome_heatmap(
     """Plot a heatmap of smoothed gene expression by chromosome.
 
     Cells are sorted by `groupby` and each group gets a share of the heatmap's height proportional to its size.
+    The width of a chromosome is its number of windows, not its length in base pairs.
 
     .. versionchanged:: 0.7.0
        Rendered by infercnvpy instead of :func:`scanpy.pl.heatmap` (`mode="fast"`): each pixel row of the figure
@@ -115,7 +116,8 @@ def chromosome_heatmap(
         Return the :class:`~matplotlib.figure.Figure`.
     **kwargs
         Arguments of :func:`scanpy.pl.heatmap`, see `mode`. By default, the colour scale is a
-        :class:`~matplotlib.colors.TwoSlopeNorm` centred at `vcenter=0`. `dendrogram=True` orders the groups by
+        :class:`~matplotlib.colors.TwoSlopeNorm` centred at `vcenter=0`, with limits from the data. Pass the same
+        `vmin` and `vmax` to compare figures across modes, representations or datasets. `dendrogram=True` orders the groups by
         hierarchical clustering of their mean CNV profiles (Pearson correlation, complete linkage, as
         :func:`scanpy.tl.dendrogram`) and draws the dendrogram next to the heatmap.
 
