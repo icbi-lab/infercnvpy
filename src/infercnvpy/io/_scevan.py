@@ -4,14 +4,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import rdata
 from anndata import AnnData
 
-from infercnvpy._logging import log
+from infercnvpy._logging import log, log_result
 
 
 def _read_rdata_frame(path: Path, name: str) -> pd.DataFrame:
     """Read object `name` from an `.RData` file as a DataFrame (keeping row/column names)."""
+    import rdata  # imported here, so that `import infercnvpy` does not load it
+
     obj = rdata.read_rda(path, default_encoding="utf-8")[name]
     if isinstance(obj, pd.DataFrame):
         return obj
@@ -87,7 +88,7 @@ def read_scevan(
 
     if len(scevan_res_file) != 1 or len(scevan_subclones_file) > 1 or len(scevan_anno_file) != 1:
         raise ValueError(
-            "There must be exactely one CNA_mtx and count_mtx_annot file and at most one "
+            "There must be exactly one CNA_mtx and count_mtx_annot file and at most one "
             "CNAmtxSubclones file in the result directory!"
         )
 
@@ -116,7 +117,18 @@ def read_scevan(
             )
 
     if subset:
+        n_before = adata.n_obs
+        # anndata has no public in-place subset; `inplace=True` has to modify the caller's object
         adata._inplace_subset_obs(scevan_res.index.values)
+        n_dropped = n_before - adata.n_obs
+        log_result(
+            "read_scevan",
+            "kept %d of %d cells, dropped %d that SCEVAN filtered out",
+            *(adata.n_obs, n_before, n_dropped),
+            dropped=n_dropped,
+            total=n_before,
+            remedy="pass subset=False to keep all cells (their CNV values are NaN)",
+        )
 
     cna = scevan_res.reindex(adata.obs_names)
     if scevan_subclone_res is not None:

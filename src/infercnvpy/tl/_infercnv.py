@@ -1,5 +1,4 @@
 import re
-import sys
 import warnings
 from collections import deque
 from collections.abc import Iterator, Sequence
@@ -43,7 +42,7 @@ def infercnv(
     exclude_chromosomes: Sequence[str] | None = ("chrX", "chrY"),
     chunksize: int = 5000,
     n_jobs: int | None = None,
-    lazy: bool | None = None,
+    lazy: bool = False,
     inplace: bool = True,
     layer: str | None = None,
     key_added: str = "cnv",
@@ -53,7 +52,7 @@ def infercnv(
 
     This method is heavily inspired by `infercnv <https://github.com/broadinstitute/inferCNV/>`_
     but more computationally efficient. The method is described in more detail
-    in on the :ref:`infercnv-method` page.
+    on the :ref:`infercnv-method` page.
 
     There, you can also find instructions on how to :ref:`prepare input data <input-data>`.
 
@@ -85,7 +84,7 @@ def infercnv(
     lfc_clip
         Clip log fold changes at this value
     window_size
-        size of the running window (number of genes in to include in the window)
+        size of the running window (number of genes to include in the window)
     step
         only compute every nth running window where n = `step`. Set to 1 to compute
         all windows.
@@ -119,9 +118,10 @@ def infercnv(
         Only for a dask array: return the CNV matrix (and the gene values) as lazy dask
         arrays, computed by :meth:`dask.array.Array.map_blocks` with the current dask
         scheduler. The noise band is computed up front with one dask computation.
-        Default: `True` if a :class:`distributed.Client` is active, otherwise `False`:
-        the blocks are read ahead in background threads with the synchronous scheduler and
-        the result is in memory.
+        Default: the blocks are read ahead in background threads with the synchronous
+        scheduler and the result is in memory, also when a :class:`distributed.Client` is
+        active. A lazy result only works with the tools that read the CNV matrix block by
+        block, see :ref:`large-data`.
     inplace
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
     layer
@@ -202,9 +202,7 @@ def infercnv(
             '`adata.var["chromosome"] = "chr" + adata.var["chromosome"].astype(str)`.'
         )
     expr = _as_matrix(adata.X if layer is None else adata.layers[layer], lazy=True)
-    if lazy is None:
-        lazy = _is_dask(expr) and _distributed_client_active()
-    elif lazy and not _is_dask(expr):
+    if lazy and not _is_dask(expr):
         raise ValueError("`lazy=True` needs the expression matrix as a dask array.")
 
     with numba_threads(n_jobs):
@@ -666,18 +664,6 @@ def _kernel_ready(X):
 def _canonical(X) -> bool:
     """Whether the CSR matrix `X` has sorted indices without duplicates (scipy's own check is serial)."""
     return _n_unsorted_rows(X.indices, X.indptr) == 0
-
-
-def _distributed_client_active() -> bool:
-    """Whether a `dask.distributed` client is the default scheduler (without importing distributed)."""
-    distributed = sys.modules.get("distributed")
-    if distributed is None:
-        return False
-    try:
-        distributed.default_client()
-    except ValueError:
-        return False
-    return True
 
 
 def _get_reference(

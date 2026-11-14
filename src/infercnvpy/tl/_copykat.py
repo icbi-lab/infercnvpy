@@ -110,7 +110,7 @@ def copykat(
         from rpy2.robjects.conversion import localconverter
         from rpy2.robjects.packages import importr
     except ImportError:
-        raise ImportError("copyKAT requires rpy2 to be installed. ") from None
+        raise ImportError('copyKAT needs rpy2. Install it with `pip install "infercnvpy[copykat]"`.') from None
 
     try:
         importr("copykat")

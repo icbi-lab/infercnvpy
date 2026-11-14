@@ -1,5 +1,3 @@
-import logging
-
 import dask
 import dask.array as da
 import numpy as np
@@ -17,7 +15,6 @@ from infercnvpy.pl._chromosome_heatmap import _group_means
 from infercnvpy.pl._heatmap_kernels import _rows_per_group, binned_sums, pixel_rows, sampled_rows
 
 AX_KEYS = {"heatmap_ax", "groupby_ax", "gene_groups_ax", "colorbar_ax"}
-LOGGER = "scverse.infercnvpy"
 both_plots = pytest.mark.parametrize("plot", [cnv.pl.chromosome_heatmap, cnv.pl.chromosome_heatmap_summary])
 
 
@@ -165,13 +162,33 @@ def test_dendrogram_from_mean_profiles(adata_small):
 
 
 @both_plots
-def test_unsupported_argument_falls_back_to_legacy(adata_small, caplog, plot):
+def test_unsupported_argument_falls_back_to_legacy(adata_small, plot):
     adata_small = adata_small[adata_small.obs["group"].notna()].copy()
-    with caplog.at_level(logging.INFO, logger=LOGGER):
+    with pytest.warns(UserWarning, match="mode='fast' does not support interpolation, using mode='legacy'"):
         axes = plot(adata_small, groupby="group", show=False, interpolation="none")
     assert "colorbar_ax" not in axes  # drawn by scanpy
-    [msg] = [r.getMessage() for r in caplog.records if r.name == LOGGER]
-    assert msg.endswith("mode='fast' does not support interpolation, using mode='legacy'")
+
+
+@both_plots
+def test_lazy_matrix_does_not_fall_back_to_legacy(adata_small, plot):
+    """`mode="legacy"` loads the whole matrix as a dense table, so a lazy one raises instead of falling back."""
+    adata_small.obsm["X_cnv"] = _dask(adata_small.obsm["X_cnv"])
+    with pytest.raises(ValueError, match=r"does not support interpolation.*in memory"):
+        plot(adata_small, groupby="group", show=False, interpolation="none")
+    with pytest.raises(TypeError, match=r"\.compute\(\)"):
+        plot(adata_small, groupby="group", show=False, mode="legacy")
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "label"),
+    [
+        ({}, "CNV (relative to reference)"),
+        ({"standard_scale": "var"}, "CNV (relative to reference), scaled per window"),
+    ],
+)
+def test_colorbar_label(adata_small, kwargs, label):
+    axes = cnv.pl.chromosome_heatmap(adata_small, groupby="group", show=False, **kwargs)
+    assert axes["colorbar_ax"].get_ylabel() == label
 
 
 def test_legacy_rejects_ax(adata_small):

@@ -1,5 +1,5 @@
 # Citation
 
-```{include} ../README.md
-:start-after: "## Citation"
-```
+<!-- TODO: citation text (Tim) -->
+
+Citation information will be added here.

@@ -37,8 +37,8 @@ sparse matrix with 8 bytes per value that is not removed as noise. With 5,000 wi
 about 4 GB per million cells.
 
 With `lazy=True`, the result for a dask array stays a dask array of CSR blocks, computed with
-{meth}`dask.array.Array.map_blocks`. The noise band is computed first, with one dask computation. When a
-{class}`distributed.Client` is active, `lazy=True` is the default. In this mode the dask scheduler decides how
+{meth}`dask.array.Array.map_blocks`. The noise band is computed first, with one dask computation. `lazy=True` has to
+be passed explicitly, also when a {class}`distributed.Client` is active. In this mode the dask scheduler decides how
 many blocks run at the same time, each in a single thread, and `n_jobs` is ignored. infercnvpy never starts numba
 threads inside a dask worker thread, because numba's default threading layer on macOS aborts the process when it is
 used from several threads at once.
@@ -91,3 +91,20 @@ cell in the middle of the cells that fall into that row (as the full plot looks 
 (the lazy result of `infercnv`) or a backed matrix, and keeps only the drawn rows in memory.
 {func}`~infercnvpy.pl.chromosome_heatmap_summary` computes the group means in the same way. `mode="legacy"` draws
 every cell with {func}`scanpy.pl.heatmap`, which needs the whole matrix in memory as a dense table.
+
+## Tools that need the CNV matrix in memory
+
+A lazy `adata.obsm["X_cnv"]` (from `lazy=True`, or read with {func}`anndata.experimental.read_lazy`) works with these functions, which read it block
+by block:
+
+- {func}`infercnvpy.pl.chromosome_heatmap` and {func}`~infercnvpy.pl.chromosome_heatmap_summary` with `mode="fast"`,
+- {func}`infercnvpy.tl.cnv_score`.
+
+The other functions that read the CNV matrix need it in memory and raise an error otherwise:
+{func}`infercnvpy.tl.ithcna`, {func}`infercnvpy.tl.smooth_cnv`, {func}`infercnvpy.pl.spatial_cnv`, and the heatmaps with
+`mode="legacy"`. {func}`infercnvpy.tl.pca` passes the matrix to scanpy. Load the matrix before you call them:
+
+```python
+adata.obsm["X_cnv"] = adata.obsm["X_cnv"].compute()  # a dask array
+adata = adata.to_memory()  # an AnnData from read_lazy or a backed file
+```

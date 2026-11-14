@@ -10,7 +10,7 @@
 [badge-pypi]: https://img.shields.io/pypi/v/infercnvpy?logo=PyPI
 [link-pypi]: https://pypi.org/project/infercnvpy/
 
-Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavliy inspired by [InferCNV][], but plays nicely with [scanpy][] and is much more scalable.
+Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics data. It is heavily inspired by [InferCNV][], but plays nicely with [scanpy][] and is much more scalable.
 
 [infercnv]: https://github.com/broadinstitute/inferCNV/wiki
 [scanpy]: https://scanpy.readthedocs.io/en/stable/index.html
@@ -28,16 +28,16 @@ except in that they look similar, but not identical, to the results of InferCNV.
 
 Please refer to the [documentation][link-docs]. In particular, the
 
+- [installation instructions][link-installation],
+- [quickstart][link-quickstart],
+- [tutorials][link-tutorials],
 - [API documentation][link-api].
 
 ## Installation
 
-You need to have Python 3.10 or newer installed on your system. If you don't have
-Python installed, we recommend installing [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).
+You need Python 3.13 or newer. There are several options to install infercnvpy:
 
-There are several alternative options to install infercnvpy:
-
-1. Install the latest release of `infercnvpy` from `PyPI <https://pypi.org/project/infercnvpy/>`\_:
+1. Install the latest release of `infercnvpy` from [PyPI][link-pypi]:
 
 ```bash
 pip install infercnvpy
@@ -75,10 +75,14 @@ If you found a bug, please use the [issue tracker][issue-tracker].
 
 ## Citation
 
-n/a
+See the [citation page][link-citation] of the documentation.
 
 [scverse-discourse]: https://discourse.scverse.org/
 [issue-tracker]: https://github.com/scverse/infercnvpy/issues
 [changelog]: https://github.com/scverse/infercnvpy/releases
 [link-docs]: https://infercnvpy.readthedocs.io/
 [link-api]: https://infercnvpy.readthedocs.io/en/latest/api.html
+[link-installation]: https://infercnvpy.readthedocs.io/en/latest/installation.html
+[link-quickstart]: https://infercnvpy.readthedocs.io/en/latest/quickstart.html
+[link-tutorials]: https://infercnvpy.readthedocs.io/en/latest/tutorials.html
+[link-citation]: https://infercnvpy.readthedocs.io/en/latest/citation.html

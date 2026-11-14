@@ -7,7 +7,8 @@ import pytest
 import scanpy as sc
 import scanpy.queries
 
-from infercnvpy.io import genomic_position_from_biomart, genomic_position_from_gtf
+import infercnvpy.io._scevan
+from infercnvpy.io import genomic_position_from_biomart, genomic_position_from_gtf, read_scevan
 from infercnvpy.tl import infercnv
 
 
@@ -117,3 +118,39 @@ def test_get_genomic_position_from_biomart(adata_pbmc3k, kwargs):
     assert np.sum(~adata.var["start"].isnull()) > 15000
     # can run infercnv on the result
     infercnv(adata)
+
+
+@pytest.fixture
+def scevan_dir(tmp_path, monkeypatch):
+    """A SCEVAN result directory whose `.RData` files are read by a stand-in for `rdata` (4 of 5 cells kept)."""
+    for name in ("s_CNAmtx.RData", "s_count_mtx_annot.RData"):
+        (tmp_path / name).touch()
+    frames = {
+        "CNA_mtx_relat": pd.DataFrame(np.arange(8.0).reshape(2, 4), columns=["c0", "c1", "c2", "c4"]),
+        "count_mtx_annot": pd.DataFrame({"seqnames": [1, 2]}),
+    }
+    monkeypatch.setattr(infercnvpy.io._scevan, "_read_rdata_frame", lambda path, name: frames[name])
+    return tmp_path
+
+
+@pytest.mark.parametrize("subset", [True, False])
+def test_read_scevan_reports_dropped_cells(scevan_dir, caplog, subset):
+    adata = sc.AnnData(obs=pd.DataFrame(index=[f"c{i}" for i in range(5)]))
+    with caplog.at_level(logging.INFO, logger="scverse.infercnvpy"):
+        read_scevan(adata, scevan_dir, subset=subset)
+    msgs = [r.getMessage() for r in caplog.records if r.name == "scverse.infercnvpy"]
+    if subset:
+        assert msgs == ["read_scevan: kept 4 of 5 cells, dropped 1 that SCEVAN filtered out"]
+        assert list(adata.obs_names) == ["c0", "c1", "c2", "c4"]
+    else:
+        assert msgs == []
+        assert np.isnan(adata.obsm["X_scevan"][3]).all()
+    assert adata.uns["scevan"]["chr_pos"] == {"chr1": 0, "chr2": 1}
+
+
+def test_read_scevan_imports_rdata_lazily():
+    import subprocess
+    import sys
+
+    code = "import sys, infercnvpy; assert 'rdata' not in sys.modules"
+    subprocess.run([sys.executable, "-c", code], check=True)

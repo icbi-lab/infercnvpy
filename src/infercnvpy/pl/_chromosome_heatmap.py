@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -15,9 +16,9 @@ from matplotlib.path import Path as MplPath
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_size import Fixed
 
-from infercnvpy._logging import log
+from infercnvpy._logging import SKIP_OWN_FRAMES
 from infercnvpy._numba import n_kernel_chunks, numba_threads
-from infercnvpy._util import _as_df, _as_matrix
+from infercnvpy._util import _as_df, _as_matrix, _is_backed, _is_dask
 from infercnvpy.pl._heatmap_kernels import binned_sums, pixel_rows, sampled_rows
 
 if TYPE_CHECKING:
@@ -34,6 +35,9 @@ _CHR_H = 0.115  # chromosome brackets
 _PAD_W = 0.03
 _PAD_H = 0.05
 _CBAR_MAX_H = 4.0
+
+#: Colour bar label: infercnv, smooth_cnv and SCEVAN all report CNV relative to the reference cells.
+CBAR_LABEL = "CNV (relative to reference)"
 
 #: :func:`scanpy.pl.heatmap` arguments that `mode="fast"` implements; any other one switches to `mode="legacy"`.
 FAST_KWARGS = frozenset(
@@ -88,8 +92,8 @@ def chromosome_heatmap(
         with :func:`scanpy.pl.heatmap`, which needs the CNV matrix as a dense table and several times its memory.
         `mode="fast"` implements the :func:`scanpy.pl.heatmap` arguments `swap_axes`, `standard_scale`,
         `var_group_rotation`, `dendrogram`, `vmin`, `vmax`, `vcenter`, `norm`, `show_gene_labels` (ignored) and
-        `log`; with any other argument (or a numeric, not categorical, `groupby` column), it logs an info message
-        and uses `mode="legacy"`.
+        `log`; with any other argument (or a numeric, not categorical, `groupby` column), it warns and uses
+        `mode="legacy"`, or raises an error if the CNV matrix is not in memory.
     aggregate
         What a pixel row shows when there are more cells than pixel rows (`mode="fast"` only). `"sample"` shows the
         cell in the middle of the cells that fall into the row, as the full-resolution plot downscaled with
@@ -123,7 +127,7 @@ def chromosome_heatmap(
     """
     if aggregate not in ("sample", "mean"):
         raise ValueError(f"`aggregate` must be 'sample' or 'mean', got {aggregate!r}.")
-    if _use_legacy("chromosome_heatmap", adata, groupby, mode, kwargs):
+    if _use_legacy("chromosome_heatmap", adata, groupby, use_rep, mode, kwargs):
         return _legacy(_legacy_heatmap, adata, groupby, use_rep, cmap, figsize, ax, show, save, return_fig, kwargs)
     opts = _Options.pop(kwargs)
     fig, ax = _figure(ax, figsize)
@@ -195,7 +199,7 @@ def chromosome_heatmap_summary(
         `"legacy"` uses :func:`scanpy.pl.heatmap`. `mode="fast"` implements the :func:`scanpy.pl.heatmap` arguments
         `swap_axes`, `standard_scale`, `var_group_rotation`, `dendrogram`, `vmin`, `vmax`, `vcenter`, `norm`,
         `show_gene_labels` (ignored) and `log`; with any other argument (or a numeric, not categorical, `groupby`
-        column), it logs an info message and uses `mode="legacy"`.
+        column), it warns and uses `mode="legacy"`, or raises an error if the CNV matrix is not in memory.
     ax
         Draw the heatmap into this axes (`mode="fast"` only). The group colours, chromosome labels, dendrogram and
         colour bar go into axes split off from it.
@@ -219,7 +223,7 @@ def chromosome_heatmap_summary(
     `heatmap_ax`, `groupby_ax` (group colours), `gene_groups_ax` (chromosome labels), `colorbar_ax` (not with
     `mode="legacy"`) and, with `dendrogram`, `dendrogram_ax`.
     """
-    if _use_legacy("chromosome_heatmap_summary", adata, groupby, mode, kwargs):
+    if _use_legacy("chromosome_heatmap_summary", adata, groupby, use_rep, mode, kwargs):
         return _legacy(_legacy_summary, adata, groupby, use_rep, cmap, figsize, ax, show, save, return_fig, kwargs)
     opts = _Options.pop(kwargs)
     fig, ax = _figure(ax, figsize)
@@ -289,8 +293,11 @@ class _Options:
 # --- mode selection -------------------------------------------------------------------------------------------------
 
 
-def _use_legacy(func: str, adata: AnnData, groupby: str, mode: str, kwargs: dict[str, Any]) -> bool:
-    """Whether to draw with `mode="legacy"`: asked for, or needed for an argument `mode="fast"` does not implement."""
+def _use_legacy(func: str, adata: AnnData, groupby: str, use_rep: str, mode: str, kwargs: dict[str, Any]) -> bool:
+    """Whether to draw with `mode="legacy"`: asked for, or needed for an argument `mode="fast"` does not implement.
+
+    Falling back warns. A lazy CNV matrix cannot fall back, as `mode="legacy"` loads it as a dense table.
+    """
     if mode not in ("fast", "legacy"):
         raise ValueError(f"`mode` must be 'fast' or 'legacy', got {mode!r}.")
     if groupby not in adata.obs.columns:
@@ -308,7 +315,19 @@ def _use_legacy(func: str, adata: AnnData, groupby: str, mode: str, kwargs: dict
     if pd.api.types.is_numeric_dtype(col) and not isinstance(col.dtype, pd.CategoricalDtype):
         reasons.append("a numeric `groupby` column")
     if reasons:
-        log.info("%s: mode='fast' does not support %s, using mode='legacy'", func, ", ".join(reasons))
+        X = adata.obsm[f"X_{use_rep}"]
+        if _is_dask(X) or _is_backed(X):
+            raise ValueError(
+                f"{func}: mode='fast' does not support {', '.join(reasons)}, and mode='legacy' needs "
+                f"`adata.obsm['X_{use_rep}']` in memory. Drop these arguments, or load the matrix first "
+                f"(e.g. `adata.obsm['X_{use_rep}'] = adata.obsm['X_{use_rep}'].compute()`)."
+            )
+        warnings.warn(
+            f"{func}: mode='fast' does not support {', '.join(reasons)}, using mode='legacy'. "
+            "Pass mode='legacy' to silence this warning.",
+            UserWarning,
+            skip_file_prefixes=SKIP_OWN_FRAMES,
+        )
         return True
     return False
 
@@ -528,7 +547,12 @@ def _draw(
     cbar_holder = divider.append_axes("right", size=Fixed(_CBAR_W), pad=Fixed(_PAD_W))
     cbar_holder.axis("off")
     cbar_ax = axes["colorbar_ax"] = cbar_holder.inset_axes((0, 0, 1, min(1, _CBAR_MAX_H / fig.get_size_inches()[1])))
-    fig.colorbar(im, cax=cbar_ax)
+    label = CBAR_LABEL
+    if opts.log:
+        label = f"log1p of {label}"
+    if opts.standard_scale is not None:
+        label = f"{label}, scaled per {'window' if opts.standard_scale == 'var' else 'row'}"
+    fig.colorbar(im, cax=cbar_ax, label=label)
     return axes
 
 

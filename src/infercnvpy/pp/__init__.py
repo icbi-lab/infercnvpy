@@ -26,8 +26,8 @@ def neighbors(
         are stored in anndata. If not present, attempts to run :func:`infercnvpy.tl.pca`
         with default parameters.
     key_added
-        Distances are stored in .obsp[key_added+’_distances’] and connectivities in
-        .obsp[key_added+’_connectivities’].
+        Distances are stored in `.obsp[key_added + "_distances"]` and connectivities in
+        `.obsp[key_added + "_connectivities"]`.
     inplace
         If `True`, store the neighborhood graph in adata, otherwise return
         a copy of adata that holds the graph.

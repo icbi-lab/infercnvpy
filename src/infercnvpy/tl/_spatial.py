@@ -113,6 +113,12 @@ def _icm(indptr, indices, weights, unary, labels, beta, n_iter):  # pragma: no c
 
 
 def _graph(adata: AnnData, connectivity_key: str) -> sp.csr_matrix:
+    if connectivity_key.endswith("_distances"):
+        raise ValueError(
+            f"`connectivity_key={connectivity_key!r}` looks like a distance matrix. The graph weights must be "
+            "similarities or binary connectivities, where a larger weight means a closer neighbour, e.g. "
+            f"{connectivity_key.removesuffix('_distances') + '_connectivities'!r}."
+        )
     if connectivity_key not in adata.obsp:
         raise KeyError(
             f"`adata.obsp[{connectivity_key!r}]` not found. Compute a spatial graph first, "
@@ -159,10 +165,17 @@ def smooth_cnv(
     on imaging platforms at native resolution. Smoothing also blurs the boundary between tumour
     and normal tissue by about `n_hops` cells.
 
+    By default, :func:`infercnvpy.tl.infercnv` sets the values in its noise band to 0, and
+    this function averages those zeros. On simulated imaging data, smoothing the unfiltered
+    matrix of `tl.infercnv(..., dynamic_threshold=None)` recovered the CNV profiles better and
+    separated tumour from normal cells better than smoothing the filtered one.
+
     The graph usually comes from :func:`squidpy.gr.spatial_neighbors_knn`, e.g.
     `sq.gr.spatial_neighbors_knn(adata, n_neighs=10)`, or from
     :func:`squidpy.gr.spatial_neighbors_delaunay`. Any cells x cells graph with non-negative
-    weights works.
+    weights works, as long as the weights are similarities or binary connectivities (a larger
+    weight means a closer neighbour). Distances, e.g. `obsp["spatial_distances"]`, give the
+    farthest neighbours the largest weight and are rejected.
 
     Parameters
     ----------
@@ -172,7 +185,8 @@ def smooth_cnv(
         Smooth `adata.obsm["X_{use_rep}"]`, e.g. the result of :func:`infercnvpy.tl.infercnv`.
         A numpy array or a scipy sparse matrix; a CSR matrix is read in place.
     connectivity_key
-        Key of the cells x cells graph in `adata.obsp`.
+        Key of the cells x cells graph in `adata.obsp`: connectivities or similarities, not
+        distances.
     key_added
         The result is stored in `adata.obsm["X_{key_added}"]` and `adata.uns[key_added]`.
     alpha
@@ -289,7 +303,7 @@ def spatial_regions(
         Column of `adata.obs` with the labels, categorical or convertible to categorical.
     connectivity_key
         Key of the cells x cells graph in `adata.obsp`, e.g. from
-        :func:`squidpy.gr.spatial_neighbors_knn`.
+        :func:`squidpy.gr.spatial_neighbors_knn`: connectivities or similarities, not distances.
     probabilities
         Key in `adata.obsm` with per-cell class probabilities or non-negative scores, cells x
         classes, in the order of the categories of `adata.obs[key]` (or a

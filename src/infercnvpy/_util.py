@@ -8,10 +8,18 @@ import scipy.sparse as sp
 def _as_matrix(x, what: str = "the expression matrix", *, lazy: bool = False):
     """Narrow an AnnData array to an in-memory numpy array or scipy sparse matrix.
 
-    With `lazy`, also accept a dask array or a backed (on-disk) matrix, see `_is_dask` and `_is_backed`.
+    With `lazy`, also accept a dask array or a backed (on-disk) matrix, see `_is_dask` and `_is_backed`. Without it,
+    such a matrix raises an error that tells the user how to load it.
     """
     if isinstance(x, np.ndarray) or sp.issparse(x) or (lazy and (_is_dask(x) or _is_backed(x))):
         return x
+    if _is_dask(x) or _is_backed(x):
+        kind = "a dask array" if _is_dask(x) else "a backed (on-disk) matrix"
+        raise TypeError(
+            f"This function needs {what} in memory, got {kind}. Load it first: call `.compute()` on a dask array "
+            "and store the result back in adata (e.g. `adata.obsm['X_cnv'] = adata.obsm['X_cnv'].compute()`), or "
+            "use `adata = adata.to_memory()` for a backed AnnData."
+        )
     kinds = "a numpy array or scipy sparse matrix in memory"
     if lazy:
         kinds = "a numpy array, scipy sparse matrix, dask array or backed matrix"
