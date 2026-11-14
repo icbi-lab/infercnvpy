@@ -11,8 +11,11 @@ import scanpy as sc
 from anndata import AnnData
 from matplotlib import patches
 from matplotlib import pyplot as plt
+from matplotlib.artist import Artist
 from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize, TwoSlopeNorm
 from matplotlib.path import Path as MplPath
+from matplotlib.text import Text
+from matplotlib.ticker import Formatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_size import Fixed
 
@@ -25,6 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from matplotlib.axes import Axes
+    from matplotlib.backend_bases import RendererBase
     from matplotlib.figure import Figure
 
 # Sizes in inches, as `scanpy.pl.heatmap` lays them out at figsize=(16, 10).
@@ -531,6 +535,7 @@ def _draw(
     else:
         group_ax.set_yticks(centers, labels)
         group_ax.set_ylabel(groupby)
+    _thin_group_labels(group_ax, labels, centers, rows, swap=swap)
     group_ax.set_frame_on(False)
     group_ax.grid(visible=False)
 
@@ -562,7 +567,7 @@ def _chromosome_brackets(
     ax: Axes, labels: list[str], starts: list[int], n_cols: int, *, rotation: float | None, right: bool
 ) -> None:
     """Brackets over (or, with `right`, next to) the windows of each chromosome with its label, as scanpy draws."""
-    verts, codes = [], []
+    verts, codes, texts = [], [], []
     if rotation is None:
         rotation = 90 if max(len(x) for x in labels) > 4 else 0
     for label, start, end in zip(labels, starts, [*starts[1:], n_cols], strict=True):
@@ -570,17 +575,90 @@ def _chromosome_brackets(
         if right:
             verts += [(0, lo), (0.15, lo), (0.15, hi), (0, hi)]
             text = label if (hi - lo) * 2 >= len(label) else f"{label[: int((hi - lo) * 2)]}."
-            ax.text(0.6, (lo + hi) / 2, text, ha="right", va="center", rotation=270, fontsize="small")
+            texts.append(ax.text(0.6, (lo + hi) / 2, text, ha="right", va="center", rotation=270, fontsize="small"))
         else:
             verts += [(lo, 0), (lo, 0.6), (hi, 0.6), (hi, 0)]
-            ax.text((lo + hi) / 2, 1.1, label, ha="center", va="bottom", rotation=rotation)
+            texts.append(ax.text((lo + hi) / 2, 1.1, label, ha="center", va="bottom", rotation=rotation))
         codes += [MplPath.MOVETO, MplPath.LINETO, MplPath.LINETO, MplPath.LINETO]
     ax.add_patch(patches.PathPatch(MplPath(verts, codes), facecolor="none", lw=1.5))
+    widths = np.diff([*starts, n_cols])
+
+    def thin(renderer: RendererBase) -> None:
+        pos = np.array([t.get_transform().transform(t.get_position())[1 if right else 0] for t in texts])
+        extent = np.array([_extent(t, t.get_text(), renderer, along_x=not right) for t in texts])
+        for t, show in zip(texts, _keep_labels(pos, extent, widths), strict=True):
+            if t.get_visible() != show:
+                t.set_visible(show)
+
+    ax.add_artist(_BeforeDraw(thin))
     if right:
         ax.set_xlim(0, 1)
     else:
         ax.set_ylim(0, 1)
     ax.axis("off")
+
+
+def _thin_group_labels(ax: Axes, labels: list[str], centers: np.ndarray, rows: np.ndarray, *, swap: bool) -> None:
+    """Leave out the tick labels of groups that would overlap the label of a larger group, at drawing time."""
+    axis = ax.xaxis if swap else ax.yaxis
+    formatter = _ThinnedLabels(labels)
+    axis.set_major_formatter(formatter)
+
+    def thin(renderer: RendererBase) -> None:
+        proto = axis.get_major_ticks()[0].label1  # font and rotation of the tick labels
+        pos = ax.transData.transform(np.column_stack([centers, centers]))[:, 0 if swap else 1]
+        extent = np.array([_extent(proto, label, renderer, along_x=swap) for label in labels])
+        formatter.shown = _keep_labels(pos, extent, rows)
+
+    ax.add_artist(_BeforeDraw(thin))
+
+
+class _ThinnedLabels(Formatter):
+    """Fixed tick labels (as `set_ticks(ticks, labels)`), of which only those in `shown` are drawn."""
+
+    def __init__(self, labels: list[str]):
+        self.labels = labels
+        self.shown = np.ones(len(labels), dtype=bool)
+
+    def __call__(self, x: float, pos: int | None = None) -> str:
+        if pos is None or pos >= len(self.labels) or not self.shown[pos]:
+            return ""
+        return self.labels[pos]
+
+
+class _BeforeDraw(Artist):
+    """Calls `callback(renderer)` when its axes draws, before the tick labels and texts (it draws first)."""
+
+    def __init__(self, callback: Callable[[RendererBase], None]):
+        super().__init__()
+        self._callback = callback
+        self.set_zorder(-np.inf)
+        self.set_in_layout(False)
+
+    def draw(self, renderer: RendererBase) -> None:
+        self._callback(renderer)
+
+
+def _extent(proto: Text, text: str, renderer: RendererBase, *, along_x: bool) -> float:
+    """Width (`along_x`) or height in pixels of `text` drawn with the font and rotation of `proto`, plus 2 points."""
+    probe = Text(text=text, fontproperties=proto.get_fontproperties(), rotation=proto.get_rotation())
+    fig = proto.get_figure(root=True)
+    assert fig is not None
+    probe.set_figure(fig)
+    bbox = probe.get_window_extent(renderer)
+    return (bbox.width if along_x else bbox.height) + 2 * fig.dpi / 72
+
+
+def _keep_labels(pos: np.ndarray, extent: np.ndarray, priority: np.ndarray) -> np.ndarray:
+    """Which labels (centred at `pos`, `extent` long) to draw so that none overlap: greedily, highest priority first.
+
+    Ties go to the earlier label. Labels that do not overlap any other are always drawn.
+    """
+    lo, hi = pos - extent / 2, pos + extent / 2
+    keep = np.zeros(len(pos), dtype=bool)
+    for i in np.argsort(-np.asarray(priority), kind="stable"):
+        keep[i] = not np.any(keep & (lo < hi[i]) & (lo[i] < hi))
+    return keep
 
 
 def _finish(
