@@ -34,7 +34,6 @@ _CHR_H = 0.115  # chromosome brackets
 _PAD_W = 0.03
 _PAD_H = 0.05
 _CBAR_MAX_H = 4.0
-_ROBUST_PERCENTILES = (0.5, 99.5)
 
 #: :func:`scanpy.pl.heatmap` arguments that `mode="fast"` implements; any other one switches to `mode="legacy"`.
 FAST_KWARGS = frozenset(
@@ -94,8 +93,8 @@ def chromosome_heatmap(
         What a pixel row shows when there are more cells than pixel rows (`mode="fast"` only). `"sample"` shows the
         cell in the middle of the cells that fall into the row, as the full-resolution plot downscaled with
         nearest-neighbour interpolation, with the colour scale from the values of all cells. `"mean"` shows their
-        mean, with the colour scale from the 0.5th and 99.5th percentiles of the drawn values unless `vmin` and
-        `vmax` are given.
+        mean, with the colour scale from the range of the drawn (averaged) values unless `vmin` and `vmax` are
+        given.
     ax
         Draw the heatmap into this axes (`mode="fast"` only). The group colours, chromosome labels, dendrogram and
         colour bar go into axes split off from it.
@@ -144,7 +143,7 @@ def chromosome_heatmap(
             values = binned_sums(X, order, bounds) / np.diff(bounds)[:, None]
     values = opts.transform(values)
     if aggregate == "mean":
-        lo, hi = np.nanpercentile(values, _ROBUST_PERCENTILES)
+        lo, hi = np.nanmin(values), np.nanmax(values)
         center = 0 if opts.vcenter is None else opts.vcenter
         lo, hi = min(lo, center - 1e-9), max(hi, center + 1e-9)  # TwoSlopeNorm needs vmin < vcenter < vmax
     norm = opts.color_norm(lo, hi)

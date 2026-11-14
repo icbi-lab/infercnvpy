@@ -196,7 +196,7 @@ def test_mean(adata_small):
     expected = [X[order[a:b]].mean(axis=0) for a, b in zip(bounds[:-1], bounds[1:], strict=True)]
     np.testing.assert_allclose(values, expected, rtol=1e-6)
     norm = axes["heatmap_ax"].images[0].norm
-    assert (norm.vmin, norm.vmax) == pytest.approx(tuple(np.percentile(expected, [0.5, 99.5])))
+    assert (norm.vmin, norm.vmax) == pytest.approx((np.min(expected), np.max(expected)))
     axes = cnv.pl.chromosome_heatmap(adata_small, groupby="group", aggregate="mean", vmin=-3, vmax=3, show=False)
     assert (axes["heatmap_ax"].images[0].norm.vmin, axes["heatmap_ax"].images[0].norm.vmax) == (-3, 3)
 
