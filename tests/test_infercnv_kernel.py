@@ -98,7 +98,10 @@ FORMATS = {
 @pytest.mark.parametrize(("window_size", "step"), [(30, 5), (7, 1), (1000, 10)])
 @pytest.mark.parametrize("n_ref", [1, 2])
 @pytest.mark.parametrize("noise_reference", ["reference", "all"])
-def test_matches_naive(random_adata, fmt, window_size, step, n_ref, noise_reference):
+@pytest.mark.parametrize("sparse_cost", [0.0, 1e9], ids=["prefix_sums", "sparse"])
+def test_matches_naive(random_adata, fmt, window_size, step, n_ref, noise_reference, sparse_cost, monkeypatch):
+    """Both ways of smoothing a cell (see `_infercnv_kernels`) match the naive implementation."""
+    monkeypatch.setattr(cnv.tl._infercnv, "_SPARSE_COST", sparse_cost)
     adata = random_adata.copy()
     adata.X = FORMATS[fmt](adata.X)
     cats = ["normal", "immune"][:n_ref]

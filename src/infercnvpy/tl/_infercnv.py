@@ -286,7 +286,7 @@ class _Layout:
     def __init__(self, var: pd.DataFrame, var_mask: np.ndarray, window_size: int, step: int):
         used = var.loc[~var_mask, ["chromosome", "start", "end"]]
         chromosomes = _natural_sort([x for x in used["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
-        order, geometry = [], []
+        order, geometry, scatter = [], [], []
         self.chr_pos: dict[str, int] = {}
         n_genes = n_windows = self.n_covered = 0
         for chromosome in chromosomes:
@@ -301,6 +301,13 @@ class _Layout:
             K = len(range(0, g - n + 1, step))
             order.append(var.index.get_indexer(genes))
             geometry.append((n_genes, g, a, b, K, n_windows, n))
+            # per gene: the windows `first .. last` that contain it, and its pyramid weight in each
+            i = np.arange(g)
+            first = np.maximum(0, (i - n + step) // step)
+            last = np.minimum(K - 1, i // step)
+            scatter.append(
+                (n_windows + first, last - first + 1, i - first * step, np.full(g, n), np.full(g, min(a, b)))
+            )
             self.chr_pos[chromosome] = n_windows
             self.n_covered += min(g, (K - 1) * step + n)
             n_genes += g
@@ -314,6 +321,18 @@ class _Layout:
         self.n_windows = n_windows
         g0s, gs, As, Bs, Ks, w0s, ns = (np.array(x, dtype=np.int64) for x in zip(*geometry, strict=True))
         self.geometry = (g0s, gs, As, Bs, Ks, w0s, step)
+        self.step = step
+        first, n_in, offset, length, ab = (np.concatenate(x).astype(np.int64) for x in zip(*scatter, strict=True))
+        #: largest number of windows that contain one gene
+        self.span = int(n_in.max())
+        m = np.arange(self.span)
+        k = offset[:, np.newaxis] - step * m  # position of the gene in its windows `first`, `first + 1`, ...
+        weights = np.minimum(np.minimum(k + 1, length[:, np.newaxis] - k), ab[:, np.newaxis]).astype(np.float64)
+        weights[m >= n_in[:, np.newaxis]] = 0
+        #: per gene: first window that contains it, and its pyramid weights from there on (0 past its last window)
+        self.scatter = (first, weights)
+        #: per window: the sum of its pyramid weights
+        self.window_weight = np.repeat((As * Bs).astype(np.float64), Ks)
         self.gene_geometry = (gs, ns, Ks, w0s, g0s, step, self.order, self.n_covered)
 
 
@@ -326,6 +345,8 @@ class _Plan:
     hi: np.ndarray
     base: np.ndarray  # clipped log fold change of an expression of 0
     cap: np.floating
+    base_sums: np.ndarray  # weighted window sums of `base`
+    max_nnz: int  # cells with at most this many values are smoothed as a difference to `base`
     dynamic_threshold: float | None
     noise_reference: str
 
@@ -337,7 +358,15 @@ class _Plan:
         cap = np.float32(lfc_clip)
         zero = np.float32(0)
         base = np.asarray(np.clip(zero - np.clip(zero, lo, hi), -cap, cap), dtype=np.float32)
-        return cls(layout, lo, hi, base, cap, dynamic_threshold, noise_reference)
+        first, weights = layout.scatter
+        base_sums = np.zeros(layout.n_windows + weights.shape[1])
+        np.add.at(base_sums, first[:, np.newaxis] + np.arange(weights.shape[1]), base[:, np.newaxis] * weights)
+        # a value costs `span` additions in the sparse way, the prefix sums about 2 per gene
+        n_genes = layout.order.size
+        max_nnz = min(int(_SPARSE_COST * n_genes / layout.span), n_genes)
+        return cls(
+            layout, lo, hi, base, cap, base_sums[: layout.n_windows], max_nnz, dynamic_threshold, noise_reference
+        )
 
 
 def _windows(
@@ -355,15 +384,19 @@ def _windows(
     counts = np.empty(n_rows, dtype=np.int64)
     thr, centre = (np.inf, 0.0) if band is None else band
     n_chunks = n_kernel_chunks(n_rows, serial=serial)
-    shared = (*lay.geometry, thr, centre, windows, rowstats, counts, n_chunks)
+    shared = (
+        rows, lay.col_map, plan.lo, plan.hi, plan.base, plan.cap, *lay.geometry, *lay.scatter, lay.window_weight,
+        plan.base_sums, plan.max_nnz, thr, centre, windows, rowstats, counts, n_chunks,
+    )  # fmt: skip
     if sp.issparse(X):
-        _cnv_csr(
-            X.data, X.indices, X.indptr, rows, lay.col_map, plan.lo, plan.hi, plan.base, plan.cap, *shared,
-            serial=serial,
-        )  # fmt: skip
+        _cnv_csr(X.data, X.indices, X.indptr, *shared, serial=serial)
     else:
-        _cnv_dense(X, rows, lay.col_map, plan.lo, plan.hi, plan.cap, *shared, serial=serial)
+        _cnv_dense(X, *shared, serial=serial)
     return windows, rowstats, counts
+
+
+#: cells with fewer values than `_SPARSE_COST * genes / span` take the sparse way (see `_infercnv_kernels`)
+_SPARSE_COST = 0.9
 
 
 #: `(threshold, centre)` that removes nothing

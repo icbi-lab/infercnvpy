@@ -54,7 +54,7 @@ def _csr_blocks(base, block_rows, counter=None):
 
 
 def _check(adata, expected, gene_values=True, **kw):
-    """The result equals the in-memory one up to the precision of the reference (float64 sums vs float32 means)."""
+    """The result equals the in-memory one up to the precision of the reference (float64 sums in another order)."""
     chr_pos, res, gv = cnv.tl.infercnv(adata, **REF, calculate_gene_values=gene_values, inplace=False, **kw)
     if hasattr(res, "compute"):
         res, gv = dask.compute(res, gv)
