@@ -130,6 +130,17 @@ def test_fast_draws_what_legacy_draws(adata_small, fmt, kwargs, plot):
     assert [t.get_text() for t in fast["groupby_ax"].get_yticklabels()] == ["c", "b", "a"]
 
 
+@pytest.mark.parametrize("dendrogram", [False, True])
+def test_legacy_keeps_cell_order_within_groups(adata_small, dendrogram):
+    """scanpy sorts with pandas' unstable default sort; legacy passes the cells already sorted, so it keeps them."""
+    adata_small = adata_small[adata_small.obs["group"].notna()].copy()
+    adata_small.obsm["X_cnv"] = adata_small.obsm["X_cnv"].toarray()  # scanpy's dendrogram needs dense data here
+    axes = cnv.pl.chromosome_heatmap(adata_small, groupby="group", show=False, mode="legacy", dendrogram=dendrogram)
+    order = [t.get_text() for t in axes["groupby_ax"].get_yticklabels()]
+    rank = pd.Categorical(adata_small.obs["group"], categories=order).codes
+    np.testing.assert_array_equal(_image(axes), adata_small.obsm["X_cnv"][np.argsort(rank, kind="stable")])
+
+
 def test_dendrogram_reuses_stored_one(adata_small):
     adata_small = adata_small[adata_small.obs["group"].notna()].copy()
     adata_small.obsm["X_cnv"] = adata_small.obsm["X_cnv"].toarray()  # scanpy's dendrogram needs dense data here

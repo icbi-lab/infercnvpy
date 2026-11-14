@@ -61,12 +61,12 @@ def _rows_per_group(counts: np.ndarray, n_rows: int) -> np.ndarray:
 def pixel_rows(codes: np.ndarray, n_groups: int, n_rows: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Order the cells by group (`codes`, -1 is left out) and cut each group into runs of cells, one per pixel row.
 
-    Within a group, the cells keep the order of ``DataFrame.sort_index`` on the group labels, as in
-    :func:`scanpy.pl.heatmap`. Returns the cell order, the start of each run in that order (plus the end), and the
+    Within a group, the cells keep their order in `codes`. (:func:`scanpy.pl.heatmap` sorts with pandas' unstable
+    default sort, so its order within a group is arbitrary.) Returns the cell order, the start of each run in that order (plus the end), and the
     number of rows per group.
     """
     keep = np.flatnonzero(codes >= 0)
-    order = keep[codes[keep].argsort(kind="quicksort")]  # pandas' `nargsort`
+    order = keep[codes[keep].argsort(kind="stable")]
     counts = np.bincount(codes[order], minlength=n_groups)
     rows = _rows_per_group(counts, min(n_rows, len(order)))
     starts = np.concatenate([[0], np.cumsum(counts)])

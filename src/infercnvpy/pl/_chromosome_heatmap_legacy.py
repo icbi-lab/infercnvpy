@@ -33,8 +33,9 @@ def legacy_heatmap(
     save: str | bool | None,
     **kwargs,
 ) -> dict[str, Axes] | None:
-    """Every cell as a row of :func:`scanpy.pl.heatmap`."""
+    """Every cell as a row of :func:`scanpy.pl.heatmap`, in the original order within each group."""
     tmp_adata = AnnData(X=_as_matrix(adata.obsm[f"X_{use_rep}"]), obs=_as_df(adata.obs), uns=adata.uns)
+    tmp_adata = tmp_adata[_stable_group_order(tmp_adata, groupby, kwargs.get("dendrogram", False))]
 
     # re-sort, as saving & loading anndata destroys the order
     chr_pos_dict = dict(sorted(adata.uns[use_rep]["chr_pos"].items(), key=lambda x: x[1]))
@@ -74,6 +75,25 @@ def legacy_heatmap(
     if not show:
         return return_ax_dic
     return None
+
+
+def _stable_group_order(adata: AnnData, groupby: str, dendrogram: bool | str) -> np.ndarray:
+    """The cells sorted by group with a stable sort, in the group order `scanpy.pl.heatmap` will use.
+
+    `scanpy.pl.heatmap` sorts the cells with pandas' default (unstable) sort, so the order of the cells within a
+    group depends on the platform. pandas does not reorder an index that is already sorted, so cells passed in this
+    order keep their original order within each group. With a dendrogram, the groups are in its order; it is
+    computed here, as `scanpy.pl.heatmap` would, if `adata.uns` does not have it yet.
+    """
+    categories = _as_df(adata.obs)[groupby].astype("category").cat.categories
+    if dendrogram:
+        key = dendrogram if isinstance(dendrogram, str) else f"dendrogram_{groupby}"
+        if key not in adata.uns:
+            sc.tl.dendrogram(adata, groupby, key_added=key)
+        categories = pd.Index(adata.uns[key]["categories_ordered"])
+    rank = pd.Categorical(_as_df(adata.obs)[groupby], categories=categories).codes.astype(np.int64)
+    rank[rank < 0] = len(categories)  # cells without a group last, as pandas sorts NaN
+    return np.argsort(rank, kind="stable")
 
 
 def legacy_summary(

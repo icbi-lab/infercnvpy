@@ -65,7 +65,8 @@ def chromosome_heatmap(
     .. versionchanged:: 0.7.0
        Rendered by infercnvpy instead of :func:`scanpy.pl.heatmap` (`mode="fast"`): each pixel row of the figure
        shows one cell of the cells that fall into it, or their mean, so large data plots in seconds. The previous
-       implementation is available as `mode="legacy"`.
+       implementation is available as `mode="legacy"`. Both modes keep the original order of the cells within a
+       group; before, scanpy's unstable sort made that order depend on the platform.
 
     Parameters
     ----------
