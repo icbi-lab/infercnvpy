@@ -130,7 +130,7 @@ def genomic_position_from_gtf(
         import gtfparse
     except ImportError:
         raise ImportError(
-            "genomic_position_from_gtf requires gtfparse as optional dependency. Please install it using `pip install gtfparse`."
+            'genomic_position_from_gtf needs the optional dependency gtfparse. Install it with `pip install "infercnvpy[gtf]"`.'
         ) from None
     gtf = gtfparse.read_gtf(gtf_file, usecols=["seqname", "feature", "start", "end", "gene_id", "gene_name"])
     gtf = (
