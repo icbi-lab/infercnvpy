@@ -34,7 +34,8 @@ def legacy_heatmap(
     **kwargs,
 ) -> dict[str, Axes] | None:
     """Every cell as a row of :func:`scanpy.pl.heatmap`, in the original order within each group."""
-    tmp_adata = AnnData(X=_as_matrix(adata.obsm[f"X_{use_rep}"]), obs=_as_df(adata.obs), uns=adata.uns)
+    X = _as_matrix(adata.obsm[f"X_{use_rep}"], f"`adata.obsm['X_{use_rep}']`")
+    tmp_adata = AnnData(X=X, obs=_as_df(adata.obs), uns=adata.uns)
     tmp_adata = tmp_adata[_stable_group_order(tmp_adata, groupby, kwargs.get("dendrogram", False))]
 
     # re-sort, as saving & loading anndata destroys the order
@@ -112,13 +113,14 @@ def legacy_summary(
     # heatmap cannot really handle it if there's just one observation
     # per row. Scanpy matrixplot is not an option, since it plots each
     # gene individually.
+    X = _as_matrix(adata.obsm[f"X_{use_rep}"], f"`adata.obsm['X_{use_rep}']`")
     groups = adata.obs[groupby].unique()
     tmp_obs = pd.DataFrame()
     tmp_obs[groupby] = np.hstack([np.repeat(x, 10) for x in groups])
     tmp_obs.index = tmp_obs.index.astype(str)
 
     def _get_group_mean(group):
-        group_mean = np.mean(adata.obsm[f"X_{use_rep}"][adata.obs[groupby].values == group, :], axis=0)
+        group_mean = np.mean(X[adata.obs[groupby].values == group, :], axis=0)
         if len(group_mean.shape) == 1:
             # derived from an array instead of sparse matrix -> 1 dim instead of 2
             group_mean = group_mean[np.newaxis, :]
