@@ -6,7 +6,7 @@ requires = [ "hatch-vcs", "hatchling" ]
 name = "infercnvpy"
 description = """\
   Infercnv is a scalable python library to infer copy number variation (CNV) events from single cell transcriptomics \
-  data. It is heavliy inspired by InferCNV, but plays nicely with scanpy and is much more scalable.\
+  data. It is heavily inspired by InferCNV, but plays nicely with scanpy and is much more scalable.\
   """
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -44,7 +44,7 @@ dependencies = [
   "session-info2>=0.2",
 ]
 optional-dependencies.copykat = [ "rpy2" ]
-optional-dependencies.dask = [ "anndata[dask]" ]
+optional-dependencies.dask = [ "anndata[dask,lazy]" ]  # dask arrays, and anndata.experimental.read_lazy
 optional-dependencies.gtf = [ "gtfparse>=3" ]
 optional-dependencies.spatial = [ "squidpy>=1.8.4" ]
 # https://docs.pypi.org/project_metadata/#project-urls
