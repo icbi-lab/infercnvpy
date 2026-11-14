@@ -128,7 +128,7 @@ def _grid(side: int = 40, flip: float = 0.15, seed: int = 0):
 def test_spatial_regions_reduces_label_noise():
     adata, truth = _grid()
     before = np.mean(adata.obs["call"].to_numpy() == truth)
-    cnv.tl.spatial_regions(adata, "call", beta=4)
+    cnv.tl.spatial_regions(adata, key="call", beta=4)
     after = np.mean(adata.obs["call_spatial"].to_numpy() == truth)
     assert before < 0.9
     assert after > 0.98
@@ -138,10 +138,10 @@ def test_spatial_regions_reduces_label_noise():
 
 def test_spatial_regions_beta_zero_and_determinism():
     adata, _ = _grid()
-    res0 = cnv.tl.spatial_regions(adata, "call", beta=0, inplace=False)
+    res0 = cnv.tl.spatial_regions(adata, key="call", beta=0, inplace=False)
     pd.testing.assert_series_equal(res0, adata.obs["call"], check_names=False)
-    res1 = cnv.tl.spatial_regions(adata, "call", beta=4, inplace=False)
-    res2 = cnv.tl.spatial_regions(adata, "call", beta=4, inplace=False)
+    res1 = cnv.tl.spatial_regions(adata, key="call", beta=4, inplace=False)
+    res2 = cnv.tl.spatial_regions(adata, key="call", beta=4, inplace=False)
     pd.testing.assert_series_equal(res1, res2)
 
 
@@ -153,7 +153,7 @@ def test_spatial_regions_probabilities_and_missing():
     calls = np.where(p_tumour > 0.5, "tumour", "normal").astype(object)
     calls[::7] = np.nan  # missing calls are filled from the probabilities and the neighbours
     adata.obs["call"] = pd.Categorical(calls)
-    res = cnv.tl.spatial_regions(adata, "call", probabilities="p", beta=4, inplace=False)
+    res = cnv.tl.spatial_regions(adata, key="call", probabilities="p", beta=4, inplace=False)
     assert res.notna().all()
     assert np.mean(res.to_numpy() == truth) > np.mean(calls == truth) + 0.1
     assert np.mean(res.to_numpy() == truth) > 0.97
@@ -164,7 +164,7 @@ def test_spatial_regions_fills_missing_labels():
     calls = truth.astype(object)
     calls[::5] = np.nan
     adata.obs["call"] = pd.Categorical(calls)
-    res = cnv.tl.spatial_regions(adata, "call", inplace=False)
+    res = cnv.tl.spatial_regions(adata, key="call", inplace=False)
     assert res.notna().all()
     assert np.mean(res.to_numpy() == truth) > 0.99
 
@@ -177,7 +177,7 @@ def test_graph_weights_must_not_be_distances(graph_and_cnv):
     with pytest.raises(ValueError, match="'spatial_connectivities'"):
         cnv.tl.smooth_cnv(adata, connectivity_key="spatial_distances")
     with pytest.raises(ValueError, match="similarities"):
-        cnv.tl.spatial_regions(adata, "x", connectivity_key="spatial_distances")
+        cnv.tl.spatial_regions(adata, key="x", connectivity_key="spatial_distances")
 
 
 def _with_windows(starts, ends):

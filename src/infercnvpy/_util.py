@@ -1,8 +1,15 @@
+import inspect
 import sys
+import warnings
+from collections.abc import Callable
+from functools import wraps
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+
+from infercnvpy._logging import SKIP_OWN_FRAMES
 
 
 def _as_matrix(x, what: str = "the expression matrix", *, lazy: bool = False):
@@ -65,3 +72,62 @@ def _choose_mtx_rep(adata, use_raw=False, layer=None):
 def _params_for_uns(**params) -> dict:
     """Prepare call parameters for `adata.uns[...]["params"]`: store sequences as lists."""
     return {k: list(v) if isinstance(v, tuple | list) else v for k, v in params.items()}
+
+
+def _deprecated_positional[F: Callable[..., Any]](*names: str, until: str = "0.8.0") -> Callable[[F], F]:
+    """Accept the keyword-only arguments `names` positionally, in this order, with a FutureWarning.
+
+    For arguments that became keyword-only: calls that pass them positionally (after the positional
+    parameters of the new signature) keep working until `until`.
+    """
+
+    def decorate(fn: F) -> F:
+        n_positional = sum(
+            p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in inspect.signature(fn).parameters.values()
+        )
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if len(args) > n_positional:
+                extra = args[n_positional:]
+                if len(extra) > len(names):
+                    raise TypeError(
+                        f"{fn.__name__}() takes {n_positional} positional arguments (up to {n_positional + len(names)} "
+                        f"with deprecated ones), but {len(args)} were given."
+                    )
+                given = names[: len(extra)]
+                if twice := sorted(set(given) & kwargs.keys()):
+                    raise TypeError(f"{fn.__name__}() got multiple values for {', '.join(twice)}.")
+                warnings.warn(
+                    f"Passing {', '.join(f'`{n}`' for n in given)} to `{fn.__name__}` positionally is deprecated and "
+                    f"will raise an error from infercnvpy {until}. Pass "
+                    f"{', '.join(f'`{n}=...`' for n in given)} as keyword argument{'s' * (len(given) > 1)} instead.",
+                    FutureWarning,
+                    skip_file_prefixes=SKIP_OWN_FRAMES,
+                )
+                kwargs.update(zip(given, extra, strict=True))
+                args = args[:n_positional]
+            return fn(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorate
+
+
+def _copy_for_inplace_false(func: str, inplace: bool, copy: bool, *, future: str) -> bool:
+    """Whether to work on a copy of adata: `copy=True`, or the deprecated `inplace=False` (with a FutureWarning).
+
+    `inplace=False` returned a modified copy of adata before 0.8.0; from 0.8.0 it returns the results (`future`), as in
+    the other functions.
+    """
+    if copy and not inplace:
+        raise ValueError(f"{func}: pass either `copy=True` or `inplace=False`, not both.")
+    if not inplace:
+        warnings.warn(
+            f"`{func}(..., inplace=False)` returns a modified copy of adata. From infercnvpy 0.8.0 it will return "
+            f"{future} instead, as the other functions do. Pass `copy=True` to keep getting a modified copy.",
+            FutureWarning,
+            skip_file_prefixes=SKIP_OWN_FRAMES,
+        )
+        return True
+    return copy
