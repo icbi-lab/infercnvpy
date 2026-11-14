@@ -257,3 +257,22 @@ def test_duplicate_sparse_entries(random_adata):
     adata.X = dup
     np.testing.assert_allclose(cnv.tl.infercnv(adata, **kw)[1].toarray(), want.toarray(), atol=1e-6)
     np.testing.assert_array_equal(dup.data, before)
+
+
+@pytest.mark.parametrize("preallocated", [True, False])
+def test_csr_builder(preallocated):
+    """Blocks of rows go into one CSR matrix, also when its arrays have to grow (the dense allocation failed)."""
+    from infercnvpy.tl._infercnv import _CsrBuilder
+
+    rng = np.random.default_rng(0)
+    windows = (rng.normal(size=(50, 30)) * (rng.random((50, 30)) < 0.3)).astype(np.float32)
+    band = (0.5, 0.1)
+    keep = (windows != 0) & (np.abs(windows.astype(np.float64) - band[1]) >= band[0])
+    builder = _CsrBuilder(*windows.shape)
+    if not preallocated:
+        builder.data, builder.indices = builder.data[:0].copy(), builder.indices[:0].copy()
+    for rows in (slice(0, 3), slice(3, 40), slice(40, 50)):
+        builder.add(windows[rows], keep[rows].sum(axis=1), band)
+    res = builder.finish()
+    np.testing.assert_array_equal(res.toarray(), np.where(keep, windows, 0))
+    assert res.indptr.dtype == res.indices.dtype == np.int32
