@@ -17,7 +17,7 @@ Infercnv is a scalable python library to infer copy number variation (CNV) event
 
 ![The main result of infercnv](img/infercnv_heatmap.png)
 
-The results look similar, but not identical, to those of R inferCNV, and they have not been validated against ground truth data.
+The results look similar, but not identical, to those of R inferCNV.
 We are happy about feedback and contributions.
 
 ## Getting started
