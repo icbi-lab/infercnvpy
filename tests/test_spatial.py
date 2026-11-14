@@ -6,6 +6,7 @@ from anndata import AnnData
 from scipy.spatial import cKDTree
 
 import infercnvpy as cnv
+from infercnvpy.pl._spatial import _region_columns
 from infercnvpy.tl._spatial import _hop_csr, _hop_dense
 
 
@@ -166,3 +167,40 @@ def test_spatial_regions_fills_missing_labels():
     res = cnv.tl.spatial_regions(adata, "call", inplace=False)
     assert res.notna().all()
     assert np.mean(res.to_numpy() == truth) > 0.99
+
+
+def test_graph_weights_must_not_be_distances(graph_and_cnv):
+    G, X = graph_and_cnv
+    adata = AnnData(obs=pd.DataFrame(index=[str(i) for i in range(X.shape[0])]), obsm={"X_cnv": X})
+    adata.obs["x"] = pd.Categorical(np.arange(X.shape[0]) % 2)
+    adata.obsp["spatial_distances"] = G
+    with pytest.raises(ValueError, match="'spatial_connectivities'"):
+        cnv.tl.smooth_cnv(adata, connectivity_key="spatial_distances")
+    with pytest.raises(ValueError, match="similarities"):
+        cnv.tl.spatial_regions(adata, "x", connectivity_key="spatial_distances")
+
+
+def _with_windows(starts, ends):
+    """Two cells x windows on chr1 at the given positions; each window's value is its column index."""
+    adata = AnnData(obs=pd.DataFrame(index=["c0", "c1"]))
+    adata.obsm["X_cnv"] = np.tile(np.arange(len(starts), dtype=np.float32), (2, 1))
+    adata.uns["cnv"] = {"chr_pos": {"chr1": 0}, "window_start": np.array(starts), "window_end": np.array(ends)}
+    return adata
+
+
+def test_spatial_cnv_region_by_window_midpoint():
+    """A range selects the windows whose midpoint lies in it, not every window that overlaps it."""
+    adata = _with_windows([0, 100, 200, 300], [100, 200, 300, 400])  # midpoints 50, 150, 250, 350
+    np.testing.assert_array_equal(_region_columns(adata, "cnv", "chr1:120-260"), [1, 2])
+    np.testing.assert_array_equal(_region_columns(adata, "cnv", "chr1:150-150"), [1])
+    with pytest.raises(ValueError, match="No windows"):
+        _region_columns(adata, "cnv", "chr1:160-240")
+
+
+def test_spatial_cnv_colorbar_label():
+    adata = _with_windows([0, 100], [100, 200])
+    adata.obsm["spatial"] = np.array([[0.0, 0.0], [1.0, 1.0]])
+    adata.obs["label"] = pd.Categorical(["x", "y"])
+    axes = cnv.pl.spatial_cnv(adata, region="chr1", color="label", show=False)
+    [cbar] = [c.colorbar for ax in axes for c in ax.collections if c.colorbar is not None]
+    assert cbar.ax.get_ylabel() == "mean CNV (relative to reference)"
