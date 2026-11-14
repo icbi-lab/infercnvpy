@@ -337,3 +337,15 @@ def _group_sums_dense(X, rows, groups, sums):
             r = rows[i]
             for j in range(X.shape[1]):
                 s[j] += X[r, j]
+
+
+@njit_parallel
+def _n_unsorted_rows(indices, indptr):
+    """Number of CSR rows whose column indices are not strictly increasing (unsorted or duplicate)."""
+    n = 0
+    for r in prange(indptr.size - 1):
+        for k in range(indptr[r] + 1, indptr[r + 1]):
+            if indices[k] <= indices[k - 1]:
+                n += 1
+                break
+    return n

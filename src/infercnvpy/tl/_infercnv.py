@@ -1,7 +1,9 @@
 import re
 import sys
 import warnings
+from collections import deque
 from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Literal
@@ -22,6 +24,7 @@ from infercnvpy.tl._infercnv_kernels import (
     _gene_values,
     _group_sums_csr,
     _group_sums_dense,
+    _n_unsorted_rows,
 )
 
 
@@ -56,8 +59,8 @@ def infercnv(
     The expression matrix can be in memory (numpy array or scipy sparse matrix), a
     :class:`dask.array.Array` (also with sparse blocks), or the matrix of a backed AnnData
     (`anndata.read_h5ad(..., backed="r")`). Lazy matrices are read block by block and never
-    loaded entirely, see :ref:`large-data`. By default, the blocks are read one after another
-    and each is processed with `n_jobs` threads; the result is in memory. With `lazy`, the
+    loaded entirely, see :ref:`large-data`. By default, the blocks are read ahead in background
+    threads and each is processed with `n_jobs` threads; the result is in memory. With `lazy`, the
     result of a dask array stays a dask array instead.
 
     .. versionchanged:: 0.7.0
@@ -116,8 +119,8 @@ def infercnv(
         arrays, computed by :meth:`dask.array.Array.map_blocks` with the current dask
         scheduler. The noise band is computed up front with one dask computation.
         Default: `True` if a :class:`distributed.Client` is active, otherwise `False`:
-        the blocks are read one after another with the synchronous scheduler and the
-        result is in memory.
+        the blocks are read ahead in background threads with the synchronous scheduler and
+        the result is in memory.
     inplace
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
     layer
@@ -398,6 +401,8 @@ def _windows(
 #: cells with fewer values than `_SPARSE_COST * genes / span` take the sparse way (see `_infercnv_kernels`)
 _SPARSE_COST = 0.9
 
+#: number of blocks read ahead, each in its own thread (measured on lazily read h5ad files: reads overlap)
+_READ_AHEAD = {"dask": 4, "backed": 2}
 
 #: `(threshold, centre)` that removes nothing
 _NO_BAND = (-1.0, 0.0)
@@ -471,7 +476,7 @@ def _gene_values_of(plan: _Plan, out: np.ndarray, band: tuple[float, float], ser
 def _run(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_values: bool):
     """Noise band (a pass over `band_rows`, or all cells, unless there is a single block), then the CNV matrix.
 
-    Blocks are read one after another and each is processed with all numba threads. In memory, the band comes from a
+    Blocks are read ahead in threads and each is processed with all numba threads. In memory, the band comes from a
     single kernel call over its rows.
     """
     band: tuple[float, float] | None
@@ -549,7 +554,8 @@ class _Rows:
     """Row blocks of the expression matrix: in memory, backed (h5ad), or a dask array.
 
     In memory and backed, blocks have `chunksize` rows; a dask array keeps its own blocks. `rows_of` reads the blocks
-    one after another (dask: with the synchronous scheduler) on this thread, so the kernels can use all numba threads.
+    ahead in threads (dask: with the synchronous scheduler) and yields them on this thread, so the kernels can use all
+    numba threads.
     """
 
     def __init__(self, X, chunksize: int):
@@ -587,10 +593,25 @@ class _Rows:
 
         `X` is an in-memory, kernel-ready matrix that holds the block.
         """
-        for i, local in self.blocks_of(rows):
+        blocks = list(self.blocks_of(rows))
+        for (i, local), (X, row0) in zip(blocks, self.read_ahead([i for i, _ in blocks]), strict=True):
             s, e = int(self.bounds[i]), int(self.bounds[i + 1])
-            X, row0 = self.read(i)
             yield X, row0 + (np.arange(e - s) if local is None else local)
+
+    def read_ahead(self, blocks: list[int]) -> Iterator[tuple[Any, int]]:
+        """`read` of each of `blocks`. Backed and dask blocks are read ahead in threads while earlier ones are used."""
+        if self.kind == "in memory" or len(blocks) < 2:
+            yield from map(self.read, blocks)
+            return
+        n_ahead = _READ_AHEAD[self.kind]
+        with ThreadPoolExecutor(n_ahead) as pool:
+            ahead: deque = deque()
+            for i in blocks:
+                ahead.append(pool.submit(self.read, i))
+                if len(ahead) > n_ahead:
+                    yield ahead.popleft().result()
+            while ahead:
+                yield ahead.popleft().result()
 
     def read(self, i: int) -> tuple[Any, int]:
         """Block `i` as an in-memory, kernel-ready matrix, and the row of that matrix where the block starts."""
@@ -610,12 +631,19 @@ def _kernel_ready(X):
             X = X.tocsr()
         if X.dtype not in (np.float32, np.float64):
             X = X.astype(np.float32)
-        if not X.has_canonical_format:  # duplicate entries are summed, as by `toarray()`
+        if _canonical(X):
+            X.has_canonical_format = True
+        else:  # duplicate entries are summed, as by `toarray()`
             X = X.copy()
             X.sum_duplicates()
         return X
     X = np.asarray(X)
     return np.ascontiguousarray(X if X.dtype in (np.float32, np.float64) else X.astype(np.float32))
+
+
+def _canonical(X) -> bool:
+    """Whether the CSR matrix `X` has sorted indices without duplicates (scipy's own check is serial)."""
+    return _n_unsorted_rows(X.indices, X.indptr) == 0
 
 
 def _distributed_client_active() -> bool:
@@ -710,8 +738,7 @@ def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool) -> np
         sums = np.sum(dask.compute(*tasks), axis=0)
     else:
         sums = np.zeros((n_groups, source.X.shape[1]))
-        for i, local in blocks:
-            X, row0 = source.read(i)
+        for (i, local), (X, row0) in zip(blocks, source.read_ahead([i for i, _ in blocks]), strict=True):
             local, groups = _block_groups(source, i, local, codes)
             sums += _group_sums(X, row0 + local, groups, n_groups)
     counts = np.bincount(codes[codes >= 0], minlength=n_groups)
