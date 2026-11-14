@@ -91,8 +91,12 @@ def _median(values, buf):
 
 
 @numba.njit(cache=True, nogil=True)
-def _smooth_center_emit(x, p1, p2, win, buf, g0s, gs, As, Bs, Ks, w0s, step, out, r, rowstats):
-    """Running means of the kept windows of one cell (gene-ordered `x`), median-centred, written to `out[r]`."""
+def _smooth_center_emit(x, p1, p2, win, buf, g0s, gs, As, Bs, Ks, w0s, step, thr, centre, out, r, rowstats, counts):
+    """Running means of the kept windows of one cell (gene-ordered `x`), median-centred, written to `out[r]`.
+
+    `out` may have no rows: then only `rowstats[r]` (sum, sum of squares) and `counts[r]` (values outside the noise band
+    `centre ± thr`) are computed.
+    """
     for c in range(g0s.size):
         g0 = g0s[c]
         g = gs[c]
@@ -112,24 +116,32 @@ def _smooth_center_emit(x, p1, p2, win, buf, g0s, gs, As, Bs, Ks, w0s, step, out
     med = _median(win, buf)
     total = 0.0
     squares = 0.0
+    kept = 0
+    write = out.shape[0] > 0
     for w in range(win.size):
         v = np.float32(win[w] - med)
-        out[r, w] = v
+        if write:
+            out[r, w] = v
         total += v
         squares += np.float64(v) * v
+        if v != 0 and abs(np.float64(v) - centre) >= thr:
+            kept += 1
     rowstats[r, 0] = total
     rowstats[r, 1] = squares
+    counts[r] = kept
 
 
 @njit_parallel
 def _cnv_csr(
-    data, indices, indptr, row0, col_map, lo, hi, base, cap, g0s, gs, As, Bs, Ks, w0s, step, out, rowstats, n_chunks
-):
-    """Centred windows of the CSR rows `row0 : row0 + out.shape[0]` into `out`, their sum/sum of squares into `rowstats`.
+    data, indices, indptr, rows, col_map, lo, hi, base, cap, g0s, gs, As, Bs, Ks, w0s, step, thr, centre,
+    out, rowstats, counts, n_chunks,
+):  # fmt: skip
+    """Centred windows of the CSR rows `rows` into `out` (see `_smooth_center_emit`).
 
     `n_chunks` is the number of row chunks the threads share (see `n_kernel_chunks`).
     """
-    n_rows, n_windows = out.shape
+    n_rows = rows.size
+    n_windows = out.shape[1]
     max_g = gs.max() + 1
     x = np.empty((n_chunks, base.size), np.float32)
     p1 = np.empty((n_chunks, max_g))
@@ -140,17 +152,22 @@ def _cnv_csr(
         xt = x[t]
         for r in range(t * n_rows // n_chunks, (t + 1) * n_rows // n_chunks):
             xt[:] = base
-            for k in range(indptr[row0 + r], indptr[row0 + r + 1]):
+            for k in range(indptr[rows[r]], indptr[rows[r] + 1]):
                 j = col_map[indices[k]]
                 if j >= 0:
                     xt[j] = _lfc(np.float32(data[k]), lo[j], hi[j], cap)
-            _smooth_center_emit(xt, p1[t], p2[t], win[t], buf[t], g0s, gs, As, Bs, Ks, w0s, step, out, r, rowstats)
+            _smooth_center_emit(
+                xt, p1[t], p2[t], win[t], buf[t], g0s, gs, As, Bs, Ks, w0s, step, thr, centre, out, r, rowstats, counts
+            )
 
 
 @njit_parallel
-def _cnv_dense(X, row0, col_map, lo, hi, cap, g0s, gs, As, Bs, Ks, w0s, step, out, rowstats, n_chunks):
-    """Same as `_cnv_csr` for the rows `row0 : row0 + out.shape[0]` of the dense matrix `X`."""
-    n_rows, n_windows = out.shape
+def _cnv_dense(
+    X, rows, col_map, lo, hi, cap, g0s, gs, As, Bs, Ks, w0s, step, thr, centre, out, rowstats, counts, n_chunks
+):
+    """Same as `_cnv_csr` for the rows `rows` of the dense matrix `X`."""
+    n_rows = rows.size
+    n_windows = out.shape[1]
     max_g = gs.max() + 1
     x = np.empty((n_chunks, lo.size), np.float32)
     p1 = np.empty((n_chunks, max_g))
@@ -164,13 +181,15 @@ def _cnv_dense(X, row0, col_map, lo, hi, cap, g0s, gs, As, Bs, Ks, w0s, step, ou
             for i in range(n_cols):
                 j = col_map[i]
                 if j >= 0:
-                    xt[j] = _lfc(np.float32(X[row0 + r, i]), lo[j], hi[j], cap)
-            _smooth_center_emit(xt, p1[t], p2[t], win[t], buf[t], g0s, gs, As, Bs, Ks, w0s, step, out, r, rowstats)
+                    xt[j] = _lfc(np.float32(X[rows[r], i]), lo[j], hi[j], cap)
+            _smooth_center_emit(
+                xt, p1[t], p2[t], win[t], buf[t], g0s, gs, As, Bs, Ks, w0s, step, thr, centre, out, r, rowstats, counts
+            )
 
 
 @njit_parallel
 def _count_kept(out, thr, centre, counts):
-    """`counts[r + 1]`: entries of row `r` that are non-zero and outside the noise band `centre ± thr`."""
+    """`counts[r]`: entries of row `r` that are non-zero and outside the noise band `centre ± thr`."""
     n_rows, n_windows = out.shape
     for r in prange(n_rows):
         c = 0
@@ -178,7 +197,7 @@ def _count_kept(out, thr, centre, counts):
             v = out[r, w]
             if v != 0 and abs(np.float64(v) - centre) >= thr:
                 c += 1
-        counts[r + 1] = c
+        counts[r] = c
 
 
 @njit_parallel
