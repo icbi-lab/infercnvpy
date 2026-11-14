@@ -135,6 +135,35 @@ def test_lazy_output(base, expected, scheduler):
     _check(_with_X(base, X), expected, lazy=True)
 
 
+def test_lazy_is_opt_in(base):
+    """Without `lazy=True`, the result of a dask array is in memory, whatever the active dask scheduler."""
+    a = _with_X(base, _csr_blocks(base, 100))
+    with dask.config.set(scheduler="threads"):
+        cnv.tl.infercnv(a, **REF)
+    assert isinstance(a.obsm["X_cnv"], sp.csr_matrix)
+
+
+def test_tools_that_need_cnv_in_memory(base):
+    """Tools without block-wise reading tell the user to load a lazy CNV matrix; cnv_score reads it block by block."""
+    a = _with_X(base, _csr_blocks(base, 100))
+    cnv.tl.infercnv(a, **REF, lazy=True)
+    eager = a.copy()
+    eager.obsm["X_cnv"] = eager.obsm["X_cnv"].compute()
+    a.obsm["spatial"] = np.random.default_rng(0).random((a.n_obs, 2))
+    a.obsp["spatial_connectivities"] = sp.eye(a.n_obs, format="csr")
+    calls = [
+        lambda: cnv.tl.ithcna(a, "cell_type", use_rep="X_cnv"),
+        lambda: cnv.tl.smooth_cnv(a),
+        lambda: cnv.pl.spatial_cnv(a, region="chr1", show=False),
+    ]
+    for call in calls:
+        with pytest.raises(TypeError, match=r"needs `obsm\['X_cnv'\]` in memory, got a dask array.*\.compute\(\)"):
+            call()
+    assert cnv.tl.cnv_score(a, "cell_type", inplace=False) == pytest.approx(
+        cnv.tl.cnv_score(eager, "cell_type", inplace=False)
+    )
+
+
 def test_lazy_without_threshold(base, expected):
     res = cnv.tl.infercnv(_with_X(base, _csr_blocks(base, 50)), **REF, dynamic_threshold=None, lazy=True, inplace=False)
     want = cnv.tl.infercnv(base, **REF, dynamic_threshold=None, inplace=False)[1]

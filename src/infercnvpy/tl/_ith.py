@@ -10,8 +10,12 @@ instead of cells^2 float64.
 
 With `n_pairs`, the quantiles are estimated from that many entries of the correlation matrix drawn uniformly at
 random (row and column independently, so the diagonal and both triangles appear as often as in the full matrix).
-The sample quantiles are unbiased estimates of the exact ones, their error shrinks like 1/sqrt(n_pairs), and the
-cost no longer depends on the group size.
+The sample quantiles are consistent estimates of the exact ones (they converge to them as `n_pairs` grows), their
+error shrinks like 1/sqrt(n_pairs), and the cost no longer depends on the group size.
+
+With `exclude_self_pairs`, the n diagonal entries (each cell with itself, always 1) are left out: the histogram
+path does not add them, the single-block path takes the off-diagonal entries of `np.corrcoef`, and the sampled path
+draws column indices different from the row index.
 """
 
 from __future__ import annotations
@@ -119,11 +123,20 @@ def _quantiles(hist: np.ndarray, qs: tuple[float, ...]) -> list[float]:
     return out
 
 
-def corr_iqr(X: Any, *, tile: int = TILE, n_pairs: int | None = None, rng: np.random.Generator | None = None) -> float:
+def corr_iqr(
+    X: Any,
+    *,
+    tile: int = TILE,
+    n_pairs: int | None = None,
+    rng: np.random.Generator | None = None,
+    exclude_self_pairs: bool = False,
+) -> tuple[float, int]:
     """IQR of the Pearson correlations between all rows of `X` (numpy array or scipy sparse matrix).
 
-    Rows with constant values have no defined correlation and are left out. Returns NaN with fewer than two rows.
-    With `n_pairs`, groups with more than `n_pairs` matrix entries are estimated from a uniform sample of entries.
+    Rows with constant values have no defined correlation and are left out. Returns the IQR (NaN with fewer than two
+    rows left) and the number of rows left out. With `n_pairs`, groups with more than `n_pairs` matrix entries are
+    estimated from a uniform sample of entries. With `exclude_self_pairs`, the diagonal (each row with itself) is not
+    counted.
     """
     Z = np.empty(X.shape, dtype=np.float32)
     if sp.issparse(X):
@@ -134,25 +147,35 @@ def corr_iqr(X: Any, *, tile: int = TILE, n_pairs: int | None = None, rng: np.ra
     keep = ~np.isnan(Z[:, 0]) if X.shape[1] else np.zeros(X.shape[0], dtype=bool)
     Z = Z[keep]
     n = Z.shape[0]
+    n_dropped = X.shape[0] - n
     if n <= 1:
-        return np.nan
-    if n_pairs is not None and n * n > n_pairs:
+        return np.nan, n_dropped
+    n_entries = n * (n - 1) if exclude_self_pairs else n * n
+    if n_pairs is not None and n_entries > n_pairs:
         rng = np.random.default_rng() if rng is None else rng
         rows = rng.integers(0, n, n_pairs)
-        cols = rng.integers(0, n, n_pairs)
+        if exclude_self_pairs:  # uniform over the other n - 1 cells
+            cols = rng.integers(0, n - 1, n_pairs)
+            cols += cols >= rows
+        else:
+            cols = rng.integers(0, n, n_pairs)
         r = np.empty(n_pairs, dtype=np.float32)
         _sampled_corr(Z, rows, cols, r)
         q75, q25 = np.percentile(r, [75, 25])
-        return float(q75 - q25)
+        return float(q75 - q25), n_dropped
     if n <= tile:
         # one block: the exact float64 quantiles cost at most tile^2 values, as before 0.7.0
         rows = X[np.flatnonzero(keep)]
-        q75, q25 = np.percentile(np.corrcoef(rows.toarray() if sp.issparse(rows) else rows), [75, 25])
-        return q75 - q25
+        C = np.corrcoef(rows.toarray() if sp.issparse(rows) else rows)
+        if exclude_self_pairs:
+            C = C[~np.eye(n, dtype=bool)]
+        q75, q25 = np.percentile(C, [75, 25])
+        return q75 - q25, n_dropped
     hists = np.zeros((numba.get_num_threads() if _on_main_thread() else 1, N_BINS), dtype=np.int64)
     for r0 in range(0, n, tile):
         _bin_tile(Z[r0 : r0 + tile] @ Z[r0:].T, r0, hists)
     hist = hists.sum(axis=0)
-    hist[-1] += n  # the diagonal: every cell correlates 1 with itself
+    if not exclude_self_pairs:
+        hist[-1] += n  # the diagonal: every cell correlates 1 with itself
     q75, q25 = _quantiles(hist, (0.75, 0.25))
-    return q75 - q25
+    return q75 - q25, n_dropped
