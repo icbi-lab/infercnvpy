@@ -5,6 +5,7 @@ import scanpy as sc
 from anndata import AnnData
 
 from infercnvpy._logging import log
+from infercnvpy._util import _copy_for_inplace_false
 
 from ._copykat import copykat
 from ._infercnv import infercnv
@@ -35,6 +36,7 @@ def leiden(
     flavor: Literal["igraph", "leidenalg"] | None = None,
     n_iterations: int | None = None,
     directed: bool | None = None,
+    copy: bool = False,
     **kwargs,
 ):
     """Perform leiden clustering on the CNV neighborhood graph.
@@ -46,7 +48,13 @@ def leiden(
     .. versionchanged:: 0.7.0
         The default implementation changed from `leidenalg` to `igraph`, with
         `n_iterations=2` and `directed=False`, ahead of the same change in scanpy.
-        Cluster labels differ from earlier versions.
+        Cluster labels differ from earlier versions. New argument `copy` to get a modified
+        copy of adata.
+
+    .. deprecated:: 0.7.0
+        `inplace=False` returns a modified copy of adata, with a :class:`FutureWarning`. From 0.8.0, it
+        will return the cluster labels without changing adata, as the other functions of infercnvpy
+        return their results. Use `copy=True` for a modified copy.
 
     Parameters
     ----------
@@ -57,7 +65,7 @@ def leiden(
     key_added
         Key under which the cluster labels are stored in `adata.obs`.
     inplace
-        If `True`, store the result in adata, otherwise return a copy of adata with the result.
+        If `True`, store the result in adata. `False` is deprecated, see above.
     flavor
         Leiden implementation, see :func:`scanpy.tl.leiden`. Default: `"igraph"`, or
         `"leidenalg"` when `partition_type` is passed, which only leidenalg supports.
@@ -67,14 +75,15 @@ def leiden(
     directed
         Whether to treat the graph as directed. Default: `False` for `flavor="igraph"`
         (the only value igraph supports), scanpy's default for `flavor="leidenalg"`.
+    copy
+        Return a modified copy of adata and leave adata unchanged.
     **kwargs
         Additional arguments passed to :func:`scanpy.tl.leiden`, e.g. `resolution`
         or `random_state`.
 
     Returns
     -------
-    If `inplace=True`, returns `None` and sets the fields below on adata.
-    Otherwise returns a copy of adata with these fields.
+    A modified copy of adata if `copy=True` (or `inplace=False`), otherwise `None`.
     Sets the following fields:
 
     `adata.obs[key_added]` : :class:`pandas.Categorical`
@@ -82,6 +91,7 @@ def leiden(
     `adata.uns[key_added]["params"]` : :class:`dict`
         Parameters of the clustering, as recorded by :func:`scanpy.tl.leiden`.
     """
+    copy = _copy_for_inplace_false("leiden", inplace, copy, future="the cluster labels as a categorical Series")
     if flavor is None:
         flavor = "leidenalg" if "partition_type" in kwargs else "igraph"
     if flavor == "igraph":
@@ -95,7 +105,7 @@ def leiden(
         adata,
         neighbors_key=neighbors_key,
         key_added=key_added,
-        copy=not inplace,
+        copy=copy,
         flavor=flavor,
         **kwargs,
     )

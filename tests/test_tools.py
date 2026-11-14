@@ -158,12 +158,37 @@ def adata_cnv_neighbors():
     return adata
 
 
-def test_neighbors_not_inplace_returns_copy(adata_cnv_neighbors):
-    """As documented, `inplace=False` returns a copy of adata with the graph and leaves adata unchanged."""
-    res = cnv.pp.neighbors(adata_cnv_neighbors, key_added="other", inplace=False)
+def test_neighbors_copy(adata_cnv_neighbors):
+    """`copy=True` returns a copy of adata with the graph and leaves adata unchanged."""
+    res = cnv.pp.neighbors(adata_cnv_neighbors, key_added="other", copy=True)
     assert isinstance(res, sc.AnnData)
     assert "other_connectivities" in res.obsp
     assert "other_connectivities" not in adata_cnv_neighbors.obsp
+
+
+@pytest.mark.parametrize(
+    ("func", "kwargs", "added"),
+    [
+        (cnv.pp.neighbors, {"key_added": "other"}, lambda a: a.obsp["other_connectivities"]),
+        (cnv.tl.leiden, {"key_added": "other"}, lambda a: a.obs["other"]),
+    ],
+)
+def test_inplace_false_still_returns_a_copy(adata_cnv_neighbors, func, kwargs, added):
+    """`inplace=False` keeps returning a modified copy for one release, with a FutureWarning."""
+    with pytest.warns(FutureWarning, match=r"inplace=False\)` returns a modified copy.*copy=True"):
+        res = func(adata_cnv_neighbors, inplace=False, **kwargs)
+    assert isinstance(res, sc.AnnData)
+    added(res)
+    with pytest.raises(KeyError):
+        added(adata_cnv_neighbors)
+    with pytest.raises(ValueError, match="not both"):
+        func(adata_cnv_neighbors, inplace=False, copy=True, **kwargs)
+
+
+def test_leiden_copy(adata_cnv_neighbors):
+    res = cnv.tl.leiden(adata_cnv_neighbors, copy=True)
+    assert "cnv_leiden" in res.obs
+    assert "cnv_leiden" not in adata_cnv_neighbors.obs
 
 
 def test_leiden_defaults_to_igraph(adata_cnv_neighbors):

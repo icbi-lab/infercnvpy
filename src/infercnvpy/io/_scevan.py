@@ -7,6 +7,7 @@ import pandas as pd
 from anndata import AnnData
 
 from infercnvpy._logging import log, log_result
+from infercnvpy._util import _copy_for_inplace_false, _deprecated_positional
 
 
 def _read_rdata_frame(path: Path, name: str) -> pd.DataFrame:
@@ -36,20 +37,31 @@ def _get_chr_pos_from_array(chr_pos_array):
     return chr_pos
 
 
+@_deprecated_positional("scevan_res_table")
 def read_scevan(
     adata: AnnData,
     scevan_res_dir: str | Path,
-    scevan_res_table: str | Path | None = None,
     *,
+    scevan_res_table: str | Path | None = None,
     subclones: bool = True,
     inplace: bool = True,
     subset: bool = True,
     key_added: str = "scevan",
+    copy: bool = False,
 ) -> AnnData | None:
     """Load results from SCEVAN :cite:`DeFalco2021` for downstream analysis with infercnvpy.
 
     Requires that the cell barcodes used for SCEVAN and `adata.obs_names` match,
     but the order is irrelevant.
+
+    .. versionchanged:: 0.7.0
+        `scevan_res_table` is keyword-only; passing it positionally still works with a
+        :class:`FutureWarning` until 0.8.0. New argument `copy` to get a modified copy of adata.
+
+    .. deprecated:: 0.7.0
+        `inplace=False` returns a modified copy of adata, with a :class:`FutureWarning`. From 0.8.0, it
+        will return the results without changing adata, as the other functions of infercnvpy do. Use
+        `copy=True` for a modified copy.
 
     Parameters
     ----------
@@ -74,13 +86,26 @@ def read_scevan(
         Used as prefix for the columns added to `adata.obs` and will add the CNV matrix
         as `X_{key_added}` to `adata.obsm`, and chromosome indices to `adata.uns[key_added]`.
     inplace
-        If `True`, modify anndata inplace. Otherwise, return a copy.
+        If `True`, modify adata in place. `False` is deprecated, see above.
+    copy
+        Return a modified copy of adata and leave adata unchanged.
 
     Returns
     -------
-    Depending on the value of `inplace` returns a modified AnnData object or returns
-    `None` and modifies adata inplace.
+    A modified copy of adata if `copy=True` (or `inplace=False`), otherwise `None`.
+    Sets the following fields:
+
+    `adata.obs["{key_added}_class"]`, `adata.obs["{key_added}_confident_normal"]`
+        Only with `scevan_res_table`: tumour/normal class of each cell and whether it is a
+        confident normal cell.
+    `adata.obs["{key_added}_subclone"]`
+        Only with `scevan_res_table` from a run with subclone calling: the subclone of each cell.
+    `adata.obsm["X_{key_added}"]` : :class:`numpy.ndarray`
+        CNV matrix, cells x segments. `NaN` for cells SCEVAN filtered out (with `subset=False`).
+    `adata.uns[key_added]["chr_pos"]` : :class:`dict`
+        Maps each chromosome to the column of `X_{key_added}` where it starts.
     """
+    copy = _copy_for_inplace_false("read_scevan", inplace, copy, future="the CNV matrix, the obs columns and chr_pos")
     scevan_res_dir = Path(scevan_res_dir)
     scevan_res_file = list(scevan_res_dir.glob("*_CNAmtx.RData"))
     scevan_subclones_file = list(scevan_res_dir.glob("*_CNAmtxSubclones.RData"))
@@ -104,7 +129,7 @@ def read_scevan(
     if subclones and len(scevan_subclones_file):
         scevan_subclone_res = _read_rdata_frame(scevan_subclones_file[0], "results.com").T
 
-    if not inplace:
+    if copy:
         adata = adata.copy()
 
     # add obs annotation
@@ -138,6 +163,4 @@ def read_scevan(
     adata.obsm[f"X_{key_added}"] = cna.values
     adata.uns[key_added] = {"chr_pos": _get_chr_pos_from_array(scevan_anno["seqnames"])}
 
-    if not inplace:
-        return adata
-    return None
+    return adata if copy else None
