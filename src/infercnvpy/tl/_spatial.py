@@ -13,18 +13,17 @@ from __future__ import annotations
 
 from typing import Any
 
-import numba
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
 
 from infercnvpy._logging import log, log_result
-from infercnvpy._numba import njit_parallel, numba_threads, prange
+from infercnvpy._numba import njit, njit_parallel, numba_threads, prange
 from infercnvpy._util import _as_matrix, _params_for_uns
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _row_weights(g_indptr, g_indices, g_data, i, alpha):
     """Self weight `a` and neighbour scale `(1 - a) / d` of cell `i` (diagonal entries of the graph are ignored)."""
     d = 0.0
@@ -73,7 +72,7 @@ def _hop_dense(g_indptr, g_indices, g_data, alpha, X, out):  # pragma: no cover
                     row[c] += w * X[j, c]
 
 
-@numba.njit(cache=True, nogil=True)
+@njit
 def _icm(indptr, indices, weights, unary, labels, beta, n_iter):  # pragma: no cover
     """Iterated conditional modes for a Potts model, in place on `labels` (-1 = unlabelled). Returns the sweeps run.
 
