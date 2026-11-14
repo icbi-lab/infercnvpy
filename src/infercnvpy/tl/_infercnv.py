@@ -22,6 +22,8 @@ from infercnvpy.tl._infercnv_kernels import (
     _count_kept,
     _fill_kept,
     _gene_values,
+    _group_expm1_sums_csr,
+    _group_expm1_sums_dense,
     _group_sums_csr,
     _group_sums_dense,
     _n_unsorted_rows,
@@ -47,6 +49,7 @@ def infercnv(
     layer: str | None = None,
     key_added: str = "cnv",
     calculate_gene_values: bool = False,
+    min_mean: float | None = None,
 ) -> None | tuple[dict, sp.csr_matrix, np.ndarray | None]:
     """Infer Copy Number Variation (CNV) by averaging gene expression over genomic regions.
 
@@ -67,6 +70,9 @@ def infercnv(
         By default, the noise threshold is computed from the reference cells (`noise_reference`),
         not separately for each chunk of `chunksize` cells, so the result no longer depends on
         `chunksize`. The CNV matrix and the gene values are float32.
+
+    .. versionadded:: 0.7.0
+        `min_mean`, to leave out lowly expressed genes as the `cutoff` of R inferCNV does.
 
     Parameters
     ----------
@@ -136,6 +142,16 @@ def infercnv(
         similar values. Not all genes are in a window, because the window size and step
         size are not always a multiple of the number of genes; these and the dropped genes
         are NaN. This needs a dense float32 cells x genes matrix in memory.
+    min_mean
+        Leave out genes whose mean expression over all cells is below this value, before the
+        windows are formed. The mean is taken of `expm1` of the input, i.e. of the normalised
+        counts behind the log-normalised values (see :ref:`input-data`), not of the log values.
+        This follows the `cutoff` of R inferCNV, which removes genes by their mean read count
+        and suggests `1` for Smart-seq2 and `0.1` for 10x data. R applies its cutoff to the raw
+        counts before normalisation; the means here are on the scale of
+        :func:`scanpy.pp.normalize_total`, which are on the scale of the raw counts when the data
+        is normalised to the median total count (scanpy's default `target_sum=None`, as R
+        inferCNV normalises). Default: keep all genes.
 
     Returns
     -------
@@ -186,6 +202,7 @@ def infercnv(
         chunksize=chunksize,
         layer=layer,
         calculate_gene_values=calculate_gene_values,
+        min_mean=min_mean,
     )
 
     positions: Any = adata.var[["chromosome", "start", "end"]]
@@ -211,7 +228,16 @@ def infercnv(
             "infercnv: %d cells x %d genes in %d blocks (%s%s)",
             *(adata.n_obs, adata.n_vars, source.n_blocks, source.kind, ", lazy" if lazy else ""),
         )
-        layout = _Layout(var, var_mask.to_numpy(), window_size, step)
+        mask = var_mask.to_numpy()
+        n_low = 0
+        if min_mean is not None:
+            all_cells = np.zeros(adata.n_obs, dtype=np.int64)
+            low = (_means(source, all_cells, 1, lazy=lazy, expm1=True)[0] < min_mean) & ~mask
+            n_low = int(low.sum())
+            mask = mask | low
+            if mask.all():
+                raise ValueError(f"No genes left: all genes have a mean expression below `min_mean={min_mean}`.")
+        layout = _Layout(var, mask, window_size, step)
         ref = _get_reference(adata, reference_key, reference_cat, reference, layer, source=source, lazy=lazy)
         plan = _Plan.build(layout, ref, lfc_clip, dynamic_threshold, noise_reference)
         band_rows = None
@@ -235,6 +261,9 @@ def infercnv(
     if n_unplaced:
         msg += ", dropped %d of %d genes without a genomic position"
         args += [n_unplaced, adata.n_vars]
+    if min_mean is not None:
+        msg += ", left out %d genes with a mean expression below min_mean=%g"
+        args += [n_low, min_mean]
     log_result(
         "infercnv",
         msg,
@@ -725,22 +754,22 @@ def _get_reference(
     return reference
 
 
-def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool) -> np.ndarray:
+def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool, expm1: bool = False) -> np.ndarray:
     """Per group, the column means of the rows with `codes == group` (-1: no group), in one pass over the data.
 
-    Blocks without any of these rows are not read.
+    Blocks without any of these rows are not read. With `expm1`, the means are of `expm1` of the values.
     """
     rows = None if (codes >= 0).all() else np.flatnonzero(codes >= 0)
     blocks = list(source.blocks_of(rows))
     if source.kind == "in memory":
         rows = np.arange(len(codes)) if rows is None else rows
-        sums = _group_sums(source.X, rows, codes[rows], n_groups)
+        sums = _group_sums(source.X, rows, codes[rows], n_groups, expm1=expm1)
     elif lazy:  # one dask computation, in parallel with the current scheduler
         import dask
 
         delayed = source.X.to_delayed().ravel()
         tasks = [
-            dask.delayed(_dask_block_sums)(delayed[i], *_block_groups(source, i, local, codes), n_groups)
+            dask.delayed(_dask_block_sums)(delayed[i], *_block_groups(source, i, local, codes), n_groups, expm1)
             for i, local in blocks
         ]
         sums = np.sum(dask.compute(*tasks), axis=0)
@@ -748,7 +777,7 @@ def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool) -> np
         sums = np.zeros((n_groups, source.X.shape[1]))
         for (i, local), (X, row0) in zip(blocks, source.read_ahead([i for i, _ in blocks]), strict=True):
             local, groups = _block_groups(source, i, local, codes)
-            sums += _group_sums(X, row0 + local, groups, n_groups)
+            sums += _group_sums(X, row0 + local, groups, n_groups, expm1=expm1)
     counts = np.bincount(codes[codes >= 0], minlength=n_groups)
     return sums / counts[:, np.newaxis]
 
@@ -761,15 +790,18 @@ def _block_groups(source: _Rows, i: int, local: np.ndarray | None, codes: np.nda
     return local, codes[s + local]
 
 
-def _dask_block_sums(block, local: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
-    return _group_sums(_kernel_ready(block), local, groups, n_groups)
+def _dask_block_sums(block, local: np.ndarray, groups: np.ndarray, n_groups: int, expm1: bool = False) -> np.ndarray:
+    return _group_sums(_kernel_ready(block), local, groups, n_groups, expm1=expm1)
 
 
-def _group_sums(X, rows: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
-    """Per group (float64): the sum of the rows `rows` of the kernel-ready matrix `X` whose group is in `groups`."""
+def _group_sums(X, rows: np.ndarray, groups: np.ndarray, n_groups: int, *, expm1: bool = False) -> np.ndarray:
+    """Per group (float64): the sum of the rows `rows` of the kernel-ready matrix `X` whose group is in `groups`.
+
+    With `expm1`, the sums are of `expm1` of the values.
+    """
     sums = np.zeros((n_kernel_chunks(len(rows), per_thread=1), n_groups, X.shape[1]))
     if sp.issparse(X):
-        _group_sums_csr(X.data, X.indices, X.indptr, rows, groups, sums)
+        (_group_expm1_sums_csr if expm1 else _group_sums_csr)(X.data, X.indices, X.indptr, rows, groups, sums)
     else:
-        _group_sums_dense(X, rows, groups, sums)
+        (_group_expm1_sums_dense if expm1 else _group_sums_dense)(X, rows, groups, sums)
     return sums.sum(axis=0)

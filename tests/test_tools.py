@@ -100,6 +100,7 @@ def test_infercnv_records_params(adata_full_mock, tmp_path):
         "chunksize": 5000,
         "layer": None,
         "calculate_gene_values": False,
+        "min_mean": None,
     }
     # a disabled step is recorded as None, and params round-trip through h5ad
     cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", dynamic_threshold=None)

@@ -340,6 +340,34 @@ def _group_sums_dense(X, rows, groups, sums):
 
 
 @njit_parallel
+def _group_expm1_sums_csr(data, indices, indptr, rows, groups, sums):
+    """Like `_group_sums_csr`, of `expm1(X)` (the counts behind log-normalised values; implicit zeros stay 0)."""
+    n_chunks = sums.shape[0]
+    n = rows.size
+    for t in prange(n_chunks):
+        st = sums[t]
+        for i in range(t * n // n_chunks, (t + 1) * n // n_chunks):
+            s = st[groups[i]]
+            r = rows[i]
+            for k in range(indptr[r], indptr[r + 1]):
+                s[indices[k]] += np.expm1(np.float64(data[k]))
+
+
+@njit_parallel
+def _group_expm1_sums_dense(X, rows, groups, sums):
+    """Same as `_group_expm1_sums_csr` for the dense matrix `X`."""
+    n_chunks = sums.shape[0]
+    n = rows.size
+    for t in prange(n_chunks):
+        st = sums[t]
+        for i in range(t * n // n_chunks, (t + 1) * n // n_chunks):
+            s = st[groups[i]]
+            r = rows[i]
+            for j in range(X.shape[1]):
+                s[j] += np.expm1(np.float64(X[r, j]))
+
+
+@njit_parallel
 def _n_unsorted_rows(indices, indptr):
     """Number of CSR rows whose column indices are not strictly increasing (unsorted or duplicate)."""
     n = 0
