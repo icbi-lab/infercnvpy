@@ -78,6 +78,14 @@ def _blocks(X: Any) -> _Rows:
     return _Rows(X, max(X.shape[0], 1) if isinstance(X, np.ndarray) or sp.issparse(X) else CHUNKSIZE)
 
 
+def _each_block(source: _Rows, fn) -> None:
+    """Call `fn(X, row0, n_rows, start)` for every block of `source`, in order (backed and dask blocks read ahead)."""
+    blocks = list(range(source.n_blocks))
+    for i, (Xb, row0) in zip(blocks, source.read_ahead(blocks), strict=True):
+        s, e = int(source.bounds[i]), int(source.bounds[i + 1])
+        fn(Xb, row0, e - s, s)
+
+
 def binned_sums(X: Any, order: np.ndarray, bounds: np.ndarray) -> np.ndarray:
     """Sum of the rows of `X` in each run `order[bounds[b]:bounds[b + 1]]` (float64, runs x columns).
 
@@ -102,8 +110,7 @@ def binned_sums(X: Any, order: np.ndarray, bounds: np.ndarray) -> np.ndarray:
         else:
             _bin_sums_dense(Xb, o, bnd, bins, sums, serial=serial)
 
-    for _ in source.map(add):
-        pass
+    _each_block(source, add)
     return sums
 
 
@@ -126,8 +133,7 @@ def sampled_rows(X: Any, picks: np.ndarray) -> tuple[np.ndarray, float, float]:
         out[dest] = rows.toarray() if sp.issparse(rows) else rows
 
     source = _blocks(X)
-    for _ in source.map(take):
-        pass
+    _each_block(source, take)
     if not ranges:
         return out, np.nan, np.nan
     return out, float(min(r[0] for r in ranges)), float(max(r[1] for r in ranges))
