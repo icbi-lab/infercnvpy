@@ -81,3 +81,12 @@ cnv.tl.infercnv(genes, reference_key="cell_type", reference_cat=["Fibroblast", "
 Genes on chromosomes without a position (and on `chrX` and `chrY` by default) are skipped, and a chromosome with
 fewer genes than `window_size` becomes a single window. Targeted panels with few genes per chromosome carry much less
 CNV signal than whole-transcriptome data, so consider a smaller `window_size`.
+
+## Plotting
+
+{func}`infercnvpy.pl.chromosome_heatmap` draws one row per pixel of the figure, whatever the number of cells: the
+cell in the middle of the cells that fall into that row (as the full plot looks when downscaled), or with
+`aggregate="mean"` their mean. It reads the CNV matrix once, block by block if `adata.obsm["X_cnv"]` is a dask array
+(the lazy result of `infercnv`) or a backed matrix, and keeps only the drawn rows in memory.
+{func}`~infercnvpy.pl.chromosome_heatmap_summary` computes the group means in the same way. `mode="legacy"` draws
+every cell with {func}`scanpy.pl.heatmap`, which needs the whole matrix in memory as a dense table.
