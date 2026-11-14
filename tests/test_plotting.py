@@ -333,3 +333,48 @@ def test_plot_chromosome_heatmap_summary(adata_infercnv):
 def test_chromosome_heatmap_image(_adata_infercnv, image_comparer, plot):
     plot(_adata_infercnv.copy(), groupby="cell_type", figsize=(8, 5), show=False)
     image_comparer(plot.__name__)
+
+
+def _label_boxes(axes):
+    """Window extents of the drawn group labels and chromosome labels, and the texts of the group labels."""
+    fig = axes["heatmap_ax"].get_figure(root=True)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    group_ax = axes["groupby_ax"]
+    ticks = [*group_ax.xaxis.get_major_ticks(), *group_ax.yaxis.get_major_ticks()]
+    groups = [t.label1 for t in ticks if t.label1.get_visible() and t.label1.get_text()]
+    chroms = [t for t in axes["gene_groups_ax"].texts if t.get_visible()]
+    return [[t.get_window_extent(renderer) for t in texts] for texts in (groups, chroms)], [
+        t.get_text() for t in groups
+    ]
+
+
+@both_plots
+@pytest.mark.parametrize("swap_axes", [False, True])
+def test_labels_do_not_overlap(plot, swap_axes):
+    """Labels of groups and chromosomes too small for their text are left out, those of larger ones first."""
+    sizes = {"large group": 150, "tiny 1": 1, "tiny 2": 2, "tiny 3": 1, "medium group": 80, "tiny 4": 1, "last": 60}
+    groups = np.repeat(list(sizes), list(sizes.values()))
+    windows = np.r_[np.repeat(np.arange(19), 20), np.arange(19, 24)]  # chr20 to chr24 have one window each
+    adata = AnnData(
+        obs=pd.DataFrame({"group": pd.Categorical(groups, categories=list(sizes))}, index=map(str, range(len(groups)))),
+        obsm={"X_cnv": np.random.default_rng(0).normal(size=(len(groups), len(windows)))},
+        uns={"cnv": {"chr_pos": {f"chr{c + 1}": int(np.argmax(windows == c)) for c in range(24)}}},
+    )
+    axes = plot(adata, groupby="group", figsize=(4, 3), swap_axes=swap_axes, show=False)
+    boxes, shown = _label_boxes(axes)
+    for bbs in boxes:
+        for i, a in enumerate(bbs):
+            for b in bbs[i + 1 :]:
+                assert not (a.x0 < b.x1 and b.x0 < a.x1 and a.y0 < b.y1 and b.y0 < a.y1)
+    assert len(boxes[1]) < 24
+    if plot is cnv.pl.chromosome_heatmap:
+        assert {"large group", "medium group", "last"} <= set(shown) < set(sizes)
+
+
+@both_plots
+@pytest.mark.parametrize("swap_axes", [False, True])
+def test_labels_of_normal_groups_all_drawn(adata_small, plot, swap_axes):
+    boxes, shown = _label_boxes(plot(adata_small, groupby="group", swap_axes=swap_axes, show=False))
+    assert shown == ["c", "b", "a"]
+    assert len(boxes[1]) == 3
