@@ -18,7 +18,8 @@ Install the optional dependency with `pip install "infercnvpy[dask]"` to use das
 infercnv reads the data up to three times, one block of cells at a time:
 
 1. For a dask array or a backed matrix, the reference expression (the mean of all cells, or of every reference
-   category) is computed in one pass over the data. In-memory data needs no extra pass.
+   category) is computed in one pass over the blocks that hold reference cells (all blocks for the mean of all
+   cells). In-memory data needs no extra pass.
 2. The noise band of `dynamic_threshold` is computed from the blocks that hold reference cells, or from all blocks
    if there are no reference cells or `noise_reference="all"`. This pass is skipped when all cells fit in one block.
 3. The CNV matrix is computed block by block.
@@ -26,12 +27,12 @@ infercnv reads the data up to three times, one block of cells at a time:
 In memory and backed, a block has `chunksize` cells. A dask array keeps its own blocks, and `chunksize` is ignored.
 The block size does not change the result, except that the reference means of lazy data are sums over blocks, so
 their last digits can differ from the in-memory means. Peak memory is the result plus about `chunksize` x windows
-float32 values for the block being processed (and, for lazy data, the block that was read).
+float32 values for the block being processed (and, for lazy data, the blocks that were read ahead).
 
 ## Threads and dask schedulers
 
-By default, the blocks are read one after another on the main thread, with the synchronous scheduler for a dask
-array, and every block is processed with `n_jobs` threads. The result, `adata.obsm["X_cnv"]`, is an in-memory
+By default, the next blocks are read in background threads (with the synchronous scheduler for a dask array) while
+the current block is processed with `n_jobs` threads on the main thread. The result, `adata.obsm["X_cnv"]`, is an in-memory
 sparse matrix with 8 bytes per value that is not removed as noise. With 5,000 windows of which 10% are kept, that is
 about 4 GB per million cells.
 

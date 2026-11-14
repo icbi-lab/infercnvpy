@@ -53,11 +53,11 @@ def _renamed(fn: FunctionType, suffix: str) -> FunctionType:
     return new
 
 
-def n_kernel_chunks(n_rows: int, *, serial: bool = False) -> int:
-    """Number of row chunks for a `prange` kernel: 4 per numba thread (for load balance), or 1 if it runs serially."""
+def n_kernel_chunks(n_rows: int, *, serial: bool = False, per_thread: int = 4) -> int:
+    """Number of row chunks for a `prange` kernel: `per_thread` per numba thread, or 1 if it runs serially."""
     if serial or not _on_main_thread():
         return 1
-    return max(1, min(n_rows, 4 * numba.get_num_threads()))
+    return max(1, min(n_rows, per_thread * numba.get_num_threads()))
 
 
 @contextmanager

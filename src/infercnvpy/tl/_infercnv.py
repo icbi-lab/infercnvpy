@@ -1,7 +1,9 @@
 import re
 import sys
 import warnings
-from collections.abc import Callable, Iterator, Sequence
+from collections import deque
+from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Literal
@@ -14,7 +16,16 @@ from anndata import AnnData
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._numba import n_kernel_chunks, numba_threads
 from infercnvpy._util import _as_matrix, _is_backed, _is_dask, _params_for_uns
-from infercnvpy.tl._infercnv_kernels import _cnv_csr, _cnv_dense, _count_kept, _fill_kept, _gene_values
+from infercnvpy.tl._infercnv_kernels import (
+    _cnv_csr,
+    _cnv_dense,
+    _count_kept,
+    _fill_kept,
+    _gene_values,
+    _group_sums_csr,
+    _group_sums_dense,
+    _n_unsorted_rows,
+)
 
 
 def infercnv(
@@ -48,8 +59,8 @@ def infercnv(
     The expression matrix can be in memory (numpy array or scipy sparse matrix), a
     :class:`dask.array.Array` (also with sparse blocks), or the matrix of a backed AnnData
     (`anndata.read_h5ad(..., backed="r")`). Lazy matrices are read block by block and never
-    loaded entirely, see :ref:`large-data`. By default, the blocks are read one after another
-    and each is processed with `n_jobs` threads; the result is in memory. With `lazy`, the
+    loaded entirely, see :ref:`large-data`. By default, the blocks are read ahead in background
+    threads and each is processed with `n_jobs` threads; the result is in memory. With `lazy`, the
     result of a dask array stays a dask array instead.
 
     .. versionchanged:: 0.7.0
@@ -108,8 +119,8 @@ def infercnv(
         arrays, computed by :meth:`dask.array.Array.map_blocks` with the current dask
         scheduler. The noise band is computed up front with one dask computation.
         Default: `True` if a :class:`distributed.Client` is active, otherwise `False`:
-        the blocks are read one after another with the synchronous scheduler and the
-        result is in memory.
+        the blocks are read ahead in background threads with the synchronous scheduler and
+        the result is in memory.
     inplace
         If True, save the results in adata.obsm, otherwise return the CNV matrix.
     layer
@@ -199,7 +210,7 @@ def infercnv(
             *(adata.n_obs, adata.n_vars, source.n_blocks, source.kind, ", lazy" if lazy else ""),
         )
         layout = _Layout(var, var_mask.to_numpy(), window_size, step)
-        ref = _get_reference(adata, reference_key, reference_cat, reference, layer, chunksize=chunksize, lazy=lazy)
+        ref = _get_reference(adata, reference_key, reference_cat, reference, layer, source=source, lazy=lazy)
         plan = _Plan.build(layout, ref, lfc_clip, dynamic_threshold, noise_reference)
         band_rows = None
         if (
@@ -208,7 +219,7 @@ def infercnv(
             and reference_key is not None
             and reference_cat is not None
         ):
-            band_rows = np.flatnonzero(np.isin(np.asarray(adata.obs[reference_key]), _categories(reference_cat)))
+            band_rows = np.flatnonzero(_obs_column(adata, reference_key).isin(_categories(reference_cat)))
         res, per_gene_mtx, band = (_run_lazy if lazy else _run)(plan, source, band_rows, calculate_gene_values)
 
     if dynamic_threshold is not None:
@@ -256,6 +267,12 @@ def _natural_sort(l: Sequence):
     return sorted(l, key=alphanum_key)
 
 
+def _obs_column(adata: AnnData, key: str) -> pd.Series:
+    """`adata.obs[key]` as a pandas Series (the `obs` of `anndata.experimental.read_lazy` holds xarray arrays)."""
+    column = adata.obs[key]
+    return column if isinstance(column, pd.Series) else pd.Series(np.asarray(column))
+
+
 def _categories(reference_cat: str | Sequence[str]) -> np.ndarray:
     return np.array([reference_cat] if isinstance(reference_cat, str) else reference_cat)
 
@@ -272,7 +289,7 @@ class _Layout:
     def __init__(self, var: pd.DataFrame, var_mask: np.ndarray, window_size: int, step: int):
         used = var.loc[~var_mask, ["chromosome", "start", "end"]]
         chromosomes = _natural_sort([x for x in used["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
-        order, geometry = [], []
+        order, geometry, scatter = [], [], []
         self.chr_pos: dict[str, int] = {}
         n_genes = n_windows = self.n_covered = 0
         for chromosome in chromosomes:
@@ -287,6 +304,13 @@ class _Layout:
             K = len(range(0, g - n + 1, step))
             order.append(var.index.get_indexer(genes))
             geometry.append((n_genes, g, a, b, K, n_windows, n))
+            # per gene: the windows `first .. last` that contain it, and its pyramid weight in each
+            i = np.arange(g)
+            first = np.maximum(0, (i - n + step) // step)
+            last = np.minimum(K - 1, i // step)
+            scatter.append(
+                (n_windows + first, last - first + 1, i - first * step, np.full(g, n), np.full(g, min(a, b)))
+            )
             self.chr_pos[chromosome] = n_windows
             self.n_covered += min(g, (K - 1) * step + n)
             n_genes += g
@@ -300,6 +324,18 @@ class _Layout:
         self.n_windows = n_windows
         g0s, gs, As, Bs, Ks, w0s, ns = (np.array(x, dtype=np.int64) for x in zip(*geometry, strict=True))
         self.geometry = (g0s, gs, As, Bs, Ks, w0s, step)
+        self.step = step
+        first, n_in, offset, length, ab = (np.concatenate(x).astype(np.int64) for x in zip(*scatter, strict=True))
+        #: largest number of windows that contain one gene
+        self.span = int(n_in.max())
+        m = np.arange(self.span)
+        k = offset[:, np.newaxis] - step * m  # position of the gene in its windows `first`, `first + 1`, ...
+        weights = np.minimum(np.minimum(k + 1, length[:, np.newaxis] - k), ab[:, np.newaxis]).astype(np.float64)
+        weights[m >= n_in[:, np.newaxis]] = 0
+        #: per gene: first window that contains it, and its pyramid weights from there on (0 past its last window)
+        self.scatter = (first, weights)
+        #: per window: the sum of its pyramid weights
+        self.window_weight = np.repeat((As * Bs).astype(np.float64), Ks)
         self.gene_geometry = (gs, ns, Ks, w0s, g0s, step, self.order, self.n_covered)
 
 
@@ -312,6 +348,8 @@ class _Plan:
     hi: np.ndarray
     base: np.ndarray  # clipped log fold change of an expression of 0
     cap: np.floating
+    base_sums: np.ndarray  # weighted window sums of `base`
+    max_nnz: int  # cells with at most this many values are smoothed as a difference to `base`
     dynamic_threshold: float | None
     noise_reference: str
 
@@ -323,26 +361,48 @@ class _Plan:
         cap = np.float32(lfc_clip)
         zero = np.float32(0)
         base = np.asarray(np.clip(zero - np.clip(zero, lo, hi), -cap, cap), dtype=np.float32)
-        return cls(layout, lo, hi, base, cap, dynamic_threshold, noise_reference)
-
-
-def _windows(plan: _Plan, X, row0: int, n_rows: int, serial: bool = False) -> tuple[np.ndarray, np.ndarray]:
-    """Median-centred windows (float32) of rows `row0 : row0 + n_rows` of `X`, and their (sum, sum of squares)."""
-    lay = plan.layout
-    out = np.empty((n_rows, lay.n_windows), dtype=np.float32)
-    rowstats = np.empty((n_rows, 2), dtype=np.float64)
-    n_chunks = n_kernel_chunks(n_rows, serial=serial)
-    if sp.issparse(X):
-        _cnv_csr(
-            X.data, X.indices, X.indptr, row0, lay.col_map, plan.lo, plan.hi, plan.base, plan.cap, *lay.geometry,
-            out, rowstats, n_chunks, serial=serial,
-        )  # fmt: skip
-    else:
-        _cnv_dense(
-            X, row0, lay.col_map, plan.lo, plan.hi, plan.cap, *lay.geometry, out, rowstats, n_chunks, serial=serial
+        first, weights = layout.scatter
+        base_sums = np.zeros(layout.n_windows + weights.shape[1])
+        np.add.at(base_sums, first[:, np.newaxis] + np.arange(weights.shape[1]), base[:, np.newaxis] * weights)
+        # a value costs `span` additions in the sparse way, the prefix sums about 2 per gene
+        n_genes = layout.order.size
+        max_nnz = min(int(_SPARSE_COST * n_genes / layout.span), n_genes)
+        return cls(
+            layout, lo, hi, base, cap, base_sums[: layout.n_windows], max_nnz, dynamic_threshold, noise_reference
         )
-    return out, rowstats
 
+
+def _windows(
+    plan: _Plan, X, rows: np.ndarray, band=None, *, out: bool = True, serial: bool = False
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Median-centred windows (float32) of the rows `rows` of `X`, their (sum, sum of squares), and their counts.
+
+    The counts are the numbers of values outside the noise `band`, all 0 without a band. With `out=False`, the windows
+    are not kept (the first array has no rows).
+    """
+    lay = plan.layout
+    n_rows = len(rows)
+    windows = np.empty((n_rows if out else 0, lay.n_windows), dtype=np.float32)
+    rowstats = np.empty((n_rows, 2), dtype=np.float64)
+    counts = np.empty(n_rows, dtype=np.int64)
+    thr, centre = (np.inf, 0.0) if band is None else band
+    n_chunks = n_kernel_chunks(n_rows, serial=serial)
+    shared = (
+        rows, lay.col_map, plan.lo, plan.hi, plan.base, plan.cap, *lay.geometry, *lay.scatter, lay.window_weight,
+        plan.base_sums, plan.max_nnz, thr, centre, windows, rowstats, counts, n_chunks,
+    )  # fmt: skip
+    if sp.issparse(X):
+        _cnv_csr(X.data, X.indices, X.indptr, *shared, serial=serial)
+    else:
+        _cnv_dense(X, *shared, serial=serial)
+    return windows, rowstats, counts
+
+
+#: cells with fewer values than `_SPARSE_COST * genes / span` take the sparse way (see `_infercnv_kernels`)
+_SPARSE_COST = 0.9
+
+#: number of blocks read ahead, each in its own thread (measured on lazily read h5ad files: reads overlap)
+_READ_AHEAD = {"dask": 4, "backed": 2}
 
 #: `(threshold, centre)` that removes nothing
 _NO_BAND = (-1.0, 0.0)
@@ -363,18 +423,54 @@ def _noise_band(plan: _Plan, rowstats: np.ndarray) -> tuple[float, float]:
     return plan.dynamic_threshold * float(np.sqrt(cell_var).mean()), float(mean)
 
 
-def _to_csr(out: np.ndarray, band: tuple[float, float], serial: bool = False) -> sp.csr_matrix:
-    """The entries of `out` outside the noise band as a CSR matrix."""
-    thr, centre = band
-    counts = np.zeros(out.shape[0] + 1, dtype=np.int64)
-    _count_kept(out, thr, centre, counts, serial=serial)
-    indptr = np.cumsum(counts)
-    idx_dtype = np.int32 if max(indptr[-1], out.shape[1]) < np.iinfo(np.int32).max else np.int64
-    indptr = indptr.astype(idx_dtype)
-    data = np.empty(indptr[-1], dtype=np.float32)
-    indices = np.empty(indptr[-1], dtype=idx_dtype)
-    _fill_kept(out, thr, centre, indptr, data, indices, serial=serial)
-    return sp.csr_matrix((data, indices, indptr), shape=out.shape)
+class _CsrBuilder:
+    """A CSR matrix filled block by block of rows with the windows outside the noise band.
+
+    The data and index arrays are allocated for a dense result: the operating system only maps the pages that are
+    written. `finish` shrinks them in place (`ndarray.resize`, a `realloc`). If that allocation fails, they grow in
+    place as needed. The blocks are never stacked.
+    """
+
+    def __init__(self, n_rows: int, n_cols: int):
+        self.shape = (n_rows, n_cols)
+        self.indptr = np.zeros(n_rows + 1, dtype=np.int64)
+        idx_dtype = np.int32 if n_cols < np.iinfo(np.int32).max else np.int64
+        try:
+            self.data = np.empty(n_rows * n_cols, dtype=np.float32)
+            self.indices = np.empty(n_rows * n_cols, dtype=idx_dtype)
+        except MemoryError:
+            self.data = np.empty(0, dtype=np.float32)
+            self.indices = np.empty(0, dtype=idx_dtype)
+        self.n = 0
+
+    def add(self, windows: np.ndarray, counts: np.ndarray, band: tuple[float, float], serial: bool = False):
+        """Append the rows `windows`, with `counts` values outside the noise `band` per row."""
+        r0, r1 = self.n, self.n + len(windows)
+        indptr = self.indptr[r0 : r1 + 1]
+        np.cumsum(counts, out=indptr[1:])
+        indptr[1:] += indptr[0]
+        nnz = int(indptr[-1])
+        if nnz > self.data.size:  # room for the remaining rows at the density so far, and at least 25 % more
+            size = max(nnz, int(nnz / r1 * self.shape[0] * 1.05), self.data.size * 5 // 4)
+            self.data.resize(size, refcheck=False)
+            self.indices.resize(size, refcheck=False)
+        _fill_kept(windows, *band, indptr, self.data, self.indices, serial=serial)
+        self.n = r1
+
+    def finish(self) -> sp.csr_matrix:
+        nnz = int(self.indptr[-1])
+        self.data.resize(nnz, refcheck=False)
+        self.indices.resize(nnz, refcheck=False)
+        idx_dtype = np.int32 if max(nnz, self.shape[1]) < np.iinfo(np.int32).max else np.int64
+        indices = self.indices.astype(idx_dtype, copy=False)
+        return sp.csr_matrix((self.data, indices, self.indptr.astype(idx_dtype)), shape=self.shape, copy=False)
+
+
+def _to_csr(windows: np.ndarray, counts: np.ndarray, band: tuple[float, float], serial: bool = False) -> sp.csr_matrix:
+    """The entries of `windows` outside the noise band (`counts` per row) as a CSR matrix."""
+    builder = _CsrBuilder(*windows.shape)
+    builder.add(windows, counts, band, serial=serial)
+    return builder.finish()
 
 
 def _gene_values_of(plan: _Plan, out: np.ndarray, band: tuple[float, float], serial: bool = False) -> np.ndarray:
@@ -384,38 +480,34 @@ def _gene_values_of(plan: _Plan, out: np.ndarray, band: tuple[float, float], ser
     return gv
 
 
-def _stats_task(plan: _Plan, X, row0: int, n_rows: int, start: int) -> np.ndarray:
-    return _windows(plan, X, row0, n_rows)[1]
-
-
-def _main_task(plan: _Plan, band, band_rows, gene_values: bool, X, row0: int, n_rows: int, start: int):
-    """CNV matrix (and gene values) of one block. With `band=None`, the block is all cells and defines the band."""
-    out, rowstats = _windows(plan, X, row0, n_rows)
-    if band is None:
-        band = _noise_band(plan, rowstats if band_rows is None else rowstats[band_rows])
-    return _to_csr(out, band), _gene_values_of(plan, out, band) if gene_values else None, band
-
-
 def _run(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_values: bool):
     """Noise band (a pass over `band_rows`, or all cells, unless there is a single block), then the CNV matrix.
 
-    Blocks are read one after another and each is processed with all numba threads.
+    Blocks are read ahead in threads and each is processed with all numba threads. In memory, the band comes from a
+    single kernel call over its rows.
     """
     band: tuple[float, float] | None
     if plan.dynamic_threshold is not None and source.n_blocks > 1:
-        rowstats = [stats for _, stats in source.map(partial(_stats_task, plan), rows=band_rows)]
-        band = _noise_band(plan, np.concatenate(rowstats))
+        if source.kind == "in memory":
+            rows = np.arange(source.n_obs) if band_rows is None else band_rows
+            rowstats = _windows(plan, source.X, rows, out=False)[1]
+        else:
+            rowstats = np.concatenate([_windows(plan, X, rows, out=False)[1] for X, rows in source.rows_of(band_rows)])
+        band = _noise_band(plan, rowstats)
     else:
         band = None if plan.dynamic_threshold is not None else _NO_BAND
-    blocks = []
+    builder = _CsrBuilder(source.n_obs, plan.layout.n_windows)
     gv = np.full((source.n_obs, plan.layout.n_vars), np.nan, dtype=np.float32) if gene_values else None
-    for start, (csr, gv_block, block_band) in source.map(partial(_main_task, plan, band, band_rows, gene_values)):
-        band = block_band  # with a single block, it defines the band
-        blocks.append(csr)
+    for X, rows in source.rows_of(None):
+        windows, rowstats, counts = _windows(plan, X, rows, band)
+        if band is None:  # a single block defines the band
+            band = _noise_band(plan, rowstats if band_rows is None else rowstats[band_rows])
+            _count_kept(windows, *band, counts)
         if gv is not None:
-            gv[start : start + csr.shape[0]] = gv_block
-    res = blocks[0] if len(blocks) == 1 else sp.vstack(blocks, format="csr")
-    return res, gv, band
+            gv[builder.n : builder.n + len(rows)] = _gene_values_of(plan, windows, band)
+        builder.add(windows, counts, band)
+    assert band is not None
+    return builder.finish(), gv, band
 
 
 def _run_lazy(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_values: bool):
@@ -451,26 +543,26 @@ def _run_lazy(plan: _Plan, source: "_Rows", band_rows: np.ndarray | None, gene_v
 
 def _dask_stats_task(block, plan: _Plan, local: np.ndarray | None) -> np.ndarray:
     X = _kernel_ready(block)
-    X = X if local is None else _kernel_ready(X[local])
-    return _windows(plan, X, 0, X.shape[0], serial=True)[1]
+    return _windows(plan, X, np.arange(X.shape[0]) if local is None else local, out=False, serial=True)[1]
 
 
 def _lazy_cnv_block(plan: _Plan, band, block) -> sp.csr_matrix:
     X = _kernel_ready(block)
-    return _to_csr(_windows(plan, X, 0, X.shape[0], serial=True)[0], band, serial=True)
+    windows, _, counts = _windows(plan, X, np.arange(X.shape[0]), band, serial=True)
+    return _to_csr(windows, counts, band, serial=True)
 
 
 def _lazy_gene_values_block(plan: _Plan, band, block) -> np.ndarray:
     X = _kernel_ready(block)
-    return _gene_values_of(plan, _windows(plan, X, 0, X.shape[0], serial=True)[0], band, serial=True)
+    return _gene_values_of(plan, _windows(plan, X, np.arange(X.shape[0]), serial=True)[0], band, serial=True)
 
 
 class _Rows:
     """Row blocks of the expression matrix: in memory, backed (h5ad), or a dask array.
 
-    In memory and backed, blocks have `chunksize` rows; a dask array keeps its own blocks. `map` reads the blocks one
-    after another (dask: with the synchronous scheduler) and processes each on this thread, so the kernels can use
-    all numba threads.
+    In memory and backed, blocks have `chunksize` rows; a dask array keeps its own blocks. `rows_of` reads the blocks
+    ahead in threads (dask: with the synchronous scheduler) and yields them on this thread, so the kernels can use all
+    numba threads.
     """
 
     def __init__(self, X, chunksize: int):
@@ -503,25 +595,38 @@ class _Rows:
             if len(local):
                 yield i, local
 
-    def map(self, fn: Callable, rows: np.ndarray | None = None) -> Iterator[tuple[int, Any]]:
-        """Yield `(start, fn(X, row0, n_rows, start))` for every block, in order.
+    def rows_of(self, rows: np.ndarray | None) -> Iterator[tuple[Any, np.ndarray]]:
+        """`(X, row indices into X)` of every block that holds any of `rows` (sorted; `None`: all), in order.
 
-        `X` is an in-memory, kernel-ready matrix and `row0` the row of `X` where the block starts. With `rows` (sorted
-        row indices), a block holds only these rows (`start` is then the first of them), and blocks without any are
-        skipped.
+        `X` is an in-memory, kernel-ready matrix that holds the block.
         """
-        for i, local in self.blocks_of(rows):
+        blocks = list(self.blocks_of(rows))
+        for (i, local), (X, row0) in zip(blocks, self.read_ahead([i for i, _ in blocks]), strict=True):
             s, e = int(self.bounds[i]), int(self.bounds[i + 1])
-            start = s if local is None else s + int(local[0])
-            if self.kind == "in memory":
-                X = self.X if local is None else _kernel_ready(self.X[s + local])
-                row0 = s if local is None else 0
-            else:
-                block = self.X.blocks[i].compute(scheduler="synchronous") if self.kind == "dask" else self.X[s:e]
-                X = _kernel_ready(block)
-                X = X if local is None else _kernel_ready(X[local])
-                row0 = 0
-            yield start, fn(X, row0, (e - s) if local is None else len(local), start)
+            yield X, row0 + (np.arange(e - s) if local is None else local)
+
+    def read_ahead(self, blocks: list[int]) -> Iterator[tuple[Any, int]]:
+        """`read` of each of `blocks`. Backed and dask blocks are read ahead in threads while earlier ones are used."""
+        if self.kind == "in memory" or len(blocks) < 2:
+            yield from map(self.read, blocks)
+            return
+        n_ahead = _READ_AHEAD[self.kind]
+        with ThreadPoolExecutor(n_ahead) as pool:
+            ahead: deque = deque()
+            for i in blocks:
+                ahead.append(pool.submit(self.read, i))
+                if len(ahead) > n_ahead:
+                    yield ahead.popleft().result()
+            while ahead:
+                yield ahead.popleft().result()
+
+    def read(self, i: int) -> tuple[Any, int]:
+        """Block `i` as an in-memory, kernel-ready matrix, and the row of that matrix where the block starts."""
+        s, e = int(self.bounds[i]), int(self.bounds[i + 1])
+        if self.kind == "in memory":
+            return self.X, s
+        block = self.X.blocks[i].compute(scheduler="synchronous") if self.kind == "dask" else self.X[s:e]
+        return _kernel_ready(block), 0
 
 
 def _kernel_ready(X):
@@ -533,12 +638,19 @@ def _kernel_ready(X):
             X = X.tocsr()
         if X.dtype not in (np.float32, np.float64):
             X = X.astype(np.float32)
-        if not X.has_canonical_format:  # duplicate entries are summed, as by `toarray()`
+        if _canonical(X):
+            X.has_canonical_format = True
+        else:  # duplicate entries are summed, as by `toarray()`
             X = X.copy()
             X.sum_duplicates()
         return X
     X = np.asarray(X)
     return np.ascontiguousarray(X if X.dtype in (np.float32, np.float64) else X.astype(np.float32))
+
+
+def _canonical(X) -> bool:
+    """Whether the CSR matrix `X` has sorted indices without duplicates (scipy's own check is serial)."""
+    return _n_unsorted_rows(X.indices, X.indptr) == 0
 
 
 def _distributed_client_active() -> bool:
@@ -560,14 +672,16 @@ def _get_reference(
     reference: np.ndarray | None,
     layer: str | None,
     *,
-    chunksize: int = 5000,
+    source: "_Rows | None" = None,
     lazy: bool = False,
 ) -> np.ndarray:
     """Parameter validation extraction of reference gene expression.
 
     If multiple reference categories are given, compute the mean per
-    category. For a dask array or a backed matrix, all means are computed
-    in a single pass over the data (with `lazy`, as one dask computation).
+    category. The means are float64 sums of the rows divided by their number, computed in
+    parallel (`source` is the expression matrix, if it is already wrapped). For a dask array or a
+    backed matrix, all means are computed in a single pass over the blocks that hold reference
+    cells (with `lazy`, as one dask computation).
 
     Returns a 2D array with reference categories in rows, genes in columns.
     If there's just one category, it's still a 2D array.
@@ -575,7 +689,7 @@ def _get_reference(
     X: Any = adata.X if layer is None else adata.layers[layer]
 
     if reference is None:
-        cats, labels = None, None
+        cats, codes = None, np.zeros(adata.n_obs, dtype=np.int64)
         if reference_key is None or reference_cat is None:
             warnings.warn(
                 "Using the mean of all cells as reference. For better results, "
@@ -584,20 +698,21 @@ def _get_reference(
                 skip_file_prefixes=SKIP_OWN_FRAMES,
             )
         else:
-            labels = np.asarray(adata.obs[reference_key])
+            labels = _obs_column(adata, reference_key)
             cats = _categories(reference_cat)
-            cats_in_obs = np.isin(cats, labels)
+            cats_in_obs = pd.Index(cats).isin(labels.unique())
             if not np.all(cats_in_obs):
                 raise ValueError(
                     "The following reference categories were not found in "
                     f"adata.obs[reference_key]: {cats[~cats_in_obs]}"
                 )
-        if _is_dask(X) or _is_backed(X):
-            reference = _streaming_means(_Rows(X, chunksize), cats, labels, lazy=lazy)
-        elif cats is None:
-            reference = np.mean(X, axis=0)
-        else:
-            reference = np.vstack([np.mean(X[labels == cat, :], axis=0) for cat in cats])
+            unique = pd.Index(pd.unique(cats))
+            codes = unique.get_indexer(labels)
+        if source is None:
+            source = _Rows(_as_matrix(X, lazy=True), chunksize=5000)
+        reference = _means(source, codes, 1 if cats is None else len(unique), lazy=lazy)
+        if cats is not None:
+            reference = reference[unique.get_indexer(cats)]  # a repeated category repeats its mean
 
     reference = np.asarray(reference)
     if reference.ndim == 1:
@@ -609,34 +724,51 @@ def _get_reference(
     return reference
 
 
-def _streaming_means(source: _Rows, cats: np.ndarray | None, labels: np.ndarray | None, *, lazy: bool) -> np.ndarray:
-    """Column means over all rows (`cats=None`), or over the rows of each category, in one pass over the data."""
-    fn = partial(_block_sums, cats, labels)
-    if lazy:  # one dask computation, in parallel with the current scheduler
+def _means(source: _Rows, codes: np.ndarray, n_groups: int, *, lazy: bool) -> np.ndarray:
+    """Per group, the column means of the rows with `codes == group` (-1: no group), in one pass over the data.
+
+    Blocks without any of these rows are not read.
+    """
+    rows = None if (codes >= 0).all() else np.flatnonzero(codes >= 0)
+    blocks = list(source.blocks_of(rows))
+    if source.kind == "in memory":
+        rows = np.arange(len(codes)) if rows is None else rows
+        sums = _group_sums(source.X, rows, codes[rows], n_groups)
+    elif lazy:  # one dask computation, in parallel with the current scheduler
         import dask
 
-        blocks = source.X.to_delayed().ravel()
-        tasks = [dask.delayed(_dask_block_sums)(b, fn, int(s)) for b, s in zip(blocks, source.bounds, strict=False)]
-        parts = dask.compute(*tasks)
+        delayed = source.X.to_delayed().ravel()
+        tasks = [
+            dask.delayed(_dask_block_sums)(delayed[i], *_block_groups(source, i, local, codes), n_groups)
+            for i, local in blocks
+        ]
+        sums = np.sum(dask.compute(*tasks), axis=0)
     else:
-        parts = tuple(part for _, part in source.map(fn))
-    sums, counts = zip(*parts, strict=True)
-    return np.sum(sums, axis=0) / np.sum(counts, axis=0)[:, np.newaxis]
+        sums = np.zeros((n_groups, source.X.shape[1]))
+        for (i, local), (X, row0) in zip(blocks, source.read_ahead([i for i, _ in blocks]), strict=True):
+            local, groups = _block_groups(source, i, local, codes)
+            sums += _group_sums(X, row0 + local, groups, n_groups)
+    counts = np.bincount(codes[codes >= 0], minlength=n_groups)
+    return sums / counts[:, np.newaxis]
 
 
-def _dask_block_sums(block, fn: Callable, start: int):
-    X = _kernel_ready(block)
-    return fn(X, 0, X.shape[0], start)
+def _block_groups(source: _Rows, i: int, local: np.ndarray | None, codes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Rows of block `i` (local indices) that belong to a group, and their groups."""
+    s, e = int(source.bounds[i]), int(source.bounds[i + 1])
+    if local is None:
+        local = np.arange(e - s)
+    return local, codes[s + local]
 
 
-def _block_sums(cats, labels, X, row0: int, n_rows: int, start: int) -> tuple[np.ndarray, np.ndarray]:
-    """Per category (or all rows): sum over the rows of the block, and the number of rows."""
-    if cats is None:
-        group, row = np.zeros(n_rows, dtype=np.int64), np.arange(n_rows)
+def _dask_block_sums(block, local: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
+    return _group_sums(_kernel_ready(block), local, groups, n_groups)
+
+
+def _group_sums(X, rows: np.ndarray, groups: np.ndarray, n_groups: int) -> np.ndarray:
+    """Per group (float64): the sum of the rows `rows` of the kernel-ready matrix `X` whose group is in `groups`."""
+    sums = np.zeros((n_kernel_chunks(len(rows), per_thread=1), n_groups, X.shape[1]))
+    if sp.issparse(X):
+        _group_sums_csr(X.data, X.indices, X.indptr, rows, groups, sums)
     else:
-        group, row = np.nonzero(cats[:, np.newaxis] == labels[np.newaxis, start : start + n_rows])
-    n_groups = 1 if cats is None else len(cats)
-    indicator = sp.csr_matrix((np.ones(len(row)), (group, row0 + row)), shape=(n_groups, X.shape[0]))
-    sums = indicator @ X
-    sums = sums.toarray() if sp.issparse(sums) else np.asarray(sums)
-    return sums, np.bincount(group, minlength=n_groups)
+        _group_sums_dense(X, rows, groups, sums)
+    return sums.sum(axis=0)
