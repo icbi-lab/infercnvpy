@@ -426,14 +426,21 @@ def _noise_band(plan: _Plan, rowstats: np.ndarray) -> tuple[float, float]:
 class _CsrBuilder:
     """A CSR matrix filled block by block of rows with the windows outside the noise band.
 
-    The data and index arrays grow in place (`ndarray.resize`, a `realloc`), so the blocks are never stacked.
+    The data and index arrays are allocated for a dense result: the operating system only maps the pages that are
+    written. `finish` shrinks them in place (`ndarray.resize`, a `realloc`). If that allocation fails, they grow in
+    place as needed. The blocks are never stacked.
     """
 
     def __init__(self, n_rows: int, n_cols: int):
         self.shape = (n_rows, n_cols)
         self.indptr = np.zeros(n_rows + 1, dtype=np.int64)
-        self.data = np.empty(0, dtype=np.float32)
-        self.indices = np.empty(0, dtype=np.int32 if n_cols < np.iinfo(np.int32).max else np.int64)
+        idx_dtype = np.int32 if n_cols < np.iinfo(np.int32).max else np.int64
+        try:
+            self.data = np.empty(n_rows * n_cols, dtype=np.float32)
+            self.indices = np.empty(n_rows * n_cols, dtype=idx_dtype)
+        except MemoryError:
+            self.data = np.empty(0, dtype=np.float32)
+            self.indices = np.empty(0, dtype=idx_dtype)
         self.n = 0
 
     def add(self, windows: np.ndarray, counts: np.ndarray, band: tuple[float, float], serial: bool = False):
