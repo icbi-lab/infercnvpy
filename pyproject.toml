@@ -46,6 +46,7 @@ dependencies = [
 optional-dependencies.copykat = [ "rpy2" ]
 optional-dependencies.dask = [ "anndata[dask]" ]
 optional-dependencies.gtf = [ "gtfparse>=3" ]
+optional-dependencies.spatial = [ "squidpy>=1.8.4" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Changelog = "https://github.com/scverse/infercnvpy/releases"
 urls.Documentation = "https://infercnvpy.readthedocs.io/"

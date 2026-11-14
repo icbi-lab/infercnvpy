@@ -116,7 +116,8 @@ def _graph(adata: AnnData, connectivity_key: str) -> sp.csr_matrix:
     if connectivity_key not in adata.obsp:
         raise KeyError(
             f"`adata.obsp[{connectivity_key!r}]` not found. Compute a spatial graph first, "
-            "e.g. with `squidpy.gr.spatial_neighbors_knn(adata)`."
+            "e.g. with `squidpy.gr.spatial_neighbors_knn(adata)` "
+            '(install with `pip install "infercnvpy[spatial]"`).'
         )
     G = adata.obsp[connectivity_key]
     G = sp.csr_matrix(G) if sp.issparse(G) else sp.csr_matrix(np.asarray(G))

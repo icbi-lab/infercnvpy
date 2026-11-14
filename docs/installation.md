@@ -54,6 +54,9 @@ pip install git+https://github.com/scverse/infercnvpy.git
 ## Optional dependencies
 
 - `infercnvpy[gtf]` installs [gtfparse][] for {func}`infercnvpy.io.genomic_position_from_gtf`.
+- `infercnvpy[spatial]` installs [squidpy][] for the spatial neighbour graph that {func}`infercnvpy.tl.smooth_cnv`,
+  {func}`infercnvpy.tl.spatial_regions` and {func}`infercnvpy.pl.spatial_cnv` read from `adata.obsp`.
+  The functions themselves work with any graph in `adata.obsp`, so squidpy is only needed to build it.
 - `infercnvpy[copykat]` installs [rpy2][] for {func}`infercnvpy.tl.copykat`.
   It also needs a working R installation with the [copykat][] package.
   Usually, if `R` is in your `PATH`, rpy2 finds your R installation.
@@ -73,3 +76,4 @@ To work on infercnvpy itself, see {doc}`contributing`.
 [gtfparse]: https://github.com/openvax/gtfparse
 [rpy2]: https://rpy2.github.io/
 [copykat]: https://github.com/navinlabcode/copykat#step-1-installation
+[squidpy]: https://squidpy.readthedocs.io
