@@ -8,17 +8,26 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-from infercnvpy._logging import log, log_result
+from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._numba import numba_threads
-from infercnvpy._util import _as_df, _as_matrix, _choose_mtx_rep, _is_backed, _is_dask, _params_for_uns
+from infercnvpy._util import (
+    _as_df,
+    _as_matrix,
+    _choose_mtx_rep,
+    _deprecated_positional,
+    _is_backed,
+    _is_dask,
+    _params_for_uns,
+)
 
 from ._ith import corr_iqr
 
 
+@_deprecated_positional("groupby")
 def cnv_score(
     adata: AnnData,
-    groupby: str = "cnv_leiden",
     *,
+    groupby: str = "cnv_leiden",
     use_rep: str = "cnv",
     key_added: str = "cnv_score",
     inplace: bool = True,
@@ -31,6 +40,10 @@ def cnv_score(
 
     The score is currently simply defined as the mean of the absolute values of the
     CNV scores in each cluster.
+
+    .. versionchanged:: 0.7.0
+        `groupby` is keyword-only. Passing it positionally still works with a
+        :class:`FutureWarning` until 0.8.0.
 
     Parameters
     ----------
@@ -110,11 +123,12 @@ def _abs_group_means(X, groups: pd.Series) -> dict[Any, np.number]:
     return dict(zip(uniq, means, strict=True))
 
 
+@_deprecated_positional("groupby")
 def ithgex(
     adata: AnnData,
-    groupby: str,
     *,
-    use_raw: bool | None = None,
+    groupby: str,
+    use_raw: bool = False,
     layer: str | None = None,
     inplace: bool = True,
     key_added: str = "ithgex",
@@ -153,6 +167,9 @@ def ithgex(
         numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
         defined correlation and are left out; before, any such cell made the group's score `NaN`.
         The number of cells left out is logged per group.
+        `groupby` is keyword-only; passing it positionally still works with a :class:`FutureWarning`
+        until 0.8.0. `use_raw` is a plain boolean, `False` by default; `None` still works as
+        `False` with a :class:`FutureWarning` until 0.8.0.
 
     .. versionadded:: 0.7.0
         `n_pairs` and `exclude_self_pairs`.
@@ -164,7 +181,7 @@ def ithgex(
     groupby
         calculate diversity for each group defined in this category.
     use_raw
-        If `True`, use gene expression from `adata.raw.X`. Default: use `adata.X`
+        If `True`, use gene expression from `adata.raw.X`. Otherwise use `adata.X`
         (or `layer`, if given), even when `adata.raw` is present.
     layer
         Use gene expression from `adata.layers[layer]`
@@ -197,15 +214,24 @@ def ithgex(
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
+    if use_raw is None:
+        warnings.warn(
+            "`use_raw=None` is deprecated and will raise an error from infercnvpy 0.8.0. "
+            "Pass `use_raw=False` (the default) to use `adata.X`.",
+            FutureWarning,
+            skip_file_prefixes=SKIP_OWN_FRAMES,
+        )
+        use_raw = False
     X = _as_matrix(_choose_mtx_rep(adata, use_raw, layer))
     return _ith(adata, X, groupby, key_added, inplace, n_jobs, n_pairs, random_state, exclude_self_pairs)
 
 
+@_deprecated_positional("groupby")
 def ithcna(
     adata: AnnData,
-    groupby: str,
     *,
-    use_rep: str = "X_cnv",
+    groupby: str,
+    use_rep: str = "cnv",
     key_added: str = "ithcna",
     inplace: bool = True,
     n_jobs: int | None = None,
@@ -242,6 +268,10 @@ def ithcna(
         numpy to about 1e-6. Cells with a constant profile (e.g. no CNV signal at all) have no
         defined correlation and are left out; before, any such cell made the group's score `NaN`.
         The number of cells left out is logged per group.
+        `groupby` is keyword-only; passing it positionally still works with a :class:`FutureWarning`
+        until 0.8.0. `use_rep` is the suffix of the key in `adata.obsm`, `"cnv"` for
+        `adata.obsm["X_cnv"]`, as in the other functions; the full key (`"X_cnv"`) still works with a
+        :class:`FutureWarning` until 0.8.0.
 
     .. versionadded:: 0.7.0
         `n_pairs` and `exclude_self_pairs`.
@@ -253,8 +283,7 @@ def ithcna(
     groupby
         calculate diversity for each group defined in this category.
     use_rep
-        Key under which the result of :func:`infercnvpy.tl.infercnv` is stored
-        in adata.
+        Use `adata.obsm[f"X_{use_rep}"]`, e.g. the result of :func:`infercnvpy.tl.infercnv`.
     key_added
         Key under which the score will be stored in `adata.obs`.
     inplace
@@ -284,7 +313,16 @@ def ithcna(
     `adata.obs[key_added]` : float
         Score of the group each cell belongs to, `NaN` for single-cell groups.
     """
-    X = _as_matrix(adata.obsm[use_rep], f"`obsm[{use_rep!r}]`")
+    key = f"X_{use_rep}"
+    if key not in adata.obsm and use_rep.startswith("X_") and use_rep in adata.obsm:
+        warnings.warn(
+            f"`use_rep={use_rep!r}` is the full key; ithcna now takes the suffix, as the other functions, and "
+            f"the full key will stop working in infercnvpy 0.8.0. Pass `use_rep={use_rep.removeprefix('X_')!r}`.",
+            FutureWarning,
+            skip_file_prefixes=SKIP_OWN_FRAMES,
+        )
+        key = use_rep
+    X = _as_matrix(adata.obsm[key], f"`obsm[{key!r}]`")
     return _ith(adata, X, groupby, key_added, inplace, n_jobs, n_pairs, random_state, exclude_self_pairs)
 
 

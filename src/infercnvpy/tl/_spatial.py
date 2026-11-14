@@ -259,8 +259,8 @@ def smooth_cnv(
 
 def spatial_regions(
     adata: AnnData,
-    key: str,
     *,
+    key: str,
     connectivity_key: str = "spatial_connectivities",
     probabilities: str | None = None,
     beta: float = 2.0,

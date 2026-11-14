@@ -122,7 +122,8 @@ def test_get_genomic_position_from_biomart(adata_pbmc3k, kwargs):
 
 @pytest.fixture
 def scevan_dir(tmp_path, monkeypatch):
-    """A SCEVAN result directory whose `.RData` files are read by a stand-in for `rdata` (4 of 5 cells kept)."""
+    """A SCEVAN result directory whose `.RData` files are read by a stand-in for `rdata` (4 of 5 cells kept), and a
+    result table."""
     for name in ("s_CNAmtx.RData", "s_count_mtx_annot.RData"):
         (tmp_path / name).touch()
     frames = {
@@ -130,6 +131,10 @@ def scevan_dir(tmp_path, monkeypatch):
         "count_mtx_annot": pd.DataFrame({"seqnames": [1, 2]}),
     }
     monkeypatch.setattr(infercnvpy.io._scevan, "_read_rdata_frame", lambda path, name: frames[name])
+    table = pd.DataFrame(
+        {"class": ["tumor", "normal"] * 2, "confidentNormal": ["no"] * 4}, index=frames["CNA_mtx_relat"].columns
+    )
+    table.to_csv(tmp_path / "table.csv")
     return tmp_path
 
 
@@ -154,3 +159,28 @@ def test_read_scevan_imports_rdata_lazily():
 
     code = "import sys, infercnvpy; assert 'rdata' not in sys.modules"
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def _scevan_adata():
+    return sc.AnnData(obs=pd.DataFrame(index=[f"c{i}" for i in range(5)]))
+
+
+def test_read_scevan_copy(scevan_dir):
+    adata = _scevan_adata()
+    res = read_scevan(adata, scevan_dir, scevan_res_table=scevan_dir / "table.csv", copy=True)
+    assert "X_scevan" in res.obsm
+    assert list(res.obs["scevan_class"]) == ["tumor", "normal"] * 2
+    assert "X_scevan" not in adata.obsm
+    assert read_scevan(adata, scevan_dir) is None
+    assert "X_scevan" in adata.obsm
+
+
+def test_read_scevan_deprecations(scevan_dir):
+    adata = _scevan_adata()
+    with pytest.warns(FutureWarning, match="Passing `scevan_res_table` to `read_scevan` positionally"):
+        read_scevan(adata, scevan_dir, scevan_dir / "table.csv")
+    assert "scevan_class" in adata.obs
+    with pytest.warns(FutureWarning, match=r"inplace=False\)` returns a modified copy"):
+        res = read_scevan(_scevan_adata(), scevan_dir, inplace=False)
+    assert isinstance(res, sc.AnnData)
+    assert "X_scevan" in res.obsm

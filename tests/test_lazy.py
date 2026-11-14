@@ -152,15 +152,15 @@ def test_tools_that_need_cnv_in_memory(base):
     a.obsm["spatial"] = np.random.default_rng(0).random((a.n_obs, 2))
     a.obsp["spatial_connectivities"] = sp.eye(a.n_obs, format="csr")
     calls = [
-        lambda: cnv.tl.ithcna(a, "cell_type", use_rep="X_cnv"),
+        lambda: cnv.tl.ithcna(a, groupby="cell_type"),
         lambda: cnv.tl.smooth_cnv(a),
         lambda: cnv.pl.spatial_cnv(a, region="chr1", show=False),
     ]
     for call in calls:
         with pytest.raises(TypeError, match=r"needs `obsm\['X_cnv'\]` in memory, got a dask array.*\.compute\(\)"):
             call()
-    assert cnv.tl.cnv_score(a, "cell_type", inplace=False) == pytest.approx(
-        cnv.tl.cnv_score(eager, "cell_type", inplace=False)
+    assert cnv.tl.cnv_score(a, groupby="cell_type", inplace=False) == pytest.approx(
+        cnv.tl.cnv_score(eager, groupby="cell_type", inplace=False)
     )
 
 
