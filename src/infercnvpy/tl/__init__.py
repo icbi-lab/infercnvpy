@@ -9,8 +9,21 @@ from infercnvpy._logging import log
 from ._copykat import copykat
 from ._infercnv import infercnv
 from ._scores import cnv_score, ithcna, ithgex
+from ._spatial import smooth_cnv, spatial_regions
 
-__all__ = ["cnv_score", "copykat", "infercnv", "ithcna", "ithgex", "leiden", "pca", "tsne", "umap"]
+__all__ = [
+    "cnv_score",
+    "copykat",
+    "infercnv",
+    "ithcna",
+    "ithgex",
+    "leiden",
+    "pca",
+    "smooth_cnv",
+    "spatial_regions",
+    "tsne",
+    "umap",
+]
 
 
 def leiden(
