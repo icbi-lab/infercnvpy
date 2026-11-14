@@ -1,6 +1,6 @@
 """Spatial tools: smooth a CNV matrix over a spatial neighbour graph, and regularise labels with a Potts prior.
 
-Both read the graph from `adata.obsp`, e.g. `obsp["spatial_connectivities"]` from :func:`squidpy.gr.spatial_neighbors`;
+Both read the graph from `adata.obsp`, e.g. `obsp["spatial_connectivities"]` from :func:`squidpy.gr.spatial_neighbors_knn`;
 infercnvpy itself does not depend on squidpy.
 
 `_hop_csr` / `_hop_dense` compute one smoothing step ``out = S @ X`` with ``S = diag(a) + diag((1 - a) / d) @ A``
@@ -116,7 +116,7 @@ def _graph(adata: AnnData, connectivity_key: str) -> sp.csr_matrix:
     if connectivity_key not in adata.obsp:
         raise KeyError(
             f"`adata.obsp[{connectivity_key!r}]` not found. Compute a spatial graph first, "
-            "e.g. with `squidpy.gr.spatial_neighbors(adata)`."
+            "e.g. with `squidpy.gr.spatial_neighbors_knn(adata)`."
         )
     G = adata.obsp[connectivity_key]
     G = sp.csr_matrix(G) if sp.issparse(G) else sp.csr_matrix(np.asarray(G))
@@ -158,9 +158,10 @@ def smooth_cnv(
     on imaging platforms at native resolution. Smoothing also blurs the boundary between tumour
     and normal tissue by about `n_hops` cells.
 
-    The graph usually comes from :func:`squidpy.gr.spatial_neighbors`, e.g.
-    `sq.gr.spatial_neighbors(adata, coord_type="generic", delaunay=True)`. Any cells x cells
-    graph with non-negative weights works, such as a kNN graph on the coordinates.
+    The graph usually comes from :func:`squidpy.gr.spatial_neighbors_knn`, e.g.
+    `sq.gr.spatial_neighbors_knn(adata, n_neighs=10)`, or from
+    :func:`squidpy.gr.spatial_neighbors_delaunay`. Any cells x cells graph with non-negative
+    weights works.
 
     Parameters
     ----------
@@ -287,7 +288,7 @@ def spatial_regions(
         Column of `adata.obs` with the labels, categorical or convertible to categorical.
     connectivity_key
         Key of the cells x cells graph in `adata.obsp`, e.g. from
-        :func:`squidpy.gr.spatial_neighbors`.
+        :func:`squidpy.gr.spatial_neighbors_knn`.
     probabilities
         Key in `adata.obsm` with per-cell class probabilities or non-negative scores, cells x
         classes, in the order of the categories of `adata.obs[key]` (or a

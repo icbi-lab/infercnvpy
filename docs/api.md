@@ -75,7 +75,7 @@ the infercnvpy equivalents operate on CNV data.
 ### Spatial
 
 Tools for spatial data. They read a cells x cells neighbour graph from `adata.obsp`,
-e.g. `obsp["spatial_connectivities"]` from {func}`squidpy.gr.spatial_neighbors`.
+e.g. `obsp["spatial_connectivities"]` from {func}`squidpy.gr.spatial_neighbors_knn`.
 
 ```{eval-rst}
 .. autosummary::
