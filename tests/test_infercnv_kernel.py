@@ -276,3 +276,76 @@ def test_csr_builder(preallocated):
     res = builder.finish()
     np.testing.assert_array_equal(res.toarray(), np.where(keep, windows, 0))
     assert res.indptr.dtype == res.indices.dtype == np.int32
+
+
+@pytest.fixture(scope="module")
+def oligo_log(oligo):
+    """The oligodendroglioma counts, log-normalised as infercnv expects (and as `min_mean` assumes)."""
+    import scanpy as sc
+
+    adata = oligo.copy()
+    sc.pp.normalize_total(adata)
+    sc.pp.log1p(adata)
+    return adata
+
+
+def _gene_means(adata):
+    """Mean of expm1 of the expression over all cells, per gene (the scale of `min_mean`)."""
+    X = adata.X.toarray() if sp.issparse(adata.X) else np.asarray(adata.X)
+    return np.expm1(X.astype(np.float64)).mean(axis=0)
+
+
+def test_min_mean_default_keeps_all_genes(oligo_log):
+    """`min_mean=None` (default) changes nothing, and a threshold that removes no gene gives the same result."""
+    default = _run(oligo_log, calculate_gene_values=True)
+    _assert_identical(_run(oligo_log, min_mean=None, calculate_gene_values=True), default)
+    _assert_identical(_run(oligo_log, min_mean=0, calculate_gene_values=True), default)
+
+
+@pytest.mark.parametrize("fmt", ["csr", "dense", "dask", "backed"])
+def test_min_mean_removes_lowly_expressed_genes(oligo_log, fmt, tmp_path, caplog):
+    """The genes below `min_mean` are left out before windowing: the same as running on the other genes only."""
+    import logging
+
+    oligo = oligo_log
+    means = np.unique(_gene_means(oligo))
+    i = len(means) * 3 // 10
+    threshold = float((means[i] + means[i + 1]) / 2)  # halfway between two genes, so rounding cannot move a gene
+    keep = _gene_means(oligo) >= threshold
+    expected = _run(oligo[:, keep].copy(), calculate_gene_values=True)
+
+    adata = oligo.copy()
+    if fmt == "dense":
+        adata.X = adata.X.toarray()
+    elif fmt == "dask":
+        import dask.array as da
+
+        adata.X = da.from_array(adata.X.toarray(), chunks=(50, -1))
+    elif fmt == "backed":
+        import anndata as ad
+
+        adata.write_h5ad(tmp_path / "a.h5ad")
+        adata = ad.read_h5ad(tmp_path / "a.h5ad", backed="r")
+    with caplog.at_level(logging.INFO, logger="scverse.infercnvpy"):
+        chr_pos, res, gv = cnv.tl.infercnv(
+            adata, **REF, inplace=False, calculate_gene_values=True, min_mean=threshold, chunksize=60
+        )
+    assert chr_pos == expected[0]
+    if fmt in ("csr", "dense"):
+        assert (res != expected[1]).nnz == 0
+    else:  # the reference means of lazy data are sums over blocks
+        np.testing.assert_allclose(res.toarray(), expected[1].toarray(), rtol=1e-5, atol=1e-6)
+    np.testing.assert_allclose(gv[:, keep], expected[2], rtol=1e-5, atol=1e-6)
+    assert np.isnan(gv[:, ~keep]).all()
+    excluded = oligo.var["chromosome"].isna() | oligo.var["chromosome"].isin(["chrX", "chrY"])
+    n_low = int((~keep & ~excluded.to_numpy()).sum())
+    [msg] = [r.getMessage() for r in caplog.records if r.name == "scverse.infercnvpy"]
+    assert f"left out {n_low} genes with a mean expression below min_mean={threshold:g}" in msg
+
+
+def test_min_mean_recorded_and_all_genes_removed(oligo_log):
+    adata = oligo_log.copy()
+    cnv.tl.infercnv(adata, **REF, min_mean=0.5)
+    assert adata.uns["cnv"]["params"]["min_mean"] == 0.5
+    with pytest.raises(ValueError, match="No genes left"):
+        _run(oligo_log, min_mean=1e30)
