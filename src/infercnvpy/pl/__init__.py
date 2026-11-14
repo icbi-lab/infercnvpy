@@ -1,8 +1,9 @@
 import scanpy as sc
 
 from ._chromosome_heatmap import chromosome_heatmap, chromosome_heatmap_summary
+from ._spatial import spatial_cnv
 
-__all__ = ["chromosome_heatmap", "chromosome_heatmap_summary", "tsne", "umap"]
+__all__ = ["chromosome_heatmap", "chromosome_heatmap_summary", "spatial_cnv", "tsne", "umap"]
 
 
 def umap(adata, **kwargs):

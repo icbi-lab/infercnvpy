@@ -72,6 +72,19 @@ the infercnvpy equivalents operate on CNV data.
     tl.ithgex
 ```
 
+### Spatial
+
+Tools for spatial data. They read a cells x cells neighbour graph from `adata.obsp`,
+e.g. `obsp["spatial_connectivities"]` from {func}`squidpy.gr.spatial_neighbors`.
+
+```{eval-rst}
+.. autosummary::
+    :toctree: generated
+
+    tl.smooth_cnv
+    tl.spatial_regions
+```
+
 ### Embeddings
 
 ```{eval-rst}
@@ -107,6 +120,15 @@ the infercnvpy equivalents operate on CNV data.
 
     pl.chromosome_heatmap
     pl.chromosome_heatmap_summary
+```
+
+### Spatial
+
+```{eval-rst}
+.. autosummary::
+    :toctree: generated
+
+    pl.spatial_cnv
 ```
 
 ### Embeddings

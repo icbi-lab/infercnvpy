@@ -87,7 +87,7 @@ def test_infercnv_mock_values(adata_full_mock, gene_res_actual, x_res_actual, ch
 
 def test_infercnv_records_params(adata_full_mock, tmp_path):
     cnv.tl.infercnv(adata_full_mock, reference_key="sample", reference_cat="sample1", window_size=3, step=1)
-    assert set(adata_full_mock.uns["cnv"]) == {"chr_pos", "params"}
+    assert set(adata_full_mock.uns["cnv"]) == {"chr_pos", "window_start", "window_end", "params"}
     assert adata_full_mock.uns["cnv"]["params"] == {
         "reference_key": "sample",
         "reference_cat": "sample1",

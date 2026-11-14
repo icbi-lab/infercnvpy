@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
+from numpy.lib.stride_tricks import sliding_window_view
 
 from infercnvpy._logging import SKIP_OWN_FRAMES, log, log_result
 from infercnvpy._numba import n_kernel_chunks, numba_threads
@@ -149,6 +150,9 @@ def infercnv(
         CSR blocks.
     `adata.uns[key_added]["chr_pos"]` : :class:`dict`
         Maps each chromosome to the column of `X_{key_added}` where it starts.
+    `adata.uns[key_added]["window_start"]`, `adata.uns[key_added]["window_end"]` : :class:`numpy.ndarray`
+        Genomic span of each window (int64, base pairs): the start of its first gene and the
+        largest end of its genes. Used to select genomic regions, e.g. by :func:`infercnvpy.pl.spatial_cnv`.
     `adata.uns[key_added]["params"]` : :class:`dict`
         Parameters of this call, stored as given. `reference_key` and `reference_cat`
         are `None` when an explicit `reference` is passed.
@@ -245,7 +249,12 @@ def infercnv(
 
     if inplace:
         adata.obsm[f"X_{key_added}"] = res
-        adata.uns[key_added] = {"chr_pos": layout.chr_pos, "params": params}
+        adata.uns[key_added] = {
+            "chr_pos": layout.chr_pos,
+            "window_start": layout.window_start,
+            "window_end": layout.window_end,
+            "params": params,
+        }
         if calculate_gene_values:
             adata.layers[f"gene_values_{key_added}"] = per_gene_mtx
         return None
@@ -289,7 +298,7 @@ class _Layout:
     def __init__(self, var: pd.DataFrame, var_mask: np.ndarray, window_size: int, step: int):
         used = var.loc[~var_mask, ["chromosome", "start", "end"]]
         chromosomes = _natural_sort([x for x in used["chromosome"].unique() if x.startswith("chr") and x != "chrM"])
-        order, geometry, scatter = [], [], []
+        order, geometry, scatter, starts, ends = [], [], [], [], []
         self.chr_pos: dict[str, int] = {}
         n_genes = n_windows = self.n_covered = 0
         for chromosome in chromosomes:
@@ -302,6 +311,9 @@ class _Layout:
                 n = a = g
             b = n + 1 - a
             K = len(range(0, g - n + 1, step))
+            pos = used.loc[genes]
+            starts.append(pos["start"].to_numpy(dtype=np.int64)[: (K - 1) * step + 1 : step])
+            ends.append(sliding_window_view(pos["end"].to_numpy(dtype=np.int64), n)[::step][:K].max(axis=1))
             order.append(var.index.get_indexer(genes))
             geometry.append((n_genes, g, a, b, K, n_windows, n))
             # per gene: the windows `first .. last` that contain it, and its pyramid weight in each
@@ -317,6 +329,9 @@ class _Layout:
             n_windows += K
         #: column in `var` of each gene in genomic order
         self.order = np.concatenate(order)
+        #: genomic start of the first gene and largest end of any gene in each window
+        self.window_start = np.concatenate(starts)
+        self.window_end = np.concatenate(ends)
         #: position in genomic order of each column of `var`, -1 for genes that are not used
         self.col_map = np.full(len(var), -1, dtype=np.int64)
         self.col_map[self.order] = np.arange(n_genes)
