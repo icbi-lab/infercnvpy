@@ -8,20 +8,21 @@ We recommend [uv][], which installs Python for you and keeps each project's depe
 Install the latest release from [PyPI][]:
 
 :::::{tab-set}
-::::{tab-item} uv
-:sync: uv
-
-```bash
-uv add infercnvpy
-```
-
-::::
-
 ::::{tab-item} Pip
 :sync: pip
 
 ```bash
 pip install infercnvpy
+```
+
+::::
+
+::::{tab-item} uv
+:sync: uv
+
+```bash
+uv init  # only if you are not in a uv project yet
+uv add infercnvpy
 ```
 
 ::::
@@ -32,15 +33,6 @@ pip install infercnvpy
 Install the latest development version from GitHub:
 
 :::::{tab-set}
-::::{tab-item} uv
-:sync: uv
-
-```bash
-uv add git+https://github.com/scverse/infercnvpy.git
-```
-
-::::
-
 ::::{tab-item} Pip
 :sync: pip
 
@@ -49,10 +41,21 @@ pip install git+https://github.com/scverse/infercnvpy.git
 ```
 
 ::::
+
+::::{tab-item} uv
+:sync: uv
+
+```bash
+uv init  # only if you are not in a uv project yet
+uv add git+https://github.com/scverse/infercnvpy.git
+```
+
+::::
 :::::
 
 ## Optional dependencies
 
+- `infercnvpy[dask]` installs dask and the lazy readers of anndata (`anndata[dask,lazy]`) for {doc}`large and lazy datasets <large_data>`.
 - `infercnvpy[gtf]` installs [gtfparse][] for {func}`infercnvpy.io.genomic_position_from_gtf`.
 - `infercnvpy[spatial]` installs [squidpy][] for the spatial neighbour graph that {func}`infercnvpy.tl.smooth_cnv`,
   {func}`infercnvpy.tl.spatial_regions` and {func}`infercnvpy.pl.spatial_cnv` read from `adata.obsp`.

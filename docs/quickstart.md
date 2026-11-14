@@ -8,20 +8,16 @@ import scanpy as sc
 
 import infercnvpy as cnv
 
-adata = cnv.datasets.oligodendroglioma()
+adata = cnv.datasets.oligodendroglioma()  # normalized, not yet log-transformed
+sc.pp.log1p(adata)
 
 cnv.tl.infercnv(
     adata,
     reference_key="cell_type",
     reference_cat=["Oligodendrocytes (non-malignant)", "Microglia/Macrophage"],
 )
-cnv.tl.pca(adata)
-cnv.pp.neighbors(adata)
-cnv.tl.leiden(adata)
-cnv.tl.cnv_score(adata)
-
 cnv.pl.chromosome_heatmap(adata, groupby="cell_type")
 ```
 
 If `adata.var` has no `chromosome`, `start` and `end` columns yet, add them with {func}`infercnvpy.io.genomic_position_from_gtf` or {func}`infercnvpy.io.genomic_position_from_biomart`.
-{doc}`infercnv` describes the method and the input it needs, the {doc}`tutorials <tutorials>` go into more detail and the {doc}`API reference <api>` lists every function.
+{doc}`infercnv` describes the method and the input it needs, the {doc}`tutorials <tutorials>` go into more detail, for example on clustering cells by their CNV profiles, and the {doc}`API reference <api>` lists every function.
