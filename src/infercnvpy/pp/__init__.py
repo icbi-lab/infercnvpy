@@ -3,11 +3,12 @@ from anndata import AnnData
 
 from infercnvpy import tl
 from infercnvpy._logging import log
-from infercnvpy._util import _copy_for_inplace_false
+from infercnvpy._util import _copy_for_inplace_false, _deprecated_positional
 
 __all__ = ["neighbors"]
 
 
+@_deprecated_positional("use_rep", "key_added", "inplace")
 def neighbors(
     adata: AnnData,
     *,
@@ -22,7 +23,9 @@ def neighbors(
     Thin wrapper around :func:`scanpy.pp.neighbors`.
 
     .. versionchanged:: 0.7.0
-        New argument `copy` to get a modified copy of adata.
+        New argument `copy` to get a modified copy of adata. All arguments after `adata` are
+        keyword-only; passing them positionally, as in 0.6, still works with a
+        :class:`FutureWarning` until 0.8.0.
 
     .. deprecated:: 0.7.0
         `inplace=False` returns a modified copy of adata, with a :class:`FutureWarning`. From 0.8.0, it

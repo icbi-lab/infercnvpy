@@ -6,9 +6,24 @@ import pandas as pd
 from anndata import AnnData
 
 from infercnvpy._logging import log, log_result
-from infercnvpy._util import _as_df, _as_matrix
+from infercnvpy._util import _as_df, _as_matrix, _deprecated_positional
 
 
+@_deprecated_positional(
+    "gene_ids",
+    "organism",
+    "segmentation_cut",
+    "distance",
+    "s_name",
+    "min_genes_chr",
+    "key_added",
+    "inplace",
+    "layer",
+    "n_jobs",
+    "norm_cell_names",
+    "cell_line",
+    "window_size",
+)
 def copykat(
     adata: AnnData,
     *,
@@ -42,6 +57,12 @@ def copykat(
 
     This means that unlike for :func:`infercnvpy.tl.infercnv` the input data
     should not be log-transformed.
+
+    .. versionchanged:: 0.7.0
+        Results are stored under `copykat` instead of `cnv` by default, so they no longer
+        replace the results of :func:`infercnvpy.tl.infercnv`. All arguments after `adata` are
+        keyword-only; passing them positionally, as in 0.6, still works with a
+        :class:`FutureWarning` until 0.8.0.
 
     CopyKAT also does NOT require running :func:`infercnvpy.io.genomic_position_from_gtf`,
     it infers the genomic position from the gene symbols in `adata.var_names`.
@@ -94,10 +115,6 @@ def copykat(
         CopyKAT prediction per cell (e.g. "aneuploid" or "diploid").
     `adata.uns[key_added]["chr_pos"]` : :class:`dict`
         Maps each chromosome to the column of `X_{key_added}` where it starts.
-
-    .. versionchanged:: 0.7.0
-        Results are stored under `copykat` instead of `cnv` by default, so they no longer
-        replace the results of :func:`infercnvpy.tl.infercnv`.
     """
     if n_jobs is None:
         n_jobs = cpu_count()

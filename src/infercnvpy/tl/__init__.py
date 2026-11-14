@@ -5,7 +5,7 @@ import scanpy as sc
 from anndata import AnnData
 
 from infercnvpy._logging import log
-from infercnvpy._util import _copy_for_inplace_false
+from infercnvpy._util import _copy_for_inplace_false, _deprecated_positional
 
 from ._copykat import copykat
 from ._infercnv import infercnv
@@ -27,6 +27,7 @@ __all__ = [
 ]
 
 
+@_deprecated_positional("neighbors_key", "key_added", "inplace")
 def leiden(
     adata: AnnData,
     *,
@@ -49,7 +50,8 @@ def leiden(
         The default implementation changed from `leidenalg` to `igraph`, with
         `n_iterations=2` and `directed=False`, ahead of the same change in scanpy.
         Cluster labels differ from earlier versions. New argument `copy` to get a modified
-        copy of adata.
+        copy of adata. All arguments after `adata` are keyword-only; passing them positionally,
+        as in 0.6, still works with a :class:`FutureWarning` until 0.8.0.
 
     .. deprecated:: 0.7.0
         `inplace=False` returns a modified copy of adata, with a :class:`FutureWarning`. From 0.8.0, it
@@ -111,6 +113,7 @@ def leiden(
     )
 
 
+@_deprecated_positional("svd_solver", "zero_center", "inplace", "use_rep", "key_added")
 def pca(
     adata: AnnData,
     *,
@@ -124,6 +127,10 @@ def pca(
     """Compute the PCA on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.pp.pca`.
+
+    .. versionchanged:: 0.7.0
+        All arguments after `adata` are keyword-only. Passing them positionally, as in 0.6,
+        still works with a :class:`FutureWarning` until 0.8.0.
 
     Parameters
     ----------
@@ -166,6 +173,7 @@ def pca(
     return pca_res
 
 
+@_deprecated_positional("neighbors_key", "key_added", "inplace")
 def umap(
     adata: AnnData,
     *,
@@ -177,6 +185,10 @@ def umap(
     """Compute the UMAP on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.tl.umap`
+
+    .. versionchanged:: 0.7.0
+        All arguments after `adata` are keyword-only. Passing them positionally, as in 0.6,
+        still works with a :class:`FutureWarning` until 0.8.0.
 
     Parameters
     ----------
@@ -209,6 +221,7 @@ def umap(
     return tmp_adata.obsm["X_umap"]
 
 
+@_deprecated_positional("use_rep", "key_added", "inplace")
 def tsne(
     adata: AnnData,
     *,
@@ -220,6 +233,10 @@ def tsne(
     """Compute the t-SNE on the result of :func:`infercnvpy.tl.infercnv`.
 
     Thin wrapper around :func:`scanpy.tl.tsne`
+
+    .. versionchanged:: 0.7.0
+        All arguments after `adata` are keyword-only. Passing them positionally, as in 0.6,
+        still works with a :class:`FutureWarning` until 0.8.0.
 
     Parameters
     ----------

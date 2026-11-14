@@ -261,3 +261,43 @@ def test_default_infercnv(benchmark, adata_oligodendroma):
         adata_oligodendroma,
         calculate_gene_values=False,
     )
+
+
+def test_positional_arguments_from_0_6_still_work(adata_cnv_neighbors):
+    """The arguments that became keyword-only in 0.7.0 still work positionally, with a FutureWarning."""
+    adata = adata_cnv_neighbors
+    adata.obsm["X_cnv"] = np.random.default_rng(1).normal(size=(adata.n_obs, 20))
+    deprecated = pytest.warns(FutureWarning, match="positionally is deprecated")
+    with deprecated:
+        cnv.pp.neighbors(adata, "cnv_pca", "nb")
+    assert "nb_connectivities" in adata.obsp
+    with deprecated:
+        cnv.tl.leiden(adata, "nb", "cl")
+    assert "cl" in adata.obs
+    with deprecated:
+        res = cnv.tl.pca(adata, "arpack", False, False, "cnv", n_comps=3)
+    assert res.shape == (adata.n_obs, 3)
+    with deprecated:
+        cnv.tl.umap(adata, "nb", "um")
+    assert "X_um" in adata.obsm
+    with deprecated:
+        cnv.tl.tsne(adata, "cnv_pca", "ts")
+    assert "X_ts" in adata.obsm
+    with pytest.raises(TypeError, match="positional arguments"):
+        cnv.pp.neighbors(adata, "cnv_pca", "nb", True, "extra")
+
+
+def test_copykat_accepts_0_6_positional_arguments():
+    """copykat needs rpy2 and R (not installed for the tests): check that the positional arguments get through."""
+    import inspect
+
+    import infercnvpy.tl._copykat as ck
+
+    names = list(inspect.signature(ck.copykat).parameters)[1:]
+    assert names[:3] == ["gene_ids", "organism", "segmentation_cut"]
+    import importlib.util
+
+    if importlib.util.find_spec("rpy2") is not None:
+        pytest.skip("with rpy2 installed, copykat would run R")
+    with pytest.warns(FutureWarning, match="`gene_ids`, `organism`"), pytest.raises(ImportError, match="rpy2"):
+        cnv.tl.copykat(sc.AnnData(np.ones((2, 2))), "S", "human")
